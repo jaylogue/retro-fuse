@@ -16,13 +16,13 @@ struct	proc
 	char	p_time;		/* resident time for scheduling */
 	char	p_cpu;		/* cpu usage for scheduling */
 	char	p_nice;		/* nice for scheduling */
-	int	p_ttyp;		/* controlling tty */
-	int	p_pid;		/* unique process id */
-	int	p_ppid;		/* process id of parent */
-	int	p_addr;		/* address of swappable image */
-	int	p_size;		/* size of swappable image (*64 bytes) */
-	int	p_wchan;	/* event process is awaiting */
-	int	*p_textp;	/* pointer to text structure */
+	int16_t	p_ttyp;		/* controlling tty */
+	int16_t	p_pid;		/* unique process id */
+	int16_t	p_ppid;		/* process id of parent */
+	int16_t	p_addr;		/* address of swappable image */
+	int16_t	p_size;		/* size of swappable image (*64 bytes) */
+	int16_t	p_wchan;	/* event process is awaiting */
+	int16_t	*p_textp;	/* pointer to text structure */
 } proc[NPROC];
 
 /* stat codes */

@@ -69,7 +69,7 @@
  * structure to access an
  * integer in bytes
  */
-struct
+struct hilo
 {
 	char	lobyte;
 	char	hibyte;
@@ -78,14 +78,17 @@ struct
 /*
  * structure to access an integer
  */
-struct
+struct integ
 {
-	int	integ;
+	int16_t	integ;
 };
 
 /*
  * Certain processor registers
  */
-#define PS	0177776
-#define KL	0177560
-#define SW	0177570
+/* UNUSED #define PS	0177776 */
+/* UNUSED #define KL	0177560 */
+/* UNUSED #define SW	0177570 */
+
+extern struct integ _PS;
+#define PS (&_PS)

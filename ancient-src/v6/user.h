@@ -13,8 +13,8 @@
  */
 struct user
 {
-	int	u_rsav[2];		/* save r5,r6 when exchanging stacks */
-	int	u_fsav[25];		/* save fp registers */
+	int16_t	u_rsav[2];		/* save r5,r6 when exchanging stacks */
+	int16_t	u_fsav[25];		/* save fp registers */
 					/* rsav and fsav must be first in structure */
 	char	u_segflg;		/* flag for IO; user or kernel space */
 	char	u_error;		/* return error code */
@@ -22,35 +22,35 @@ struct user
 	char	u_gid;			/* effective group id */
 	char	u_ruid;			/* real user id */
 	char	u_rgid;			/* real group id */
-	int	u_procp;		/* pointer to proc structure */
+	int16_t	u_procp;		/* pointer to proc structure */
 	char	*u_base;		/* base address for IO */
 	char	*u_count;		/* bytes remaining for IO */
 	char	*u_offset[2];		/* offset in file for IO */
-	int	*u_cdir;		/* pointer to inode of current directory */
+	int16_t	*u_cdir;		/* pointer to inode of current directory */
 	char	u_dbuf[DIRSIZ];		/* current pathname component */
 	char	*u_dirp;		/* current pointer to inode */
 	struct	{			/* current directory entry */
-		int	u_ino;
+		int16_t	u_ino;
 		char	u_name[DIRSIZ];
 	} u_dent;
-	int	*u_pdir;		/* inode of parent directory of dirp */
-	int	u_uisa[16];		/* prototype of segmentation addresses */
-	int	u_uisd[16];		/* prototype of segmentation descriptors */
-	int	u_ofile[NOFILE];	/* pointers to file structures of open files */
-	int	u_arg[5];		/* arguments to current system call */
-	int	u_tsize;		/* text size (*64) */
-	int	u_dsize;		/* data size (*64) */
-	int	u_ssize;		/* stack size (*64) */
-	int	u_sep;			/* flag for I and D separation */
-	int	u_qsav[2];		/* label variable for quits and interrupts */
-	int	u_ssav[2];		/* label variable for swapping */
-	int	u_signal[NSIG];		/* disposition of signals */
-	int	u_utime;		/* this process user time */
-	int	u_stime;		/* this process system time */
-	int	u_cutime[2];		/* sum of childs' utimes */
-	int	u_cstime[2];		/* sum of childs' stimes */
-	int	*u_ar0;			/* address of users saved R0 */
-	int	u_prof[4];		/* profile arguments */
+	int16_t	*u_pdir;		/* inode of parent directory of dirp */
+	int16_t	u_uisa[16];		/* prototype of segmentation addresses */
+	int16_t	u_uisd[16];		/* prototype of segmentation descriptors */
+	int16_t	u_ofile[NOFILE];	/* pointers to file structures of open files */
+	int16_t	u_arg[5];		/* arguments to current system call */
+	int16_t	u_tsize;		/* text size (*64) */
+	int16_t	u_dsize;		/* data size (*64) */
+	int16_t	u_ssize;		/* stack size (*64) */
+	int16_t	u_sep;			/* flag for I and D separation */
+	int16_t	u_qsav[2];		/* label variable for quits and interrupts */
+	int16_t	u_ssav[2];		/* label variable for swapping */
+	int16_t	u_signal[NSIG];		/* disposition of signals */
+	int16_t	u_utime;		/* this process user time */
+	int16_t	u_stime;		/* this process system time */
+	int16_t	u_cutime[2];		/* sum of childs' utimes */
+	int16_t	u_cstime[2];		/* sum of childs' stimes */
+	int16_t	*u_ar0;			/* address of users saved R0 */
+	int16_t	u_prof[4];		/* profile arguments */
 	char	u_intflg;		/* catch intr from sys */
 					/* kernel stack per user
 					 * extends from u + USIZE*64
