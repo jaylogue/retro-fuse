@@ -10,7 +10,7 @@ int	*rootdir;		/* pointer to inode of root directory */
 int	cputype;		/* type of cpu =40, 45, or 70 */
 int	execnt;			/* number of processes in exec */
 int	lbolt;			/* time of day in 60th not in time */
-int	time[2];		/* time in sec from 1970 */
+int16_t	time[2];		/* time in sec from 1970 */
 int	tout[2];		/* time of day of next sleep */
 /*
  * The callout structure is for
@@ -35,7 +35,7 @@ struct	callo
 struct	mount
 {
 	int	m_dev;		/* device mounted */
-	int	*m_bufp;	/* pointer to superblock */
+	struct buf	*m_bufp;	/* pointer to superblock */
 	int	*m_inodp;	/* pointer to mounted on inode */
 } mount[NMOUNT];
 int	mpid;			/* generic for unique process id's */
@@ -51,4 +51,4 @@ int	swplo;			/* block number of swap space */
 int	nswap;			/* size of swap space */
 int	updlock;		/* lock for sync */
 int	rablock;		/* block to be read ahead */
-char	regloc[];		/* locs. of saved user registers (trap.c) */
+/* UNUSED char	regloc[];		/* locs. of saved user registers (trap.c) */

@@ -3,6 +3,10 @@
 
 #include "stdint.h"
 
+struct buf;
+struct filsys;
+struct inode;
+
 extern struct buf * bread(int16_t dev, int16_t blkno);
 extern struct buf * breada(int16_t adev, int16_t blkno, int16_t rablkno);
 extern void bwrite(struct buf *bp);
@@ -23,11 +27,47 @@ extern void geterror(struct buf *abp);
 extern void sleep(void * chan, int16_t pri);
 extern void wakeup(void * chan);
 
+/* prf.c */
 extern void panic(const char * s);
+extern void prdev(const char * str, int16_t dev);
+
+/* subr.c */
+extern int16_t bmap(struct inode *ip, int bn);
+extern int16_t passc(char c);
+extern char cpass();
+extern void nodev();
+extern void nulldev();
+extern void bcopy(void * from, void * to, int16_t count);
+
+/* alloc.c */
+extern struct buf * alloc(int16_t dev);
+extern void free(int16_t dev, int16_t bno);
+extern int16_t badblock(struct filsys *afp, int16_t abn, int16_t dev);
+extern struct inode * ialloc(int16_t dev);
+extern struct filsys * getfs(int16_t dev);
+extern void update();
+
+/* iget.c */
+extern struct inode * iget(int16_t dev, int16_t ino);
+extern void iput(struct inode *p);
+extern void iupdat(struct inode *p, int16_t *tm);
+extern void itrunc(struct inode *ip);
+extern struct inode * maknode(int16_t mode);
+extern void wdir(struct inode *ip);
+
+/* pipe.c */
+extern void prele(struct inode *ip);
+
+
+inline int16_t subyte(char * p, char c) { *p = c; return 0; }
+inline char fubyte(char * p) { return *p; }
 
 inline void spl0() { }
 inline void spl6() { }
 inline void mapfree(struct buf * bp) { }
+
+inline void prele(struct inode *ip) { }
+
 
 #define todevst(DEV) (*((struct devst *)&(DEV)))
 

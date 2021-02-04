@@ -12,16 +12,16 @@ struct	inode
 {
 	char	i_flag;
 	char	i_count;	/* reference count */
-	int	i_dev;		/* device where inode resides */
-	int	i_number;	/* i number, 1-to-1 with device address */
-	int	i_mode;
+	int16_t	i_dev;		/* device where inode resides */
+	int16_t	i_number;	/* i number, 1-to-1 with device address */
+	int16_t	i_mode;
 	char	i_nlink;	/* directory entries */
 	char	i_uid;		/* owner */
 	char	i_gid;		/* group of owner */
 	char	i_size0;	/* most significant of size */
 	char	*i_size1;	/* least sig */
-	int	i_addr[8];	/* device addresses constituting file */
-	int	i_lastr;	/* last logical block read (for read-ahead) */
+	int16_t	i_addr[8];	/* device addresses constituting file */
+	int16_t	i_lastr;	/* last logical block read (for read-ahead) */
 } inode[NINODE];
 
 /* flags */

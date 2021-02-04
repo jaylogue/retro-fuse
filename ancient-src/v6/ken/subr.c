@@ -2,6 +2,8 @@
 /*
  */
 
+#include "v6-compat.h"
+
 #include "../param.h"
 #include "../conf.h"
 #include "../inode.h"
@@ -17,12 +19,12 @@
  * block number of the next block of the file in rablock
  * for use in read-ahead.
  */
-bmap(ip, bn)
-struct inode *ip;
-int bn;
+int16_t
+bmap(struct inode *ip, int bn)
 {
-	register *bp, *bap, nb;
-	int *nbp, d, i;
+	register struct buf *bp, *nbp;
+	register char *bap;
+	int16_t nb, d, i;
 
 	d = ip->i_dev;
 	if(bn & ~077777) {
@@ -51,7 +53,7 @@ int bn;
 			}
 			ip->i_addr[0] = bp->b_blkno;
 			bdwrite(bp);
-			ip->i_mode =| ILARG;
+			ip->i_mode |= ILARG;
 			goto large;
 		}
 		nb = ip->i_addr[bn];
@@ -59,7 +61,7 @@ int bn;
 			bdwrite(bp);
 			nb = bp->b_blkno;
 			ip->i_addr[bn] = nb;
-			ip->i_flag =| IUPD;
+			ip->i_flag |= IUPD;
 		}
 		rablock = 0;
 		if (bn<7)
@@ -76,7 +78,7 @@ int bn;
 	if(bn & 0174000)
 		i = 7;
 	if((nb=ip->i_addr[i]) == 0) {
-		ip->i_flag =| IUPD;
+		ip->i_flag |= IUPD;
 		if ((bp = alloc(d)) == NULL)
 			return(NULL);
 		ip->i_addr[i] = bp->b_blkno;
@@ -129,8 +131,8 @@ int bn;
  * on the last character of the user's read.
  * u_base is in the user address space unless u_segflg is set.
  */
-passc(c)
-char c;
+int16_t
+passc(char c)
 {
 
 	if(u.u_segflg)
@@ -153,9 +155,10 @@ char c;
  * when u_count is exhausted.  u_base is in the user's
  * address space unless u_segflg is set.
  */
+char
 cpass()
 {
-	register c;
+	register int16_t c;
 
 	if(u.u_count == 0)
 		return(-1);
@@ -176,6 +179,7 @@ cpass()
  * Routine which sets a user error; placed in
  * illegal entries in the bdevsw and cdevsw tables.
  */
+void
 nodev()
 {
 
@@ -186,6 +190,7 @@ nodev()
  * Null routine; placed in insignificant entries
  * in the bdevsw and cdevsw tables.
  */
+void
 nulldev()
 {
 }
@@ -193,13 +198,13 @@ nulldev()
 /*
  * copy count words from from to to.
  */
-bcopy(from, to, count)
-int *from, *to;
+void
+bcopy(void * from, void * to, int16_t count)
 {
-	register *a, *b, c;
+	register int16_t *a, *b, c;
 
-	a = from;
-	b = to;
+	a = (int16_t *)from;
+	b = (int16_t *)to;
 	c = count;
 	do
 		*b++ = *a++;

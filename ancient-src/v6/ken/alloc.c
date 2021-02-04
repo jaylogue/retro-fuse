@@ -2,6 +2,8 @@
 /*
  */
 
+#include "v6-compat.h"
+
 #include "../param.h"
 #include "../systm.h"
 #include "../filsys.h"
@@ -20,25 +22,27 @@
  * panic: iinit -- cannot read the super
  * block. Usually because of an IO error.
  */
+void
 iinit()
 {
-	register *cp, *bp;
+	register struct buf *cp, *bp;
+	register struct filsys *fp;
 
-	(*bdevsw[rootdev.d_major].d_open)(rootdev, 1);
+	(*bdevsw[todevst(rootdev).d_major].d_open)(rootdev, 1);
 	bp = bread(rootdev, 1);
-	cp = getblk(NODEV);
+	cp = getblk(NODEV, -1);
 	if(u.u_error)
 		panic("iinit");
 	bcopy(bp->b_addr, cp->b_addr, 256);
 	brelse(bp);
 	mount[0].m_bufp = cp;
 	mount[0].m_dev = rootdev;
-	cp = cp->b_addr;
-	cp->s_flock = 0;
-	cp->s_ilock = 0;
-	cp->s_ronly = 0;
-	time[0] = cp->s_time[0];
-	time[1] = cp->s_time[1];
+	fp = (struct filsys *) cp->b_addr;
+	fp->s_flock = 0;
+	fp->s_ilock = 0;
+	fp->s_ronly = 0;
+	time[0] = fp->s_time[0];
+	time[1] = fp->s_time[1];
 }
 
 /*
@@ -52,10 +56,13 @@ iinit()
  * no space on dev x/y -- when
  * the free list is exhausted.
  */
-alloc(dev)
+struct buf *
+alloc(int16_t dev)
 {
 	int bno;
-	register *bp, *ip, *fp;
+	register struct filsys * fp;
+	register struct buf *bp;
+	register char *ip;
 
 	fp = getfs(dev);
 	while(fp->s_flock)
@@ -94,9 +101,12 @@ nospace:
  * back on the free list of the
  * specified device.
  */
-free(dev, bno)
+void
+free(int16_t dev, int16_t bno)
 {
-	register *fp, *bp, *ip;
+	register struct filsys *fp;
+	register struct buf *bp;
+	register char *ip;
 
 	fp = getfs(dev);
 	fp->s_fmod = 1;
@@ -132,10 +142,11 @@ free(dev, bno)
  *
  * bad block on dev x/y -- not in range
  */
-badblock(afp, abn, dev)
+int16_t
+badblock(struct filsys * afp, int16_t abn, int16_t dev)
 {
 	register struct filsys *fp;
-	register char *bn;
+	register int16_t bn;
 
 	fp = afp;
 	bn = abn;
@@ -157,10 +168,14 @@ badblock(afp, abn, dev)
  * I list is instituted to pick
  * up 100 more.
  */
-ialloc(dev)
+struct inode *
+ialloc(int16_t dev)
 {
-	register *fp, *bp, *ip;
-	int i, j, k, ino;
+	register struct filsys *fp;
+	register struct buf *bp;
+	register struct inode *ip;
+	int16_t *cp;
+	int16_t i, j, k, ino;
 
 	fp = getfs(dev);
 	while(fp->s_ilock)
@@ -172,8 +187,8 @@ loop:
 		if (ip==NULL)
 			return(NULL);
 		if(ip->i_mode == 0) {
-			for(bp = &ip->i_mode; bp < &ip->i_addr[8];)
-				*bp++ = 0;
+			for(cp = &ip->i_mode; cp < &ip->i_addr[8];)
+				*cp++ = 0;
 			fp->s_fmod = 1;
 			return(ip);
 		}
@@ -188,10 +203,10 @@ loop:
 	ino = 0;
 	for(i=0; i<fp->s_isize; i++) {
 		bp = bread(dev, i+2);
-		ip = bp->b_addr;
+		cp = (int16_t *)bp->b_addr;
 		for(j=0; j<256; j=+16) {
 			ino++;
-			if(ip[j] != 0)
+			if(cp[j] != 0)
 				continue;
 			for(k=0; k<NINODE; k++)
 			if(dev==inode[k].i_dev && ino==inode[k].i_number)
@@ -221,9 +236,10 @@ loop:
  * to 100 I nodes in the super
  * block and throws away any more.
  */
-ifree(dev, ino)
+void
+ifree(int16_t dev, int16_t ino)
 {
-	register *fp;
+	register struct filsys *fp;
 
 	fp = getfs(dev);
 	if(fp->s_ilock)
@@ -252,22 +268,24 @@ ifree(dev, ino)
  * panic: no fs -- the device is not mounted.
  *	this "cannot happen"
  */
-getfs(dev)
+struct filsys *
+getfs(int16_t dev)
 {
 	register struct mount *p;
-	register char *n1, *n2;
+	register int16_t n1, n2;
+	struct filsys * fp;
 
 	for(p = &mount[0]; p < &mount[NMOUNT]; p++)
 	if(p->m_bufp != NULL && p->m_dev == dev) {
-		p = p->m_bufp->b_addr;
-		n1 = p->s_nfree;
-		n2 = p->s_ninode;
+		fp = (struct filsys *)p->m_bufp->b_addr;
+		n1 = fp->s_nfree;
+		n2 = fp->s_ninode;
 		if(n1 > 100 || n2 > 100) {
 			prdev("bad count", dev);
-			p->s_nfree = 0;
-			p->s_ninode = 0;
+			fp->s_nfree = 0;
+			fp->s_ninode = 0;
 		}
-		return(p);
+		return(fp);
 	}
 	panic("no fs");
 }
@@ -281,31 +299,33 @@ getfs(dev)
  * the mount table to initiate modified
  * super blocks.
  */
+void
 update()
 {
 	register struct inode *ip;
 	register struct mount *mp;
-	register *bp;
+	register struct buf *bp;
+	struct filsys * fp;
 
 	if(updlock)
 		return;
 	updlock++;
 	for(mp = &mount[0]; mp < &mount[NMOUNT]; mp++)
 		if(mp->m_bufp != NULL) {
-			ip = mp->m_bufp->b_addr;
-			if(ip->s_fmod==0 || ip->s_ilock!=0 ||
-			   ip->s_flock!=0 || ip->s_ronly!=0)
+			fp = (struct filsys *)mp->m_bufp->b_addr;
+			if(fp->s_fmod==0 || fp->s_ilock!=0 ||
+			   fp->s_flock!=0 || fp->s_ronly!=0)
 				continue;
 			bp = getblk(mp->m_dev, 1);
-			ip->s_fmod = 0;
-			ip->s_time[0] = time[0];
-			ip->s_time[1] = time[1];
+			fp->s_fmod = 0;
+			fp->s_time[0] = time[0];
+			fp->s_time[1] = time[1];
 			bcopy(ip, bp->b_addr, 256);
 			bwrite(bp);
 		}
 	for(ip = &inode[0]; ip < &inode[NINODE]; ip++)
 		if((ip->i_flag&ILOCK) == 0) {
-			ip->i_flag =| ILOCK;
+			ip->i_flag |= ILOCK;
 			iupdat(ip, time);
 			prele(ip);
 		}

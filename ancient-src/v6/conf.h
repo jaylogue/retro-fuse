@@ -24,7 +24,8 @@ struct	bdevsw
 	int16_t	(*d_close)();
 	int16_t	(*d_strategy)();
 	struct devtab	*d_tab;
-} bdevsw[];
+};
+extern struct bdevsw bdevsw[];
 
 /*
  * Nblkdev is the number of entries
@@ -46,7 +47,8 @@ struct	cdevsw
 	int16_t	(*d_read)();
 	int16_t	(*d_write)();
 	int16_t	(*d_sgtty)();
-} cdevsw[];
+};
+extern struct cdevsw cdevsw[];
 
 /*
  * Number of character switch entries.
