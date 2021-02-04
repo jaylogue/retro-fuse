@@ -1,6 +1,6 @@
 #
 
-#include "v6-compat.h"
+#include "v6-adapt.h"
 
 #include "../param.h"
 #include "../systm.h"

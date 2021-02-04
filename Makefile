@@ -1,5 +1,17 @@
 CC = gcc
-CFLAGS = -c -fno-builtin -I ./src
-VPATH = ancient-src/v6/dmr ancient-src/v6/ken
+VPATH = ./src ./ancient-src/v6/dmr ./ancient-src/v6/ken
 
-all : alloc.o bio.o subr.o iget.o rdwri.o nami.o fio.o
+SRC = v6-adapt.c
+V6SRC = alloc.c bio.c subr.c iget.c rdwri.c nami.c fio.c
+
+INCS = ./src ./ancient-src/v6
+
+CFLAGS = -fno-builtin $(foreach I,$(INCS),-I $(I))
+
+V6OBJS = $(V6SRC:.c=.o)
+OBJS = $(SRC:.c=.o) $(V6OBJS)
+
+all : $(OBJS)
+
+clean :
+	rm -f $(OBJS)
