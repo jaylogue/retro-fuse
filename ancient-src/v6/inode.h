@@ -19,7 +19,7 @@ struct	inode
 	char	i_uid;		/* owner */
 	char	i_gid;		/* group of owner */
 	char	i_size0;	/* most significant of size */
-	char	*i_size1;	/* least sig */
+	uint16_t	i_size1;	/* least sig */
 	int16_t	i_addr[8];	/* device addresses constituting file */
 	int16_t	i_lastr;	/* last logical block read (for read-ahead) */
 } inode[NINODE];

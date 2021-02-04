@@ -89,6 +89,3 @@ struct integ
 /* UNUSED #define PS	0177776 */
 /* UNUSED #define KL	0177560 */
 /* UNUSED #define SW	0177570 */
-
-extern struct integ _PS;
-#define PS (&_PS)

@@ -2,6 +2,8 @@
 /*
  */
 
+#include "v6-compat.h"
+
 #include "../param.h"
 #include "../inode.h"
 #include "../user.h"
@@ -19,20 +21,20 @@
  *	u_count		number of bytes to read
  *	u_segflg	read to kernel/user
  */
-readi(aip)
-struct inode *aip;
+void
+readi(struct inode *aip)
 {
-	int *bp;
-	int lbn, bn, on;
-	register dn, n;
+	struct buf *bp;
+	int16_t lbn, bn, on;
+	register int16_t dn, n;
 	register struct inode *ip;
 
 	ip = aip;
 	if(u.u_count == 0)
 		return;
-	ip->i_flag =| IACC;
+	ip->i_flag |= IACC;
 	if((ip->i_mode&IFMT) == IFCHR) {
-		(*cdevsw[ip->i_addr[0].d_major].d_read)(ip->i_addr[0]);
+		(*cdevsw[todevst(ip->i_addr[0]).d_major].d_read)(ip->i_addr[0]);
 		return;
 	}
 
@@ -73,18 +75,18 @@ struct inode *aip;
  *	u_count		number of bytes to write
  *	u_segflg	write to kernel/user
  */
-writei(aip)
-struct inode *aip;
+void
+writei(struct inode *aip)
 {
-	int *bp;
-	int n, on;
-	register dn, bn;
+	struct buf *bp;
+	int16_t n, on;
+	register int16_t dn, bn;
 	register struct inode *ip;
 
 	ip = aip;
-	ip->i_flag =| IACC|IUPD;
+	ip->i_flag |= IACC|IUPD;
 	if((ip->i_mode&IFMT) == IFCHR) {
-		(*cdevsw[ip->i_addr[0].d_major].d_write)(ip->i_addr[0]);
+		(*cdevsw[todevst(ip->i_addr[0]).d_major].d_write)(ip->i_addr[0]);
 		return;
 	}
 	if (u.u_count == 0)
@@ -115,7 +117,7 @@ struct inode *aip;
 			ip->i_size0 = u.u_offset[0];
 			ip->i_size1 = u.u_offset[1];
 		}
-		ip->i_flag =| IUPD;
+		ip->i_flag |= IUPD;
 	} while(u.u_error==0 && u.u_count!=0);
 }
 
@@ -123,26 +125,26 @@ struct inode *aip;
  * Return the logical maximum
  * of the 2 arguments.
  */
-max(a, b)
-char *a, *b;
+int16_t
+max(uint16_t a, uint16_t b)
 {
 
 	if(a > b)
-		return(a);
-	return(b);
+		return((int16_t)a);
+	return((int16_t)b);
 }
 
 /*
  * Return the logical minimum
  * of the 2 arguments.
  */
-min(a, b)
-char *a, *b;
+int16_t
+min(uint16_t a, uint16_t b)
 {
 
 	if(a < b)
-		return(a);
-	return(b);
+		return((int16_t)a);
+	return((int16_t)b);
 }
 
 /*
@@ -160,6 +162,7 @@ char *a, *b;
  * If not, its done byte-by-byte with
  * cpass and passc.
  */
+#if UNUSED
 iomove(bp, o, an, flag)
 struct buf *bp;
 {
@@ -193,3 +196,4 @@ struct buf *bp;
 			if(passc(*cp++) < 0)
 				return;
 }
+#endif /* UNUSED */

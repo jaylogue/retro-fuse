@@ -9,8 +9,8 @@ struct	file
 {
 	char	f_flag;
 	char	f_count;	/* reference count */
-	int	f_inode;	/* pointer to inode structure */
-	char	*f_offset[2];	/* read/write character pointer */
+	struct inode	*f_inode;	/* pointer to inode structure */
+	uint16_t f_offset[2];	/* read/write character pointer */
 } file[NFILE];
 
 /* flags */

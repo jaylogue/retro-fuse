@@ -6,7 +6,7 @@
 char	canonb[CANBSIZ];	/* buffer for erase and kill (#@) */
 int	coremap[CMAPSIZ];	/* space for core allocation */
 int	swapmap[SMAPSIZ];	/* space for swap allocation */
-int	*rootdir;		/* pointer to inode of root directory */
+struct inode	*rootdir;		/* pointer to inode of root directory */
 int	cputype;		/* type of cpu =40, 45, or 70 */
 int	execnt;			/* number of processes in exec */
 int	lbolt;			/* time of day in 60th not in time */

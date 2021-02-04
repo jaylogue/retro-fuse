@@ -1,4 +1,6 @@
 #
+#include "v6-compat.h"
+
 #include "../param.h"
 #include "../inode.h"
 #include "../user.h"
@@ -16,13 +18,15 @@
  *	1 if name is to be created
  *	2 if name is to be deleted
  */
-namei(func, flag)
-int (*func)();
+struct inode *
+namei(int16_t (*func)(), int16_t flag)
 {
 	register struct inode *dp;
-	register c;
+	register int16_t c;
 	register char *cp;
-	int eo, *bp;
+	int16_t eo;
+	struct buf *bp;
+	int16_t _bp;
 
 	/*
 	 * If name starts with '/' start from
@@ -110,7 +114,7 @@ eloop:
 			u.u_pdir = dp;
 			if(eo)
 				u.u_offset[1] = eo-DIRSIZ-2; else
-				dp->i_flag =| IUPD;
+				dp->i_flag |= IUPD;
 			return(NULL);
 		}
 		u.u_error = ENOENT;
@@ -163,9 +167,9 @@ eloop:
 			goto out;
 		return(dp);
 	}
-	bp = dp->i_dev;
+	_bp = dp->i_dev;
 	iput(dp);
-	dp = iget(bp, u.u_dent.u_ino);
+	dp = iget(_bp, u.u_dent.u_ino);
 	if(dp == NULL)
 		return(NULL);
 	goto cloop;
@@ -179,6 +183,7 @@ out:
  * Return the next character from the
  * kernel string pointed at by dirp.
  */
+int16_t
 schar()
 {
 
@@ -189,6 +194,7 @@ schar()
  * Return the next character from the
  * user string pointed at by dirp.
  */
+#if UNUSED
 uchar()
 {
 	register c;
@@ -198,3 +204,4 @@ uchar()
 		u.u_error = EFAULT;
 	return(c);
 }
+#endif /* UNUSED */

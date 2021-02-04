@@ -26,7 +26,7 @@ struct user
 	char	*u_base;		/* base address for IO */
 	uint16_t	u_count;		/* bytes remaining for IO */
 	uint16_t	u_offset[2];		/* offset in file for IO */
-	int16_t	*u_cdir;		/* pointer to inode of current directory */
+	struct inode	*u_cdir;		/* pointer to inode of current directory */
 	char	u_dbuf[DIRSIZ];		/* current pathname component */
 	char	*u_dirp;		/* current pointer to inode */
 	struct	{			/* current directory entry */
@@ -36,7 +36,7 @@ struct user
 	struct inode	*u_pdir;		/* inode of parent directory of dirp */
 	int16_t	u_uisa[16];		/* prototype of segmentation addresses */
 	int16_t	u_uisd[16];		/* prototype of segmentation descriptors */
-	int16_t	u_ofile[NOFILE];	/* pointers to file structures of open files */
+	struct file	*u_ofile[NOFILE];	/* pointers to file structures of open files */
 	int16_t	u_arg[5];		/* arguments to current system call */
 	int16_t	u_tsize;		/* text size (*64) */
 	int16_t	u_dsize;		/* data size (*64) */

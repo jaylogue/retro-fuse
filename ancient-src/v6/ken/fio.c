@@ -2,6 +2,8 @@
 /*
  */
 
+#include "v6-compat.h"
+
 #include "../param.h"
 #include "../user.h"
 #include "../filsys.h"
@@ -17,9 +19,11 @@
  * Only task is to check range
  * of the descriptor.
  */
-getf(f)
+struct file *
+getf(int16_t f)
 {
-	register *fp, rf;
+	register struct file *fp;
+	int16_t rf;
 
 	rf = f;
 	if(rf<0 || rf>=NOFILE)
@@ -40,15 +44,16 @@ bad:
  * Also make sure the pipe protocol
  * does not constipate.
  */
-closef(fp)
-int *fp;
+void
+closef(struct file *fp)
 {
-	register *rfp, *ip;
+	register struct file *rfp;
+	register struct inode *ip;
 
 	rfp = fp;
 	if(rfp->f_flag&FPIPE) {
 		ip = rfp->f_inode;
-		ip->i_mode =& ~(IREAD|IWRITE);
+		ip->i_mode &= ~(IREAD|IWRITE);
 		wakeup(ip+1);
 		wakeup(ip+2);
 	}
@@ -68,15 +73,15 @@ int *fp;
  * on every open and only on the last
  * close.
  */
-closei(ip, rw)
-int *ip;
+void
+closei(struct inode *ip, int16_t rw)
 {
-	register *rip;
-	register dev, maj;
+	register struct inode *rip;
+	register int16_t dev, maj;
 
 	rip = ip;
 	dev = rip->i_addr[0];
-	maj = rip->i_addr[0].d_major;
+	maj = todevst(rip->i_addr[0]).d_major;
 	if(rip->i_count <= 1)
 	switch(rip->i_mode&IFMT) {
 
@@ -97,15 +102,15 @@ int *ip;
  * Called on all sorts of opens
  * and also on mount.
  */
-openi(ip, rw)
-int *ip;
+void
+openi(struct inode *ip, int16_t rw)
 {
-	register *rip;
-	register dev, maj;
+	register struct inode *rip;
+	register int16_t dev, maj;
 
 	rip = ip;
 	dev = rip->i_addr[0];
-	maj = rip->i_addr[0].d_major;
+	maj = todevst(rip->i_addr[0]).d_major;
 	switch(rip->i_mode&IFMT) {
 
 	case IFCHR:
@@ -140,10 +145,11 @@ bad:
  * at least one of the EXEC bits must
  * be on.
  */
-access(aip, mode)
-int *aip;
+int16_t
+access(struct inode *aip, int16_t mode)
 {
-	register *ip, m;
+	register struct inode *ip;
+	register int16_t m;
 
 	ip = aip;
 	m = mode;
@@ -164,9 +170,9 @@ int *aip;
 		return(0);
 	}
 	if(u.u_uid != ip->i_uid) {
-		m =>> 3;
+		m >>= 3;
 		if(u.u_gid != ip->i_gid)
-			m =>> 3;
+			m >>= 3;
 	}
 	if((ip->i_mode&m) != 0)
 		return(0);
@@ -184,6 +190,7 @@ bad:
  * If permission is granted,
  * return inode pointer.
  */
+#if UNUSED
 owner()
 {
 	register struct inode *ip;
@@ -198,11 +205,13 @@ owner()
 	iput(ip);
 	return(NULL);
 }
+#endif /* UNUSED */
 
 /*
  * Test if the current user is the
  * super user.
  */
+#if UNUSED
 suser()
 {
 
@@ -211,13 +220,15 @@ suser()
 	u.u_error = EPERM;
 	return(0);
 }
+#endif /* UNUSED */
 
 /*
  * Allocate a user file descriptor.
  */
+int16_t
 ufalloc()
 {
-	register i;
+	register int16_t i;
 
 	for (i=0; i<NOFILE; i++)
 		if (u.u_ofile[i] == NULL) {
@@ -237,10 +248,11 @@ ufalloc()
  * no file -- if there are no available
  * 	file structures.
  */
+struct file *
 falloc()
 {
 	register struct file *fp;
-	register i;
+	register int16_t i;
 
 	if ((i = ufalloc()) < 0)
 		return(NULL);

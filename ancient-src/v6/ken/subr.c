@@ -20,7 +20,7 @@
  * for use in read-ahead.
  */
 int16_t
-bmap(struct inode *ip, int bn)
+bmap(struct inode *ip, int16_t bn)
 {
 	register struct buf *bp, *nbp;
 	register char *bap;
