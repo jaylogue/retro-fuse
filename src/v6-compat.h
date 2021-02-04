@@ -28,6 +28,7 @@ extern void sleep(void * chan, int16_t pri);
 extern void wakeup(void * chan);
 
 /* prf.c */
+extern void printf(const char * str, ...);
 extern void panic(const char * s);
 extern void prdev(const char * str, int16_t dev);
 
@@ -44,6 +45,7 @@ extern struct buf * alloc(int16_t dev);
 extern void free(int16_t dev, int16_t bno);
 extern int16_t badblock(struct filsys *afp, int16_t abn, int16_t dev);
 extern struct inode * ialloc(int16_t dev);
+extern void ifree(int16_t dev, int16_t ino);
 extern struct filsys * getfs(int16_t dev);
 extern void update();
 
@@ -58,6 +60,13 @@ extern void wdir(struct inode *ip);
 /* pipe.c */
 extern void prele(struct inode *ip);
 
+/* m40.s */
+extern int16_t ldiv(uint16_t n, uint16_t b);
+extern int16_t lrem(uint16_t n, uint16_t b);
+
+/* rdwri.c */
+extern void writei(struct inode *aip);
+
 
 inline int16_t subyte(char * p, char c) { *p = c; return 0; }
 inline char fubyte(char * p) { return *p; }
@@ -68,6 +77,8 @@ inline void mapfree(struct buf * bp) { }
 
 inline void prele(struct inode *ip) { }
 
+inline int16_t ldiv(uint16_t n, uint16_t b) { return (int16_t)(n / b); }
+inline int16_t lrem(uint16_t n, uint16_t b) { return (int16_t)(n % b); }
 
 #define todevst(DEV) (*((struct devst *)&(DEV)))
 

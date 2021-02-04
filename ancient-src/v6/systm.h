@@ -36,7 +36,7 @@ struct	mount
 {
 	int	m_dev;		/* device mounted */
 	struct buf	*m_bufp;	/* pointer to superblock */
-	int	*m_inodp;	/* pointer to mounted on inode */
+	struct inode	*m_inodp;	/* pointer to mounted on inode */
 } mount[NMOUNT];
 int	mpid;			/* generic for unique process id's */
 char	runin;			/* scheduling flag */
