@@ -132,8 +132,8 @@ bmap(struct inode *ip, int16_t bn)
  * u_base is in the user address space unless u_segflg is set.
  */
 #if UNUSED
-int16_t
-passc(char c)
+passc(c)
+char c;
 {
 
 	if(u.u_segflg)
@@ -158,7 +158,6 @@ passc(char c)
  * address space unless u_segflg is set.
  */
 #if UNUSED
-char
 cpass()
 {
 	register int16_t c;
@@ -184,7 +183,6 @@ cpass()
  * illegal entries in the bdevsw and cdevsw tables.
  */
 #if UNUSED
-void
 nodev()
 {
 
@@ -197,7 +195,6 @@ nodev()
  * in the bdevsw and cdevsw tables.
  */
 #if UNUSED
-void
 nulldev()
 {
 }
@@ -207,13 +204,13 @@ nulldev()
  * copy count words from from to to.
  */
 #if UNUSED
-void
-bcopy(void * from, void * to, int16_t count)
+bcopy(from, to, count)
+int *from, *to;
 {
-	register int16_t *a, *b, c;
+	register *a, *b, c;
 
-	a = (int16_t *)from;
-	b = (int16_t *)to;
+	a = from;
+	b = to;
 	c = count;
 	do
 		*b++ = *a++;

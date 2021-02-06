@@ -414,9 +414,9 @@ int *devloc;
 	com = (hbcom<<8) | IENABLE | GO |
 		((rbp->b_xmem & 03) << 4);
 	if (rbp->b_flags&B_READ)	/* command + x-mem */
-		com |= RCOM;
+		com =| RCOM;
 	else
-		com |= WCOM;
+		com =| WCOM;
 	*--dp = com;
 }
 #endif /* UNUSED */
@@ -446,8 +446,8 @@ int *devloc, *abae;
 	com = IENABLE | GO |
 		((rbp->b_xmem & 03) << 8);
 	if (rbp->b_flags&B_READ)	/* command + x-mem */
-		com |= RHRCOM; else
-		com |= RHWCOM;
+		com =| RHRCOM; else
+		com =| RHWCOM;
 	*--dp = com;
 }
 #endif /* UNUSED */
@@ -472,28 +472,28 @@ struct buf *abp;
 		return;
 	spl6();
 	while(maplock&B_BUSY) {
-		maplock |= B_WANTED;
+		maplock =| B_WANTED;
 		sleep(&maplock, PSWP);
 	}
-	maplock |= B_BUSY;
+	maplock =| B_BUSY;
 	spl0();
 	bp = abp;
-	bp->b_flags |= B_MAP;
+	bp->b_flags =| B_MAP;
 	a = bp->b_xmem;
-	for(i=16; i<32; i+=2)
+	for(i=16; i<32; i=+2)
 		UBMAP->r[i+1] = a;
-	for(a++; i<48; i+=2)
+	for(a++; i<48; i=+2)
 		UBMAP->r[i+1] = a;
 	bp->b_xmem = 1;
 }
 #endif /* UNUSED */
 
 #ifdef UNUSED
-void
-mapfree(struct buf *bp)
+mapfree(bp)
+struct buf *bp;
 {
 
-	bp->b_flags &= ~B_MAP;
+	bp->b_flags =& ~B_MAP;
 	if(maplock&B_WANTED)
 		wakeup(&maplock);
 	maplock = 0;
@@ -604,7 +604,7 @@ int (*strat)();
 		goto bad;
 	spl6();
 	while (bp->b_flags&B_BUSY) {
-		bp->b_flags |= B_WANTED;
+		bp->b_flags =| B_WANTED;
 		sleep(bp, PRIBIO);
 	}
 	bp->b_flags = B_BUSY | B_PHYS | rw;
@@ -615,12 +615,12 @@ int (*strat)();
 	 */
 	bp->b_addr = base&077;
 	base = (u.u_sep? UDSA: UISA)->r[nb>>7] + (nb&0177);
-	bp->b_addr += base<<6;
+	bp->b_addr =+ base<<6;
 	bp->b_xmem = (base>>10) & 077;
 	bp->b_blkno = lshift(u.u_offset, -9);
 	bp->b_wcount = -((u.u_count>>1) & 077777);
 	bp->b_error = 0;
-	u.u_procp->p_flag |= SLOCK;
+	u.u_procp->p_flag =| SLOCK;
 	(*strat)(bp);
 	spl6();
 	while ((bp->b_flags&B_DONE) == 0)

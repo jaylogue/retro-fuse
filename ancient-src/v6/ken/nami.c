@@ -183,12 +183,13 @@ out:
  * Return the next character from the
  * kernel string pointed at by dirp.
  */
-int16_t
+#if UNUSED
 schar()
 {
 
 	return(*u.u_dirp++ & 0377);
 }
+#endif /* UNUSED */
 
 /*
  * Return the next character from the
