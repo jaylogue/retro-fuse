@@ -8,7 +8,7 @@
  * Data, from mode on, is read in
  * from permanent inode on volume.
  */
-struct	inode
+extern struct	inode
 {
 	char	i_flag;
 	char	i_count;	/* reference count */

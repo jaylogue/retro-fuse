@@ -21,6 +21,6 @@ struct	filsys
 	char	s_ilock;	/* lock during I list manipulation */
 	char	s_fmod;		/* super block modified flag */
 	char	s_ronly;	/* mounted read-only flag */
-	int	s_time[2];	/* current date of last update */
-	int	pad[50];
+	int16_t	s_time[2];	/* current date of last update */
+	int16_t	pad[50];
 };

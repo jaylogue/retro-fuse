@@ -5,7 +5,7 @@
  * pointer associated with each open
  * file.
  */
-struct	file
+extern struct	file
 {
 	char	f_flag;
 	char	f_count;	/* reference count */

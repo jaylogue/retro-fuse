@@ -18,14 +18,13 @@ struct devst
  * device switches is in the
  * file conf.c.
  */
-struct	bdevsw
+extern struct	bdevsw
 {
-	int16_t	(*d_open)();
-	int16_t	(*d_close)();
-	int16_t	(*d_strategy)();
+	void	(*d_open)(int16_t dev, int16_t flag);
+	void	(*d_close)(int16_t dev, int16_t flag);
+	void	(*d_strategy)(struct buf *bp);
 	struct devtab	*d_tab;
-};
-extern struct bdevsw bdevsw[];
+} bdevsw[];
 
 /*
  * Nblkdev is the number of entries
@@ -35,23 +34,22 @@ extern struct bdevsw bdevsw[];
  * Used in bounds checking on major
  * device numbers.
  */
-int16_t	nblkdev;
+extern int16_t	nblkdev;
 
 /*
  * Character device switch.
  */
-struct	cdevsw
+extern struct	cdevsw
 {
 	int16_t	(*d_open)();
 	int16_t	(*d_close)();
 	int16_t	(*d_read)();
 	int16_t	(*d_write)();
 	int16_t	(*d_sgtty)();
-};
-extern struct cdevsw cdevsw[];
+} cdevsw[];
 
 /*
  * Number of character switch entries.
  * Set by cinit/tty.c
  */
-int16_t	nchrdev;
+extern int16_t	nchrdev;

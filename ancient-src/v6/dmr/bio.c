@@ -2,13 +2,13 @@
 /*
  */
 
-#include "v6-adapt.h"
+#include "v6adapt.h"
 
 #include "../param.h"
 #include "../user.h"
 #include "../buf.h"
 #include "../conf.h"
-/* UNUSED #include "../systm.h" */
+#include "../systm.h"
 /* UNUSED #include "../proc.h" */
 /* UNUSED #include "../seg.h" */
 
@@ -20,7 +20,7 @@
  * I/O to be done-- e.g. swbuf, just below, for
  * swapping.
  */
-char	buffers[NBUF][514];
+char	buffers[NBUF][514] __attribute__((aligned(2)));
 struct	buf	swbuf;
 
 /*

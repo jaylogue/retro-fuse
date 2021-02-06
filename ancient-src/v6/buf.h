@@ -18,7 +18,7 @@
  * Most of the routines which manipulate these things
  * are in bio.c.
  */
-struct buf
+extern struct buf
 {
 	int16_t	b_flags;		/* see defines below */
 	struct	buf *b_forw;		/* headed by devtab of b_dev */
@@ -59,7 +59,7 @@ struct devtab
  * This is the head of the queue of available
  * buffers-- all unused except for the 2 list heads.
  */
-struct	buf bfreelist;
+extern struct	buf bfreelist;
 
 /*
  * These flags are kept in b_flags.

@@ -11,7 +11,7 @@
  * with the proc structure for the
  * same process.
  */
-struct user
+extern struct user
 {
 	int16_t	u_rsav[2];		/* save r5,r6 when exchanging stacks */
 	int16_t	u_fsav[25];		/* save fp registers */

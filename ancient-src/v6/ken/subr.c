@@ -2,7 +2,7 @@
 /*
  */
 
-#include "v6-adapt.h"
+#include "v6adapt.h"
 
 #include "../param.h"
 #include "../conf.h"
@@ -131,6 +131,7 @@ bmap(struct inode *ip, int16_t bn)
  * on the last character of the user's read.
  * u_base is in the user address space unless u_segflg is set.
  */
+#if UNUSED
 int16_t
 passc(char c)
 {
@@ -147,6 +148,7 @@ passc(char c)
 	u.u_base++;
 	return(u.u_count == 0? -1: 0);
 }
+#endif /* UNUSED */
 
 /*
  * Pick up and return the next character from the user's
@@ -155,6 +157,7 @@ passc(char c)
  * when u_count is exhausted.  u_base is in the user's
  * address space unless u_segflg is set.
  */
+#if UNUSED
 char
 cpass()
 {
@@ -174,30 +177,36 @@ cpass()
 	u.u_base++;
 	return(c&0377);
 }
+#endif /* UNUSED */
 
 /*
  * Routine which sets a user error; placed in
  * illegal entries in the bdevsw and cdevsw tables.
  */
+#if UNUSED
 void
 nodev()
 {
 
 	u.u_error = ENODEV;
 }
+#endif /* UNUSED */
 
 /*
  * Null routine; placed in insignificant entries
  * in the bdevsw and cdevsw tables.
  */
+#if UNUSED
 void
 nulldev()
 {
 }
+#endif /* UNUSED */
 
 /*
  * copy count words from from to to.
  */
+#if UNUSED
 void
 bcopy(void * from, void * to, int16_t count)
 {
@@ -210,3 +219,4 @@ bcopy(void * from, void * to, int16_t count)
 		*b++ = *a++;
 	while(--c);
 }
+#endif /* UNUSED */

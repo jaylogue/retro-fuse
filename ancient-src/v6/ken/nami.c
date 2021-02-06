@@ -1,5 +1,5 @@
 #
-#include "v6-adapt.h"
+#include "v6adapt.h"
 
 #include "../param.h"
 #include "../inode.h"
