@@ -511,7 +511,7 @@ swap(blkno, coreaddr, count, rdflg)
 	fp = &swbuf.b_flags;
 	spl6();
 	while (*fp&B_BUSY) {
-		*fp |= B_WANTED;
+		*fp =| B_WANTED;
 		sleep(fp, PSWP);
 	}
 	*fp = B_BUSY | B_PHYS | rdflg;
@@ -625,11 +625,11 @@ int (*strat)();
 	spl6();
 	while ((bp->b_flags&B_DONE) == 0)
 		sleep(bp, PRIBIO);
-	u.u_procp->p_flag &= ~SLOCK;
+	u.u_procp->p_flag =& ~SLOCK;
 	if (bp->b_flags&B_WANTED)
 		wakeup(bp);
 	spl0();
-	bp->b_flags &= ~(B_BUSY|B_WANTED);
+	bp->b_flags =& ~(B_BUSY|B_WANTED);
 	u.u_count = (-bp->b_resid)<<1;
 	geterror(bp);
 	return;

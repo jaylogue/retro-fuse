@@ -160,7 +160,7 @@ char c;
 #if UNUSED
 cpass()
 {
-	register int16_t c;
+	register c;
 
 	if(u.u_count == 0)
 		return(-1);
