@@ -6,6 +6,8 @@
  * Everything in this file is a routine implementing a system call.
  */
 
+#include "v6adapt.h"
+
 #include "../param.h"
 #include "../user.h"
 #include "../reg.h"
@@ -13,19 +15,24 @@
 #include "../systm.h"
 #include "../proc.h"
 
+#if UNUSED
 getswit()
 {
 
 	u.u_ar0[R0] = SW->integ;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 gtime()
 {
 
 	u.u_ar0[R0] = time[0];
 	u.u_ar0[R1] = time[1];
 }
+#endif /* UNUSED */
 
+#if UNUSED
 stime()
 {
 
@@ -35,7 +42,9 @@ stime()
 		wakeup(tout);
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 setuid()
 {
 	register uid;
@@ -47,14 +56,18 @@ setuid()
 		u.u_ruid = uid;
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 getuid()
 {
 
 	u.u_ar0[R0].lobyte = u.u_ruid;
 	u.u_ar0[R0].hibyte = u.u_uid;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 setgid()
 {
 	register gid;
@@ -65,25 +78,33 @@ setgid()
 		u.u_rgid = gid;
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 getgid()
 {
 
 	u.u_ar0[R0].lobyte = u.u_rgid;
 	u.u_ar0[R0].hibyte = u.u_gid;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 getpid()
 {
 	u.u_ar0[R0] = u.u_procp->p_pid;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 sync()
 {
 
 	update();
 }
+#endif /* UNUSED */
 
+#if UNUSED
 nice()
 {
 	register n;
@@ -95,15 +116,17 @@ nice()
 		n = 0;
 	u.u_procp->p_nice = n;
 }
+#endif /* UNUSED */
 
 /*
  * Unlink system call.
  * panic: unlink -- "cannot happen"
  */
+void
 unlink()
 {
-	register *ip, *pp;
-	extern uchar;
+	register struct inode *ip, *pp;
+	/* UNUSED extern uchar; */
 
 	pp = namei(&uchar, 2);
 	if(pp == NULL)
@@ -114,19 +137,20 @@ unlink()
 		panic("unlink -- iget");
 	if((ip->i_mode&IFMT)==IFDIR && !suser())
 		goto out;
-	u.u_offset[1] =- DIRSIZ+2;
-	u.u_base = &u.u_dent;
+	u.u_offset[1] -= DIRSIZ+2;
+	u.u_base = (char *)&u.u_dent;
 	u.u_count = DIRSIZ+2;
 	u.u_dent.u_ino = 0;
 	writei(pp);
 	ip->i_nlink--;
-	ip->i_flag =| IUPD;
+	ip->i_flag |= IUPD;
 
 out:
 	iput(pp);
 	iput(ip);
 }
 
+#if UNUSED
 chdir()
 {
 	register *ip;
@@ -147,30 +171,33 @@ chdir()
 	u.u_cdir = ip;
 	prele(ip);
 }
+#endif /* UNUSED */
 
+void
 chmod()
 {
-	register *ip;
+	register struct inode *ip;
 
 	if ((ip = owner()) == NULL)
 		return;
-	ip->i_mode =& ~07777;
+	ip->i_mode &= ~07777;
 	if (u.u_uid)
-		u.u_arg[1] =& ~ISVTX;
-	ip->i_mode =| u.u_arg[1]&07777;
-	ip->i_flag =| IUPD;
+		u.u_arg[1] &= ~ISVTX;
+	ip->i_mode |= u.u_arg[1]&07777;
+	ip->i_flag |= IUPD;
 	iput(ip);
 }
 
+void
 chown()
 {
-	register *ip;
+	register struct inode *ip;
 
 	if (!suser() || (ip = owner()) == NULL)
 		return;
-	ip->i_uid = u.u_arg[1].lobyte;
-	ip->i_gid = u.u_arg[1].hibyte;
-	ip->i_flag =| IUPD;
+	ip->i_uid = (char)(u.u_arg[1] & 0xFF);
+	ip->i_gid = (char)((u.u_arg[1] >> 8) & 0xFF);
+	ip->i_flag |= IUPD;
 	iput(ip);
 }
 
@@ -199,6 +226,7 @@ smdate()
 }
 */
 
+#if UNUSED
 ssig()
 {
 	register a;
@@ -213,7 +241,9 @@ ssig()
 	if(u.u_procp->p_sig == a)
 		u.u_procp->p_sig = 0;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 kill()
 {
 	register struct proc *p, *q;
@@ -238,7 +268,9 @@ kill()
 	if(f == 0)
 		u.u_error = ESRCH;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 times()
 {
 	register *p;
@@ -248,7 +280,9 @@ times()
 		u.u_arg[0] =+ 2;
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 profil()
 {
 
@@ -257,3 +291,4 @@ profil()
 	u.u_prof[2] = u.u_arg[2];	/* pc offset */
 	u.u_prof[3] = (u.u_arg[3]>>1) & 077777; /* pc scale */
 }
+#endif /* UNUSED */

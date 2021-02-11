@@ -204,7 +204,7 @@ loop:
 	for(i=0; i<fp->s_isize; i++) {
 		bp = bread(dev, i+2);
 		cp = (int16_t *)bp->b_addr;
-		for(j=0; j<256; j=+16) {
+		for(j=0; j<256; j+=16) {
 			ino++;
 			if(cp[j] != 0)
 				continue;
@@ -288,6 +288,7 @@ getfs(int16_t dev)
 		return(fp);
 	}
 	panic("no fs");
+	return NULL;
 }
 
 /*
@@ -320,7 +321,7 @@ update()
 			fp->s_fmod = 0;
 			fp->s_time[0] = time[0];
 			fp->s_time[1] = time[1];
-			bcopy(ip, bp->b_addr, 256);
+			bcopy(fp, bp->b_addr, 256);
 			bwrite(bp);
 		}
 	for(ip = &inode[0]; ip < &inode[NINODE]; ip++)

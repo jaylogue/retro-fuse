@@ -143,7 +143,7 @@ eloop:
 	 */
 
 	bcopy(bp->b_addr+(u.u_offset[1]&0777), &u.u_dent, (DIRSIZ+2)/2);
-	u.u_offset[1] =+ DIRSIZ+2;
+	u.u_offset[1] += DIRSIZ+2;
 	u.u_count--;
 	if(u.u_dent.u_ino == 0) {
 		if(eo == 0)

@@ -37,7 +37,7 @@ extern struct user
 	int16_t	u_uisa[16];		/* prototype of segmentation addresses */
 	int16_t	u_uisd[16];		/* prototype of segmentation descriptors */
 	struct file	*u_ofile[NOFILE];	/* pointers to file structures of open files */
-	int16_t	u_arg[5];		/* arguments to current system call */
+	intptr_t	u_arg[5];		/* arguments to current system call */
 	int16_t	u_tsize;		/* text size (*64) */
 	int16_t	u_dsize;		/* data size (*64) */
 	int16_t	u_ssize;		/* stack size (*64) */
@@ -59,7 +59,7 @@ extern struct user
 } u;
 
 /* u_error codes */
-#define	EFAULT	106
+/* UNUSED #define	EFAULT	106 */
 #define	EPERM	1
 #define	ENOENT	2
 #define	ESRCH	3

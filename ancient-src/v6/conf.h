@@ -5,8 +5,8 @@
  */
 struct devst
 {
-	char	d_minor;
-	char	d_major;
+	int8_t	d_minor;
+	int8_t	d_major;
 };
 
 /*

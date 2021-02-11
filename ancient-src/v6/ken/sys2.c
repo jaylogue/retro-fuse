@@ -1,4 +1,6 @@
 #
+#include "v6adapt.h"
+
 #include "../param.h"
 #include "../systm.h"
 #include "../user.h"
@@ -9,27 +11,33 @@
 /*
  * read system call
  */
+#if UNUSED
 read()
 {
 	rdwr(FREAD);
 }
+#endif /* UNUSED */
 
 /*
  * write system call
  */
+#if UNUSED
 write()
 {
 	rdwr(FWRITE);
 }
+#endif /* UNUSED */
 
 /*
  * common code for read and write calls:
  * check permissions, set base, count, and offset,
  * and switch out to readi, writei, or pipe code.
  */
-rdwr(mode)
+void
+rdwr(int16_t mode)
 {
-	register *fp, m;
+	register struct file *fp;
+	register int16_t m;
 
 	m = mode;
 	fp = getf(u.u_ar0[R0]);
@@ -39,7 +47,7 @@ rdwr(mode)
 		u.u_error = EBADF;
 		return;
 	}
-	u.u_base = u.u_arg[0];
+	u.u_base = (char *)u.u_arg[0];
 	u.u_count = u.u_arg[1];
 	u.u_segflg = 0;
 	if(fp->f_flag&FPIPE) {
@@ -60,6 +68,7 @@ rdwr(mode)
 /*
  * open system call
  */
+#if UNUSED
 open()
 {
 	register *ip;
@@ -71,10 +80,12 @@ open()
 	u.u_arg[1]++;
 	open1(ip, u.u_arg[1], 0);
 }
+#endif /* UNUSED */
 
 /*
  * creat system call
  */
+#if UNUSED
 creat()
 {
 	register *ip;
@@ -91,18 +102,20 @@ creat()
 	} else
 		open1(ip, FWRITE, 1);
 }
+#endif /* UNUSED */
 
 /*
  * common code for open and creat.
  * Check permissions, allocate an open file structure,
  * and call the device open routine if any.
  */
-open1(ip, mode, trf)
-int *ip;
+void
+open1(struct inode *ip, int16_t mode, int16_t trf)
 {
 	register struct file *fp;
-	register *rip, m;
-	int i;
+	register struct inode *rip;
+	int16_t m;
+	int16_t i;
 
 	rip = ip;
 	m = mode;
@@ -138,9 +151,10 @@ out:
 /*
  * close system call
  */
+void
 close()
 {
-	register *fp;
+	register struct file *fp;
 
 	fp = getf(u.u_ar0[R0]);
 	if(fp == NULL)
@@ -152,6 +166,7 @@ close()
 /*
  * seek system call
  */
+#if UNUSED
 seek()
 {
 	int n[2];
@@ -195,14 +210,16 @@ seek()
 	fp->f_offset[1] = n[1];
 	fp->f_offset[0] = n[0];
 }
+#endif /* UNUSED */
 
 /*
  * link system call
  */
+void
 link()
 {
-	register *ip, *xp;
-	extern uchar;
+	register struct inode *ip, *xp;
+	/* UNUSED extern uchar; */
 
 	ip = namei(&uchar, 0);
 	if(ip == NULL)
@@ -216,8 +233,8 @@ link()
 	/*
 	 * unlock to avoid possibly hanging the namei
 	 */
-	ip->i_flag =& ~ILOCK;
-	u.u_dirp = u.u_arg[1];
+	ip->i_flag &= ~ILOCK;
+	u.u_dirp = (char *)u.u_arg[1];
 	xp = namei(&uchar, 1);
 	if(xp != NULL) {
 		u.u_error = EEXIST;
@@ -232,7 +249,7 @@ link()
 	}
 	wdir(ip);
 	ip->i_nlink++;
-	ip->i_flag =| IUPD;
+	ip->i_flag |= IUPD;
 
 out:
 	iput(ip);
@@ -241,10 +258,11 @@ out:
 /*
  * mknod system call
  */
+void
 mknod()
 {
-	register *ip;
-	extern uchar;
+	register struct inode *ip;
+	/* UNUSED extern uchar; */
 
 	if(suser()) {
 		ip = namei(&uchar, 1);
@@ -268,6 +286,7 @@ out:
  * sleep system call
  * not to be confused with the sleep internal routine.
  */
+#if UNUSED
 sslep()
 {
 	char *d[2];
@@ -287,3 +306,4 @@ sslep()
 	}
 	spl0();
 }
+#endif

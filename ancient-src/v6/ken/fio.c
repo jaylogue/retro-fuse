@@ -190,11 +190,11 @@ bad:
  * If permission is granted,
  * return inode pointer.
  */
-#if UNUSED
+struct inode *
 owner()
 {
 	register struct inode *ip;
-	extern uchar();
+	/* UNUSED extern uchar(); */
 
 	if ((ip = namei(uchar, 0)) == NULL)
 		return(NULL);
@@ -205,13 +205,12 @@ owner()
 	iput(ip);
 	return(NULL);
 }
-#endif /* UNUSED */
 
 /*
  * Test if the current user is the
  * super user.
  */
-#if UNUSED
+int16_t
 suser()
 {
 
@@ -220,7 +219,6 @@ suser()
 	u.u_error = EPERM;
 	return(0);
 }
-#endif /* UNUSED */
 
 /*
  * Allocate a user file descriptor.

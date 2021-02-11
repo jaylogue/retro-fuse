@@ -2,6 +2,8 @@
 /*
  */
 
+#include "v6adapt.h"
+
 #include "../param.h"
 #include "../systm.h"
 #include "../reg.h"
@@ -15,6 +17,7 @@
 /*
  * the fstat system call.
  */
+#if UNUSED
 fstat()
 {
 	register *fp;
@@ -24,10 +27,12 @@ fstat()
 		return;
 	stat1(fp->f_inode, u.u_arg[0]);
 }
+#endif /* UNUSED */
 
 /*
  * the stat system call.
  */
+#if UNUSED
 stat()
 {
 	register ip;
@@ -39,27 +44,31 @@ stat()
 	stat1(ip, u.u_arg[1]);
 	iput(ip);
 }
+#endif /* UNUSED */
 
 /*
  * The basic routine for fstat and stat:
  * get the inode and pass appropriate parts back.
  */
-stat1(ip, ub)
-int *ip;
+void
+stat1(struct inode *ip, void *ub)
 {
-	register i, *bp, *cp;
+	register int16_t i;
+	register struct buf *bp;
+	register int16_t *cp;
+	int16_t *_ip;
 
 	iupdat(ip, time);
 	bp = bread(ip->i_dev, ldiv(ip->i_number+31, 16));
-	cp = bp->b_addr + 32*lrem(ip->i_number+31, 16) + 24;
-	ip = &(ip->i_dev);
+	cp = (int16_t *)(bp->b_addr + 32*lrem(ip->i_number+31, 16) + 24);
+	_ip = &(ip->i_dev);
 	for(i=0; i<14; i++) {
-		suword(ub, *ip++);
-		ub =+ 2;
+		suword(ub, *_ip++);
+		ub += 2;
 	}
 	for(i=0; i<4; i++) {
 		suword(ub, *cp++);
-		ub =+ 2;
+		ub += 2;
 	}
 	brelse(bp);
 }
@@ -67,6 +76,7 @@ int *ip;
 /*
  * the dup system call.
  */
+#if UNUSED
 dup()
 {
 	register i, *fp;
@@ -79,10 +89,12 @@ dup()
 	u.u_ofile[i] = fp;
 	fp->f_count++;
 }
+#endif /* UNUSED */
 
 /*
  * the mount system call.
  */
+#if UNUSED
 smount()
 {
 	int d;
@@ -136,10 +148,12 @@ out:
 out1:
 	iput(ip);
 }
+#endif /* UNUSED */
 
 /*
  * the umount system call.
  */
+#if UNUSED
 sumount()
 {
 	int d;
@@ -170,12 +184,14 @@ found:
 	mp->m_bufp = NULL;
 	brelse(ip);
 }
+#endif /* UNUSED */
 
 /*
  * Common code for mount and umount.
  * Check that the user's argument is a reasonable
  * thing on which to mount, and return the device number if so.
  */
+#if UNUSED
 getmdev()
 {
 	register d, *ip;
@@ -192,3 +208,4 @@ getmdev()
 	iput(ip);
 	return(d);
 }
+#endif /* UNUSED */

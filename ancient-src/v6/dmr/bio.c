@@ -225,7 +225,7 @@ getblk(int16_t dev, int16_t blkno)
 {
 	register struct buf *bp;
 	register struct devtab *dp;
-	extern int16_t lbolt;
+	/* UNUSED extern int16_t lbolt; */
 
 	if(todevst(dev).d_major >= nblkdev)
 		panic("blkdev");

@@ -23,7 +23,7 @@ int16_t
 bmap(struct inode *ip, int16_t bn)
 {
 	register struct buf *bp, *nbp;
-	register char *bap;
+	register uint16_t *bap;
 	int16_t nb, d, i;
 
 	d = ip->i_dev;
@@ -46,7 +46,7 @@ bmap(struct inode *ip, int16_t bn)
 
 			if ((bp = alloc(d)) == NULL)
 				return(NULL);
-			bap = bp->b_addr;
+			bap = (uint16_t *)bp->b_addr;
 			for(i=0; i<8; i++) {
 				*bap++ = ip->i_addr[i];
 				ip->i_addr[i] = 0;
@@ -84,7 +84,7 @@ bmap(struct inode *ip, int16_t bn)
 		ip->i_addr[i] = bp->b_blkno;
 	} else
 		bp = bread(d, nb);
-	bap = bp->b_addr;
+	bap = (uint16_t *)bp->b_addr;
 
 	/*
 	 * "huge" fetch of double indirect block
@@ -104,7 +104,7 @@ bmap(struct inode *ip, int16_t bn)
 			nbp = bread(d, nb);
 		}
 		bp = nbp;
-		bap = bp->b_addr;
+		bap = (uint16_t *)bp->b_addr;
 	}
 
 	/*

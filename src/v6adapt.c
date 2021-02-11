@@ -1,4 +1,9 @@
-#include "string.h"
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/sysmacros.h>
 
 #include "v6adapt.h"
 #include "dskio.h"
@@ -11,32 +16,45 @@
 #include "file.h"
 #include "conf.h"
 
-static void v6_dsk_open(int16_t dev, int16_t flag);
-static void v6_dsk_close(int16_t dev, int16_t flag);
-static void v6_dsk_strategy(struct buf *bp);
+static void v6fs_dsk_open(int16_t dev, int16_t flag);
+static void v6fs_dsk_close(int16_t dev, int16_t flag);
+static void v6fs_dsk_strategy(struct buf *bp);
 
-struct user v6_u;
-struct bdevsw v6_bdevsw[2];
-struct cdevsw v6_cdevsw[1];
-struct devtab v6_dsktab;
-struct mount v6_mount[NMOUNT];
-struct inode v6_inode[NINODE];
-struct buf v6_buf[NBUF];
-struct file v6_file[NFILE];
-struct buf v6_bfreelist;
+struct v6_user v6_u;
+struct v6_mount v6_mount[NMOUNT];
+struct v6_inode v6_inode[NINODE];
+struct v6_buf v6_buf[NBUF];
+struct v6_file v6_file[NFILE];
+struct v6_buf v6_bfreelist;
 
-int16_t	v6_rootdev;
-int16_t	v6_nblkdev;         /* number of entries (rows) in the block switch */
-int16_t	v6_nchrdev;
-struct inode *v6_rootdir;   /* pointer to inode of root directory */
+int16_t	v6_rootdev;         /* root device number (always 0) */
+int16_t	v6_nblkdev;         /* number of entries in the block device table */
+int16_t	v6_nchrdev;         /* number of entries in the character device table */
+struct inode *v6_rootdir;   /* pointer to root directory inode */
 int16_t	v6_time[2];         /* time in sec from 1970 */
 int16_t	v6_updlock;         /* lock for sync */
 int16_t	v6_rablock;         /* block to be read ahead */
 struct integ v6_PS;         /* dummy processor status word */
 
-void v6_init()
+static struct v6_devtab v6fs_rootdsktab = { 0 };
+
+struct v6_bdevsw v6_bdevsw[] = {
+    { .d_open = v6fs_dsk_open, .d_close = v6fs_dsk_close, .d_strategy = v6fs_dsk_strategy, .d_tab = &v6fs_rootdsktab },
+    { NULL }
+};
+
+struct v6_cdevsw v6_cdevsw[1] = {
+    { NULL }
+};
+
+/**
+ * Initialize the Unix v6 kernel.
+ * 
+ * This function is analogous to the v6 main() routine.
+ */
+void v6_init_kernel()
 {
-    /* initialize various kernel globals */
+    /* zero various kernel data structures and globals */
     memset(&v6_u, 0, sizeof(v6_u));
     memset(v6_mount, 0, sizeof(v6_mount));
     memset(v6_inode, 0, sizeof(v6_inode));
@@ -45,22 +63,8 @@ void v6_init()
     memset(&v6_bfreelist, 0, sizeof(v6_bfreelist));
     v6_updlock = 0;
     v6_rablock = 0;
-
-    /* initialize the character device table to empty. */
-    memset(v6_cdevsw, 0, sizeof(v6_cdevsw));
     v6_nchrdev = 0;
-
-    /* initialize the block device table to contain a single root device
-     * representing the virtual disk. */
-    memset(v6_bdevsw, 0, sizeof(v6_bdevsw));
-    v6_bdevsw[0].d_open = v6_dsk_open;
-    v6_bdevsw[0].d_close = v6_dsk_close;
-    v6_bdevsw[0].d_strategy = v6_dsk_strategy;
-    v6_bdevsw[0].d_tab = &v6_dsktab;
-    v6_nblkdev = 1;
-
-    /* initialize the dsktab for the virtual disk. */
-    memset(&v6_dsktab, 0, sizeof(v6_dsktab));
+    v6_nblkdev = 0;
 
     /* set the device id for the root device. */
     v6_rootdev = 0;
@@ -79,17 +83,27 @@ void v6_init()
     v6_u.u_cdir = v6_rootdir;
 }
 
-void v6_dsk_open(int16_t dev, int16_t flag)
+/**
+ * Unix block device open function
+ */
+static void v6fs_dsk_open(int16_t dev, int16_t flag)
 {
-
+    /* no-op */
 }
 
-void v6_dsk_close(int16_t dev, int16_t flag)
+/**
+ * Unix block device close function
+ */
+static void v6fs_dsk_close(int16_t dev, int16_t flag)
 {
-
+    /* no-op */
 }
 
-void v6_dsk_strategy(struct buf *bp)
+/** Unix block device strategy function
+ * 
+ * Called by v6 kernel to read/write a block in the filesystem.
+ */
+static void v6fs_dsk_strategy(struct buf *bp)
 {
     int ioRes;
     if ((bp->b_flags&B_READ) != 0)
@@ -113,14 +127,24 @@ void v6_spl6()
     /* no-op */
 }
 
+void v6_suword(uint16_t *n, int16_t a)
+{
+    *n = a;
+}
+
 void v6_mapfree(struct buf * bp)
 {
     /* no-op */
 }
 
-void v6_prele(struct inode *ip)
+void v6_readp(struct v6_file *fp)
 {
-    /* no-op */
+    /* never called */
+}
+
+void v6_writep(struct v6_file *fp)
+{
+    /* never called */
 }
 
 int16_t v6_ldiv(uint16_t n, uint16_t b)
@@ -135,28 +159,29 @@ int16_t v6_lrem(uint16_t n, uint16_t b)
 
 int16_t v6_lshift(uint16_t *n, int16_t s)
 {
-    uint32_t n32 = ((uint32_t)n[1]) << 16 | n[0];
+    uint32_t n32 = ((uint32_t)n[0]) << 16 | n[1];
     n32 = (s >= 0) ? n32 << s : n32 >> -s;
     return (int16_t)n32;
 }
 
 void v6_dpadd(uint16_t *n, int16_t a)
 {
-    uint32_t n32 = ((uint32_t)n[1]) << 16 | n[0];
+    uint32_t n32 = ((uint32_t)n[0]) << 16 | n[1];
     n32 += a;
-    n[0] = (uint16_t)n32;
-    n[1] = (uint16_t)(n32 >> 16);
+    n[0] = (uint16_t)(n32 >> 16);
+    n[1] = (uint16_t)n32;
 }
 
-int16_t v6_dpcmp(uint16_t al, uint16_t ah, uint16_t bl, uint16_t bh)
+int16_t v6_dpcmp(uint16_t ah, uint16_t al, uint16_t bh, uint16_t bl)
 {
-    uint32_t a = ((uint32_t)ah) << 16 | al;
-    uint32_t b = ((uint32_t)bh) << 16 | bl;
-    if (a < b)
-        return -1;
-    if (a > b)
-        return 1;
-    return 0;
+    int32_t a = ((int32_t)ah) << 16 | al;
+    int32_t b = ((int32_t)bh) << 16 | bl;
+    int32_t d = a - b;
+    if (d < -512)
+        d = -512;
+    else if (d > 512)
+        d = 512;
+    return (int16_t)d;
 }
 
 void v6_iomove(struct buf *bp, int16_t o, int16_t an, int16_t flag)
@@ -170,10 +195,25 @@ void v6_iomove(struct buf *bp, int16_t o, int16_t an, int16_t flag)
     u.u_count -= an;
 }
 
-void
-v6_bcopy(void * from, void * to, int16_t count)
+void v6_bcopy(void * from, void * to, int16_t count)
 {
     memmove(to, from, (size_t)count * 2);
+}
+
+int16_t v6_schar()
+{
+    if (u.u_dirp != NULL && *u.u_dirp != '\0')
+        return *u.u_dirp++;
+    u.u_dirp = NULL;
+    return '\0';
+}
+
+int16_t v6_uchar()
+{
+    if (u.u_dirp != NULL && *u.u_dirp != '\0')
+        return *u.u_dirp++;
+    u.u_dirp = NULL;
+    return '\0';
 }
 
 void v6_sleep(void * chan, int16_t pri)

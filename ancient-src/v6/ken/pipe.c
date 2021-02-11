@@ -2,6 +2,8 @@
 /*
  */
 
+#include "v6adapt.h"
+
 #include "../param.h"
 #include "../systm.h"
 #include "../user.h"
@@ -25,6 +27,7 @@
  * Allocate 2 file structures.
  * Put it all together with flags.
  */
+#if UNUSED
 pipe()
 {
 	register *ip, *rf, *wf;
@@ -56,10 +59,12 @@ pipe()
 	ip->i_flag = IACC|IUPD;
 	ip->i_mode = IALLOC;
 }
+#endif /* UNUSED */
 
 /*
  * Read call directed to a pipe.
  */
+#if UNUSED
 readp(fp)
 int *fp;
 {
@@ -114,10 +119,12 @@ loop:
 	rp->f_offset[1] = u.u_offset[1];
 	prele(ip);
 }
+#endif /* UNUSED */
 
 /*
  * Write call directed to a pipe.
  */
+#if UNUSED
 writep(fp)
 {
 	register *rp, *ip, c;
@@ -182,12 +189,14 @@ loop:
 	}
 	goto loop;
 }
+#endif /* UNUSED */
 
 /*
  * Lock a pipe.
  * If its already locked,
  * set the WANT bit and sleep.
  */
+#if UNUSED
 plock(ip)
 int *ip;
 {
@@ -200,6 +209,7 @@ int *ip;
 	}
 	rp->i_flag =| ILOCK;
 }
+#endif /* UNUSED */
 
 /*
  * Unlock a pipe.
@@ -208,15 +218,15 @@ int *ip;
  * This routine is also used
  * to unlock inodes in general.
  */
-prele(ip)
-int *ip;
+void
+prele(struct v6_inode *ip)
 {
-	register *rp;
+	register struct v6_inode *rp;
 
 	rp = ip;
-	rp->i_flag =& ~ILOCK;
+	rp->i_flag &= ~ILOCK;
 	if(rp->i_flag&IWANT) {
-		rp->i_flag =& ~IWANT;
+		rp->i_flag &= ~IWANT;
 		wakeup(rp);
 	}
 }
