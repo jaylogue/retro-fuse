@@ -16,9 +16,9 @@
 #include "file.h"
 #include "conf.h"
 
-static void v6fs_dsk_open(int16_t dev, int16_t flag);
-static void v6fs_dsk_close(int16_t dev, int16_t flag);
-static void v6fs_dsk_strategy(struct buf *bp);
+static void v6_dsk_open(int16_t dev, int16_t flag);
+static void v6_dsk_close(int16_t dev, int16_t flag);
+static void v6_dsk_strategy(struct buf *bp);
 
 struct v6_user v6_u;
 struct v6_mount v6_mount[NMOUNT];
@@ -39,7 +39,7 @@ struct integ v6_PS;         /* dummy processor status word */
 static struct v6_devtab v6fs_rootdsktab = { 0 };
 
 struct v6_bdevsw v6_bdevsw[] = {
-    { .d_open = v6fs_dsk_open, .d_close = v6fs_dsk_close, .d_strategy = v6fs_dsk_strategy, .d_tab = &v6fs_rootdsktab },
+    { .d_open = v6_dsk_open, .d_close = v6_dsk_close, .d_strategy = v6_dsk_strategy, .d_tab = &v6fs_rootdsktab },
     { NULL }
 };
 
@@ -81,40 +81,6 @@ void v6_init_kernel()
 
     /* set the user's current directory. */
     v6_u.u_cdir = v6_rootdir;
-}
-
-/**
- * Unix block device open function
- */
-static void v6fs_dsk_open(int16_t dev, int16_t flag)
-{
-    /* no-op */
-}
-
-/**
- * Unix block device close function
- */
-static void v6fs_dsk_close(int16_t dev, int16_t flag)
-{
-    /* no-op */
-}
-
-/** Unix block device strategy function
- * 
- * Called by v6 kernel to read/write a block in the filesystem.
- */
-static void v6fs_dsk_strategy(struct buf *bp)
-{
-    int ioRes;
-    if ((bp->b_flags&B_READ) != 0)
-        ioRes = dsk_read(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
-    else
-        ioRes = dsk_write(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
-    if (!ioRes)
-    {
-        bp->b_flags |= B_ERROR;
-    }
-	v6_iodone(bp);
 }
 
 void v6_spl0()
@@ -240,3 +206,51 @@ void v6_printf(const char * str, ...)
 {
 
 }
+
+/**
+ * Unix block device open function
+ */
+static void v6_dsk_open(int16_t dev, int16_t flag)
+{
+    /* no-op */
+}
+
+/**
+ * Unix block device close function
+ */
+static void v6_dsk_close(int16_t dev, int16_t flag)
+{
+    /* no-op */
+}
+
+/** Unix block device strategy function
+ * 
+ * Called by v6 kernel to read/write a block in the filesystem.
+ */
+static void v6_dsk_strategy(struct buf *bp)
+{
+    int ioRes;
+    if ((bp->b_flags&B_READ) != 0)
+        ioRes = dsk_read(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
+    else
+        ioRes = dsk_write(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
+    if (!ioRes)
+    {
+        bp->b_flags |= B_ERROR;
+    }
+    v6_refreshclock();
+	v6_iodone(bp);
+}
+
+#undef time
+#include <time.h>
+
+/** Refresh the kernel's notion of current time.
+ */
+void v6_refreshclock()
+{
+    time_t now = time(NULL);
+    v6_time[0] = (int16_t)(now >> 16);
+    v6_time[1] = (int16_t)(now);
+}
+

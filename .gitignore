@@ -1,3 +1,6 @@
 *.o
-v6fuse
+v6fs
 *.map
+*.dsk
+.vscode/
+*.code-workspace

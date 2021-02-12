@@ -27,5 +27,7 @@ extern int v6fs_mkdir(const char *pathname, mode_t mode);
 extern int v6fs_rmdir(const char *pathname);
 extern int v6fs_enumdir(const char *pathname, v6fs_enum_dir_funct enum_funct, void *context);
 extern void v6fs_sync();
+extern void v6fs_seteuid(uid_t uid);
+extern void v6fs_setegid(gid_t gid);
 
 #endif /* __V6FS_H__ */

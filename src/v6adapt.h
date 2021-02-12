@@ -33,6 +33,7 @@ struct v6_direntry {
 };
 
 extern void v6_init_kernel();
+extern void v6_refreshclock();
 
 /* forward declarations of v6 functions */
 

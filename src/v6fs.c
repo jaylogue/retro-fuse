@@ -40,6 +40,7 @@ int v6fs_open(const char *name, int flags, mode_t mode)
     int16_t fd;
     int16_t m;
 
+    v6_refreshclock();
     u.u_error = 0;
 
     switch (flags & O_ACCMODE)
@@ -86,6 +87,7 @@ int v6fs_close(int fd)
 {
     int16_t ar0;
 
+    v6_refreshclock();
     u.u_error = 0;
 
     if (fd < 0 || fd > INT16_MAX)
@@ -103,6 +105,7 @@ off_t v6fs_seek(int fd, off_t offset, int whence)
     struct file *fp;
     off_t curSize, curPos;
 
+    v6_refreshclock();
     u.u_error = 0;
 
     if (fd < 0 || fd > INT16_MAX)
@@ -149,6 +152,7 @@ off_t v6fs_seek(int fd, off_t offset, int whence)
  */
 int v6fs_link(const char *oldpath, const char *newpath)
 {
+    v6_refreshclock();
     u.u_error = 0;
 
     u.u_dirp = (char *)oldpath;
@@ -161,8 +165,10 @@ int v6fs_link(const char *oldpath, const char *newpath)
  */
 int v6fs_mknod(const char *pathname, mode_t mode, dev_t dev)
 {
+    struct inode *ip;
     int16_t v6mode, v6dev;
 
+    v6_refreshclock();
     u.u_error = 0;
 
     v6dev = ((int16_t)(major(dev) & 0xFF) << 8) | (int16_t)(minor(dev) & 0xFF);
@@ -172,24 +178,30 @@ int v6fs_mknod(const char *pathname, mode_t mode, dev_t dev)
         v6mode = 0;
         v6dev = 0;
         break;
-    case S_IFDIR:
-        v6mode = IFDIR;
-        v6dev = 0;
-        break;
     case S_IFBLK:
         v6mode = IFBLK;
         break;
     case S_IFCHR:
-        v6mode = IFDIR;
+        v6mode = IFCHR;
         break;
     default:
         return -EINVAL;
     }
     v6mode |= (mode & 07777);
+
     u.u_dirp = (char *)pathname;
-    u.u_arg[1] = v6mode;
-    u.u_arg[2] = (int16_t)v6dev;
-    v6_mknod();
+    ip = v6_namei(&v6_uchar, 1);
+    if (ip != NULL) {
+        v6_iput(ip);
+        return -EEXIST;
+    }
+    if (u.u_error != 0)
+        return -u.u_error;
+    ip = v6_maknode(v6mode);
+    if (ip == NULL)
+        return -u.u_error;
+    ip->i_addr[0] = (int16_t)v6dev;
+    v6_iput(ip);
     return -u.u_error;
 }
 
@@ -200,6 +212,8 @@ ssize_t v6fs_read(int fd, void *buf, size_t count)
     ssize_t totalReadSize = 0;
     int16_t ar0;
     
+    v6_refreshclock();
+
     while (count > 0)
     {
         ar0 = fd;
@@ -244,6 +258,8 @@ ssize_t v6fs_write(int fd, const void *buf, size_t count)
     ssize_t totalWriteSize = 0;
     int16_t ar0;
     
+    v6_refreshclock();
+
     while (count > 0)
     {
         writeSize = (count > UINT16_MAX) ? UINT16_MAX : (uint16_t)count;
@@ -287,6 +303,7 @@ int v6fs_truncate(const char *pathname, off_t length)
     int res = 0;
     struct inode *ip;
 
+    v6_refreshclock();
     u.u_error = 0;
 
     u.u_dirp = (char *)pathname;
@@ -310,6 +327,7 @@ int v6fs_stat(const char *pathname, struct stat *statbuf)
     struct inode *ip;
     struct v6_stat v6statbuf;
 
+    v6_refreshclock();
     u.u_error = 0;
 
     u.u_dirp = (char *)pathname;
@@ -330,6 +348,7 @@ int v6fs_stat(const char *pathname, struct stat *statbuf)
  */
 int v6fs_unlink(const char *pathname)
 {
+    v6_refreshclock();
     u.u_error = 0;
 
     u.u_dirp = (char *)pathname;
@@ -341,7 +360,9 @@ int v6fs_unlink(const char *pathname)
  */
 int v6fs_chmod(const char *pathname, mode_t mode)
 {
+    v6_refreshclock();
     u.u_error = 0;
+
     u.u_dirp = (char *)pathname;
     u.u_arg[1] = (int16_t)(mode & 07777);
     v6_chmod();
@@ -355,11 +376,13 @@ int v6fs_chown(const char *pathname, uid_t owner, gid_t group)
     int res = 0;
     struct inode *ip;
 
+    v6_refreshclock();
+    u.u_error = 0;
+
     if ((owner != (uid_t)-1 && owner > 0xFF) || 
         (group != (gid_t)-1 && group > 0xFF))
         return -EINVAL;
 
-    u.u_error = 0;
     u.u_dirp = (char *)pathname;
 	if ((ip = v6_namei(v6_uchar, 0)) == NULL)
 		return -u.u_error;
@@ -398,6 +421,7 @@ int v6fs_utimens(const char *pathname, const struct timespec times[2])
     struct inode *ip;
     int16_t curTime[2], mtime[2];
 
+    v6_refreshclock();
     u.u_error = 0;
 
     u.u_dirp = (char *)pathname;
@@ -452,6 +476,7 @@ int v6fs_access(const char *pathname, int mode)
     int res = 0;
     struct inode *ip;
 
+    v6_refreshclock();
     u.u_error = 0;
 
     u.u_dirp = (char *)pathname;
@@ -473,19 +498,35 @@ int v6fs_access(const char *pathname, int mode)
 int v6fs_mkdir(const char *pathname, mode_t mode)
 {
     int res;
+    struct inode *ip;
     char *namebuf;
     char *parentname;
+
+    v6_refreshclock();
+    u.u_error = 0;
 
     namebuf = (char *)malloc(strlen(pathname) + 4);
 
     strcpy(namebuf, pathname);
     parentname = strdup(dirname(namebuf));
 
-    res = v6fs_mknod(pathname, S_IFDIR | 0777, 0);
-    if (res < 0)
+    u.u_dirp = (char *)pathname;
+    ip = v6_namei(&v6_uchar, 1);
+    if (ip != NULL) {
+        v6_iput(ip);
+        res = -EEXIST;
         goto exit;
-
-    // TODO: chown?
+    }
+    if ((res = -u.u_error) < 0)
+        goto exit;
+    ip = v6_maknode(IFDIR|0700);
+    if (ip == NULL) {
+        res = -u.u_error;
+        goto exit;
+    }
+    v6_iput(ip);
+    if ((res = -u.u_error) < 0)
+        goto exit;
 
     strcpy(namebuf, pathname);
     strcat(namebuf, "/.");
@@ -498,8 +539,7 @@ int v6fs_mkdir(const char *pathname, mode_t mode)
     if (res < 0)
         goto exit;
 
-    mode = (mode & 07777) | S_IFDIR;
-    res = v6fs_chmod(pathname, mode);
+    res = v6fs_chmod(pathname, mode&07777);
 
 exit:
     free(namebuf);
@@ -577,6 +617,9 @@ int v6fs_enumdir(const char *pathname, v6fs_enum_dir_funct enum_funct, void *con
     struct inode *ip = NULL;
     int readRes;
 
+    v6_refreshclock();
+    u.u_error = 0;
+
     memset(&direntrybuf, 0, sizeof(direntrybuf));
 
     fd = v6fs_open(pathname, O_RDONLY, 0);
@@ -627,9 +670,32 @@ int v6fs_enumdir(const char *pathname, v6fs_enum_dir_funct enum_funct, void *con
     return readRes;
 }
 
+/** Commit filesystem caches to disk.
+ */
 void v6fs_sync()
 {
+    v6_refreshclock();
+    u.u_error = 0;
+
     v6_update();
+}
+
+/** Set the effective user id for filesystem operations.
+ */
+void v6fs_seteuid(uid_t uid)
+{
+    if (uid > 0xFF)
+        uid = 0xFF;
+    u.u_uid = (char)uid;
+}
+
+/** Set the effective group id for filesystem operations.
+ */
+void v6fs_setegid(gid_t gid)
+{
+    if (gid > 0xFF)
+        gid = 0xFF;
+    u.u_gid = (char)gid;
 }
 
 static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statbuf)
@@ -641,7 +707,8 @@ static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statb
     statbuf->st_nlink = v6statbuf->nlinks;
     statbuf->st_uid = v6statbuf->uid;
     statbuf->st_gid = v6statbuf->gid;
-    statbuf->st_size = ((off_t)v6statbuf->size0) << 16 | v6statbuf->size1;
+    statbuf->st_size = ((off_t)(uint16_t)v6statbuf->size0) << 16 | (uint16_t)v6statbuf->size1;
+    statbuf->st_blocks = (statbuf->st_size + 511) >> 9;
     switch (v6statbuf->mode & IFMT)
     {
     case IFDIR:
@@ -660,8 +727,8 @@ static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statb
         break;
     }
     statbuf->st_mode |= (v6statbuf->mode & 07777);
-    statbuf->st_atime = ((time_t)v6statbuf->actime[0]) << 16 | v6statbuf->actime[1];
-    statbuf->st_mtime = ((time_t)v6statbuf->modtime[0]) << 16 | v6statbuf->modtime[1];
+    statbuf->st_atime = ((time_t)(uint16_t)v6statbuf->actime[0]) << 16 | (uint16_t)v6statbuf->actime[1];
+    statbuf->st_mtime = ((time_t)(uint16_t)v6statbuf->modtime[0]) << 16 | (uint16_t)v6statbuf->modtime[1];
 }
 
 static int v6fs_isdirlink(const char *entryname, const struct stat *statbuf, void *context)

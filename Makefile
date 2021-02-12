@@ -1,6 +1,6 @@
 CC = gcc
 
-PROG = v6fuse
+PROG = v6fs
 
 SRC = \
 	src/v6fuse.c \
