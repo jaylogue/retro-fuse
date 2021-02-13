@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
 #include <fuse.h>
 
 #include <v6fs.h>
@@ -17,7 +18,9 @@
 struct v6fuse_config {
     const char *dskfilename;
     uint32_t dsksize;
+    uint32_t dskoffset;
     const char *mountpoint;
+    int readonly;
     int foreground;
     int debug;
     int showversion;
@@ -27,18 +30,32 @@ struct v6fuse_config {
 #define V6FUSE_OPT(TEMPLATE, FIELD, VALUE) \
     { TEMPLATE, offsetof(struct v6fuse_config, FIELD), VALUE }
 
+#define V6FUSE_OPT_KEY_RO 100
+#define V6FUSE_OPT_KEY_RO 100
+
 static const struct fuse_opt v6fuse_options[] = {
-    V6FUSE_OPT("--size=%u", dsksize, 0),
+    V6FUSE_OPT("dsksize=%u", dsksize, 0),
+    V6FUSE_OPT("dskoffset=%llu", dskoffset, 0),
+	V6FUSE_OPT("-r", readonly, 1),
+	V6FUSE_OPT("ro", readonly, 1),
+	V6FUSE_OPT("rw", readonly, 0),
     V6FUSE_OPT("-f", foreground, 1),
     V6FUSE_OPT("--foreground", foreground, 1),
     V6FUSE_OPT("-d", debug, 1),
     V6FUSE_OPT("--debug", debug, 1),
-    FUSE_OPT_KEY("-d", FUSE_OPT_KEY_KEEP),
-	FUSE_OPT_KEY("--debug", FUSE_OPT_KEY_KEEP),
     V6FUSE_OPT("-h", showhelp, 1),
     V6FUSE_OPT("--help", showhelp, 1),
     V6FUSE_OPT("-V", showversion, 1),
     V6FUSE_OPT("--version", showversion, 1),
+
+    /* retain these in the fuse_args list to that they
+       can be parsed by the FUSE code. */
+	FUSE_OPT_KEY("-r", FUSE_OPT_KEY_KEEP),
+	FUSE_OPT_KEY("ro", FUSE_OPT_KEY_KEEP),
+	FUSE_OPT_KEY("rw", FUSE_OPT_KEY_KEEP),
+    FUSE_OPT_KEY("-d", FUSE_OPT_KEY_KEEP),
+	FUSE_OPT_KEY("--debug", FUSE_OPT_KEY_KEEP),
+
     FUSE_OPT_END
 };
 
@@ -75,10 +92,12 @@ static void v6fuse_showhelp()
         "usage: %s [options] <device-or-image-name> <mount-point>\n"
         "\n"
         "options:\n"
-        "    --size                     size of device in blocks\n"
-        "    -o [mount-options]         comma-separated list of mount options\n"
+        "    -o dsksize=N               size of filesystem, in 512-byte blocks\n"
+        "    -o dskoffset=N             offset to start of filesystem in device/image,\n"
+        "                                 in 512-byte blocks (defaults to 0)\n"
+        "    -o [mount-options]         comma-separated list of standard mount options\n"
         "                                 (see man 8 mount for details)\n"
-        "    -o [fuse-options]          comma-separated list of FUSE options\n"
+        "    -o [fuse-options]          comma-separated list of FUSE mount options\n"
         "                                 (see man 8 mount.fuse for details)\n"
         "    -f  --foreground           run in foreground\n"
         "    -d  --debug                enable debug output (implies -f)\n"
@@ -102,18 +121,9 @@ static void v6fuse_setfscontext()
 
 static void * v6fuse_init(struct fuse_conn_info * conn)
 {
-    struct fuse_context *context = fuse_get_context();
-    struct v6fuse_config *cfg = (struct v6fuse_config *)context->private_data;
-
     /* Update FUSE configuration based on capabilities of filesystem. */
     conn->want = (conn->capable & (FUSE_CAP_ATOMIC_O_TRUNC|FUSE_CAP_EXPORT_SUPPORT|FUSE_CAP_BIG_WRITES));
     conn->async_read = 0;
-
-    /* initialize disk i/o subssytem */
-    dsk_open(cfg->dskfilename);
-
-    /* initialize the unix kernel data structures */
-    v6fs_init();
 
     return NULL;
 }
@@ -253,6 +263,12 @@ static int v6fuse_utimens(const char *pathname, const struct timespec tv[2])
     return v6fs_utimens(pathname, tv);
 }
 
+static int v6fuse_statfs(const char *pathname, struct statvfs *statvfsbuf)
+{
+    v6fuse_setfscontext();
+    return v6fs_statfs(pathname, statvfsbuf);
+}
+
 static const struct fuse_operations v6fuse_ops = 
 {
     .init       = v6fuse_init,
@@ -275,6 +291,7 @@ static const struct fuse_operations v6fuse_ops =
     .chmod      = v6fuse_chmod,
     .chown      = v6fuse_chown,
     .utimens    = v6fuse_utimens,
+    .statfs     = v6fuse_statfs,
 
     .flag_utime_omit_ok = 1
 };
@@ -318,6 +335,11 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
+    if (access(cfg.dskfilename, (cfg.readonly) ? R_OK : R_OK|W_OK) != 0) {
+        fprintf(stderr, "%s: Unable to access disk/image file: %s\n%s\n", v6fuse_cmdname, cfg.dskfilename, strerror(errno));
+        goto exit;
+    }
+
     chan = fuse_mount(cfg.mountpoint, &args);
     if (chan == NULL) {
         fprintf(stderr, "%s: Failed to mount FUSE filesystem: %s\n", v6fuse_cmdname, strerror(errno));
@@ -329,6 +351,15 @@ int main(int argc, char *argv[])
         fprintf(stderr, "%s: Failed to initialize FUSE connection: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
     }
+
+    /* initialize disk i/o subssytem */
+    if (!dsk_open(cfg.dskfilename, cfg.dsksize, cfg.dskoffset, cfg.readonly)) {
+        fprintf(stderr, "%s: Failed to open disk/image file: %s\n", v6fuse_cmdname, strerror(errno));
+        goto exit;
+    }
+
+    /* initialize the unix kernel data structures */
+    v6fs_init(cfg.readonly);
 
     if (fuse_daemonize(cfg.foreground) != 0) {
         fprintf(stderr, "%s: Failed to daemonize FUSE process: %s\n", v6fuse_cmdname, strerror(errno));

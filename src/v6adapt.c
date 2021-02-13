@@ -14,6 +14,7 @@
 #include "systm.h"
 #include "inode.h"
 #include "file.h"
+#include "filsys.h"
 #include "conf.h"
 
 static void v6_dsk_open(int16_t dev, int16_t flag);
@@ -52,7 +53,7 @@ struct v6_cdevsw v6_cdevsw[1] = {
  * 
  * This function is analogous to the v6 main() routine.
  */
-void v6_init_kernel()
+void v6_init_kernel(int readonly)
 {
     /* zero various kernel data structures and globals */
     memset(&v6_u, 0, sizeof(v6_u));
@@ -74,6 +75,12 @@ void v6_init_kernel()
 
     /* mount the root device and read the superblock. */
     v6_iinit();
+
+    /* mark the filesystem read-only if requested. */
+    if (readonly) {
+        struct v6_filsys *fs = v6_getfs(v6_rootdev);
+        fs->s_ronly = 1;
+    }
 
     /* get the root directory inode. */
     v6_rootdir = v6_iget(v6_rootdev, ROOTINO);

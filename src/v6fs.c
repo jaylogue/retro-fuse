@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <sys/sysmacros.h>
 #include <libgen.h>
+#include <sys/statvfs.h>
 
 #include "v6fs.h"
 #include "v6adapt.h"
@@ -20,6 +21,7 @@
 #include "systm.h"
 #include "inode.h"
 #include "file.h"
+#include "filsys.h"
 #include "conf.h"
 
 static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statbuf);
@@ -27,9 +29,9 @@ static int v6fs_isdirlink(const char *entryname, const struct stat *statbuf, voi
 
 /** Initialize the Unix v6 filesystem.
  */
-void v6fs_init()
+void v6fs_init(int readonly)
 {
-    v6_init_kernel();
+    v6_init_kernel(readonly);
 }
 
 /** Open file or directory in the v6 filesystem.
@@ -614,7 +616,7 @@ int v6fs_enumdir(const char *pathname, v6fs_enum_dir_funct enum_funct, void *con
     } direntrybuf;
     struct v6_stat v6statbuf;
     struct stat statbuf;
-    struct inode *ip = NULL;
+    struct v6_inode *ip = NULL;
     int readRes;
 
     v6_refreshclock();
@@ -678,6 +680,70 @@ void v6fs_sync()
     u.u_error = 0;
 
     v6_update();
+}
+
+/** Get filesystem statistics.
+ */
+int v6fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
+{
+    struct v6_filsys *fp;
+    struct buf *bp = NULL;
+
+    v6_refreshclock();
+    u.u_error = 0;
+
+    v6_update();
+
+    memset(statvfsbuf, 0, sizeof(struct statvfs));
+
+    fp = v6_getfs(v6_rootdev);
+
+    statvfsbuf->f_bsize = 512;
+    statvfsbuf->f_frsize = 512;
+    statvfsbuf->f_blocks = fp->s_fsize;
+    statvfsbuf->f_files = fp->s_isize * 16;
+    statvfsbuf->f_namemax = DIRSIZ;
+
+    /* count the number of free blocks. */
+    {    
+        int16_t *nfree = &fp->s_nfree;
+        int16_t *freetab = fp->s_free;
+        while (1) {
+            statvfsbuf->f_bfree += *nfree;
+            int16_t nextblk = freetab[0];
+            if (bp != NULL)
+                v6_brelse(bp);
+            if (nextblk == 0) {
+                statvfsbuf->f_bfree--;
+                break;
+            }
+            if (v6_badblock(fp, nextblk, v6_rootdev))
+                return -EIO;
+            bp = v6_bread(v6_rootdev, nextblk);
+            v6_geterror(bp);
+            if (u.u_error != 0)
+                return -u.u_error;
+            nfree = (int16_t *)bp->b_addr;
+            freetab = nfree + 1;
+        }
+    }
+    statvfsbuf->f_bavail = statvfsbuf->f_bfree;
+
+    /* count the number of free inodes. */
+    for (int16_t blk = 2; blk < fp->s_isize + 2; blk++) {
+        bp = v6_bread(v6_rootdev, blk);
+        v6_geterror(bp);
+        if (u.u_error != 0)
+            return -u.u_error;
+        int16_t *ip = (int16_t *)bp->b_addr;
+        for (int i = 0; i < 16; i++, ip += 16) {
+            if ((*ip & IALLOC) == 0)
+                statvfsbuf->f_ffree++;
+        }
+        v6_brelse(bp);
+    }
+
+    return 0;
 }
 
 /** Set the effective user id for filesystem operations.

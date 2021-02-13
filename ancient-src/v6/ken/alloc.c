@@ -62,7 +62,7 @@ alloc(int16_t dev)
 	int bno;
 	register struct filsys * fp;
 	register struct buf *bp;
-	register char *ip;
+	register int16_t *ip;
 
 	fp = getfs(dev);
 	while(fp->s_flock)
@@ -77,7 +77,7 @@ alloc(int16_t dev)
 	if(fp->s_nfree <= 0) {
 		fp->s_flock++;
 		bp = bread(dev, bno);
-		ip = bp->b_addr;
+		ip = (int16_t *)bp->b_addr;
 		fp->s_nfree = *ip++;
 		bcopy(ip, fp->s_free, 100);
 		brelse(bp);
@@ -106,7 +106,7 @@ free(int16_t dev, int16_t bno)
 {
 	register struct filsys *fp;
 	register struct buf *bp;
-	register char *ip;
+	register int16_t *ip;
 
 	fp = getfs(dev);
 	fp->s_fmod = 1;
@@ -121,7 +121,7 @@ free(int16_t dev, int16_t bno)
 	if(fp->s_nfree >= 100) {
 		fp->s_flock++;
 		bp = getblk(dev, bno);
-		ip = bp->b_addr;
+		ip = (int16_t *)bp->b_addr;
 		*ip++ = fp->s_nfree;
 		bcopy(fp->s_free, ip, 100);
 		fp->s_nfree = 0;

@@ -3,10 +3,11 @@
 
 struct stat;
 struct timespec;
+struct statvfs;
 
 typedef int (*v6fs_enum_dir_funct)(const char *entryname, const struct stat *statbuf, void *context);
 
-extern void v6fs_init();
+extern void v6fs_init(int readonly);
 extern int v6fs_open(const char * name, int flags, mode_t mode);
 extern int v6fs_close(int fd);
 extern off_t v6fs_seek(int fd, off_t offset, int whence);
@@ -27,6 +28,7 @@ extern int v6fs_mkdir(const char *pathname, mode_t mode);
 extern int v6fs_rmdir(const char *pathname);
 extern int v6fs_enumdir(const char *pathname, v6fs_enum_dir_funct enum_funct, void *context);
 extern void v6fs_sync();
+extern int v6fs_statfs(const char *pathname, struct statvfs *buf);
 extern void v6fs_seteuid(uid_t uid);
 extern void v6fs_setegid(gid_t gid);
 
