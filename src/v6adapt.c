@@ -1,9 +1,12 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/sysmacros.h>
+#include <stdarg.h>
 
 #include "v6adapt.h"
 #include "dskio.h"
@@ -201,17 +204,21 @@ void v6_wakeup(void * chan)
 
 void v6_panic(const char * s)
 {
-    // TODO: implement me
+    fprintf(stderr, "V6FS PANIC: %s\n", s);
+    abort();
 }
 
 void v6_prdev(const char * str, int16_t dev)
 {
-    // TODO: implement me
+    fprintf(stderr, "V6FS ERROR: %s\n", str);
 }
 
 void v6_printf(const char * str, ...)
 {
-
+    va_list ap;
+    va_start(ap, str);
+    vfprintf(stderr, str, ap);
+    va_end(ap);
 }
 
 /**

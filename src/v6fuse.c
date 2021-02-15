@@ -115,8 +115,11 @@ static void v6fuse_showversion()
 static void v6fuse_setfscontext()
 {
     struct fuse_context *context = fuse_get_context();
-    v6fs_seteuid(context->uid);
-    v6fs_setegid(context->gid);
+
+    /* Set the real and effective uid/gid for v6 filesystem operations
+       to the values from the FUSE client process.  */
+    v6fs_setreuid(context->uid, context->uid);
+    v6fs_setregid(context->gid, context->gid);
 }
 
 static void * v6fuse_init(struct fuse_conn_info * conn)

@@ -1,10 +1,11 @@
 #define _XOPEN_SOURCE 700
 #define _ATFILE_SOURCE 
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <sys/time.h>
 #include <string.h>
-#include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
@@ -503,6 +504,7 @@ int v6fs_mkdir(const char *pathname, mode_t mode)
     struct inode *ip;
     char *namebuf;
     char *parentname;
+    int dircreated = 0;
 
     v6_refreshclock();
     u.u_error = 0;
@@ -512,6 +514,9 @@ int v6fs_mkdir(const char *pathname, mode_t mode)
     strcpy(namebuf, pathname);
     parentname = strdup(dirname(namebuf));
 
+    /* verify that the given pathname does not already exist.
+       in the process, a pointer to the parent directory is
+       set in u.u_pdir. */
     u.u_dirp = (char *)pathname;
     ip = v6_namei(&v6_uchar, 1);
     if (ip != NULL) {
@@ -521,29 +526,61 @@ int v6fs_mkdir(const char *pathname, mode_t mode)
     }
     if ((res = -u.u_error) < 0)
         goto exit;
+
+    /* in v6, mkdir is a command that runs set-uid root, 
+       which gives it the priveldge to create links to
+       directory node (in particular the . and .. entries).
+       here we simulate this by switching the effective uid
+       to root. */
+    u.u_uid = 0;
+
+    /* make the directory node within the parent directory. 
+       temporarily grant access to the root user only. */
     ip = v6_maknode(IFDIR|0700);
     if (ip == NULL) {
         res = -u.u_error;
         goto exit;
     }
+    dircreated = 1;
     v6_iput(ip);
     if ((res = -u.u_error) < 0)
         goto exit;
 
+    /* create the . directory link. */
     strcpy(namebuf, pathname);
     strcat(namebuf, "/.");
     res = v6fs_link(pathname, namebuf);
     if (res < 0)
         goto exit;
 
+    /* create the /. directory link. */
     strcat(namebuf, ".");
     res = v6fs_link(parentname, namebuf);
     if (res < 0)
         goto exit;
 
+    /* change the owner of the new directory from root to the
+       current real user id. */
+    res = v6fs_chown(pathname, (uint8_t)u.u_ruid, -1);
+    if (res < 0)
+        goto exit;
+
+    /* set the final access permissions on the new directory. */
     res = v6fs_chmod(pathname, mode&07777);
 
 exit:
+    if (res != 0 && dircreated) {
+        strcpy(namebuf, pathname);
+        strcat(namebuf, "/..");
+        v6fs_unlink(namebuf);
+
+        strcpy(namebuf, pathname);
+        strcat(namebuf, "/.");
+        v6fs_unlink(namebuf);
+
+        v6fs_unlink(pathname);
+    }
+    u.u_uid = u.u_ruid;
     free(namebuf);
     free(parentname);
     return res;
@@ -704,22 +741,62 @@ int v6fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
     statvfsbuf->f_files = fp->s_isize * 16;
     statvfsbuf->f_namemax = DIRSIZ;
 
-    /* count the number of free blocks. */
+    /* count the number of free blocks.
+     
+       The freelist consist of a table of 100 block numbers located in the
+       filesystem superblock (fp->s_free).  Each entry in this table can
+       contain the block number of a free block.  The number of entries that
+       actually contain free block numbers (starting at index 0 in the table)
+       is denoted by the integer fp->s_nfree.
+       
+       The first block number in the table is special.  If there are more than
+       99 free blocks, fp->s_free[0] is the number of a free block that also
+       contains pointers to other free blocks.  This is referred to as an
+       "index" block.  In cases where there are 99 or fewer free blocks, 
+       fp->s_free[0] will always contain the NULL block number (0), indicating
+       that no index block exists.
+
+       Like the superblock, an index block also contains a table of 100 block
+       numbers (starting at offset 2) and a count of the number table entries
+       that actually contain free blocks (located at offset 0).  Similarly, the
+       first poistion in the table is also used to point to a subsequent index
+       block in cases where there are more than 99 additional free blocks. Thus
+       index blocks are strung together to form a chain of groups of 100 free
+       blocks.
+
+       NOTE that there are *two* distinct states possible when the filesystem
+       reaches the point of being completely full:
+           1) fp->s_nfree == 0
+           2) fp->s_nfree == 1 and fp->s_free[0] == 0
+       The second state is entered when the last free block is allocated by the
+       alloc() function.  The first state is entered when alloc() is called again
+       *after* the last block has been allocated (i.e. when the first allocation
+       failure occurs).
+     */
     {    
         int16_t *nfree = &fp->s_nfree;
         int16_t *freetab = fp->s_free;
+        uint16_t idxblkcount = 0;
         while (1) {
-            statvfsbuf->f_bfree += *nfree;
-            int16_t nextblk = freetab[0];
+            int16_t nextidxblk;
+            if (*nfree > 0) {
+                nextidxblk = freetab[0];
+                statvfsbuf->f_bfree += (nextidxblk != 0) ? *nfree : *nfree - 1;
+            }
+            else
+                nextidxblk = 0;
             if (bp != NULL)
                 v6_brelse(bp);
-            if (nextblk == 0) {
-                statvfsbuf->f_bfree--;
+            if (nextidxblk == 0)
                 break;
-            }
-            if (v6_badblock(fp, nextblk, v6_rootdev))
+            idxblkcount++;
+            if (idxblkcount > fp->s_fsize) {
+                fprintf(stderr, "V6FS ERROR: loop detected in free list");
                 return -EIO;
-            bp = v6_bread(v6_rootdev, nextblk);
+            }
+            if (v6_badblock(fp, nextidxblk, v6_rootdev))
+                return -EIO;
+            bp = v6_bread(v6_rootdev, nextidxblk);
             v6_geterror(bp);
             if (u.u_error != 0)
                 return -u.u_error;
@@ -746,22 +823,42 @@ int v6fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
     return 0;
 }
 
-/** Set the effective user id for filesystem operations.
+/** Set the real and/or effective user ids for filesystem operations.
  */
-void v6fs_seteuid(uid_t uid)
+int v6fs_setreuid(uid_t ruid, uid_t euid)
 {
-    if (uid > 0xFF)
-        uid = 0xFF;
-    u.u_uid = (char)uid;
+    if (ruid != -1)
+    {
+        if (ruid > 0xFF)
+            ruid = 0xFF;
+        u.u_ruid = (char)ruid;
+    }
+    if (euid != -1)
+    {
+        if (euid > 0xFF)
+            euid = 0xFF;
+        u.u_uid = (char)euid;
+    }
+    return 0;
 }
 
-/** Set the effective group id for filesystem operations.
+/** Set the real and/or effective group ids for filesystem operations.
  */
-void v6fs_setegid(gid_t gid)
+int v6fs_setregid(gid_t rgid, gid_t egid)
 {
-    if (gid > 0xFF)
-        gid = 0xFF;
-    u.u_gid = (char)gid;
+    if (rgid != -1)
+    {
+        if (rgid > 0xFF)
+            rgid = 0xFF;
+        u.u_rgid = (char)rgid;
+    }
+    if (egid != -1)
+    {
+        if (egid > 0xFF)
+            egid = 0xFF;
+        u.u_gid = (char)egid;
+    }
+    return 0;
 }
 
 static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statbuf)

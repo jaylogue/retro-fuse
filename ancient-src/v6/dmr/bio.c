@@ -341,10 +341,10 @@ iodone(struct buf *bp)
 void
 clrbuf(struct buf *bp)
 {
-	register char *p;
+	register int16_t *p;
 	register int16_t c;
 
-	p = bp->b_addr;
+	p = (int16_t *)bp->b_addr;
 	c = 256;
 	do
 		*p++ = 0;
