@@ -7,9 +7,11 @@
 #include <string.h>
 #include <strings.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <fuse.h>
 
 #include <v6fs.h>
@@ -30,15 +32,18 @@ struct v6fuse_config {
 #define V6FUSE_OPT(TEMPLATE, FIELD, VALUE) \
     { TEMPLATE, offsetof(struct v6fuse_config, FIELD), VALUE }
 
-#define V6FUSE_OPT_KEY_RO 100
-#define V6FUSE_OPT_KEY_RO 100
+#define V6FUSE_OPT_KEY_MAPID 100
 
 static const struct fuse_opt v6fuse_options[] = {
     V6FUSE_OPT("dsksize=%u", dsksize, 0),
     V6FUSE_OPT("dskoffset=%llu", dskoffset, 0),
-	V6FUSE_OPT("-r", readonly, 1),
-	V6FUSE_OPT("ro", readonly, 1),
-	V6FUSE_OPT("rw", readonly, 0),
+    FUSE_OPT_KEY("mapuid", V6FUSE_OPT_KEY_MAPID),
+    FUSE_OPT_KEY("mapuid=%s", V6FUSE_OPT_KEY_MAPID),
+    FUSE_OPT_KEY("mapgid", V6FUSE_OPT_KEY_MAPID),
+    FUSE_OPT_KEY("mapgid=%s", V6FUSE_OPT_KEY_MAPID),
+    V6FUSE_OPT("-r", readonly, 1),
+    V6FUSE_OPT("ro", readonly, 1),
+    V6FUSE_OPT("rw", readonly, 0),
     V6FUSE_OPT("-f", foreground, 1),
     V6FUSE_OPT("--foreground", foreground, 1),
     V6FUSE_OPT("-d", debug, 1),
@@ -49,17 +54,90 @@ static const struct fuse_opt v6fuse_options[] = {
     V6FUSE_OPT("--version", showversion, 1),
 
     /* retain these in the fuse_args list to that they
-       can be parsed by the FUSE code. */
-	FUSE_OPT_KEY("-r", FUSE_OPT_KEY_KEEP),
-	FUSE_OPT_KEY("ro", FUSE_OPT_KEY_KEEP),
-	FUSE_OPT_KEY("rw", FUSE_OPT_KEY_KEEP),
+      can be parsed by the FUSE code. */
+    FUSE_OPT_KEY("-r", FUSE_OPT_KEY_KEEP),
+    FUSE_OPT_KEY("ro", FUSE_OPT_KEY_KEEP),
+    FUSE_OPT_KEY("rw", FUSE_OPT_KEY_KEEP),
     FUSE_OPT_KEY("-d", FUSE_OPT_KEY_KEEP),
-	FUSE_OPT_KEY("--debug", FUSE_OPT_KEY_KEEP),
+    FUSE_OPT_KEY("--debug", FUSE_OPT_KEY_KEEP),
 
     FUSE_OPT_END
 };
 
 static const char *v6fuse_cmdname;
+
+static int v6fuse_parsemapopt(const char *arg)
+{
+    long hostid, v6id;
+    char *p, *end;
+    const char *idtype;
+    int res;
+
+    if (strncasecmp(arg, "mapuid", 6) == 0) {
+        idtype = "uid";
+    }
+    else if (strncasecmp(arg, "mapgid", 6) == 0) {
+        idtype = "gid";
+    }
+    else
+        return -1; /* should never get here */
+    p = (char *)arg + 6;
+
+    while (isspace(*p)) p++;
+
+    if (*p++ != '=')
+        goto badsyntax;
+
+    hostid = strtol(p, &end, 10);
+    if (p == end)
+        goto badsyntax;
+    p = end;
+
+    while (isspace(*p)) p++;
+
+    if (*p++ != ':')
+        goto badsyntax;
+
+    v6id = strtol(p, &end, 10);
+    if (p == end)
+        goto badsyntax;
+    p = end;
+
+    while (isspace(*p)) p++;
+
+    if (*p != 0)
+        goto badsyntax;
+
+    if (hostid < 0) {
+        fprintf(stderr, "%s: ERROR: invalid %s mapping option: host %s value out of range\n", v6fuse_cmdname, idtype, idtype);
+        return -1;
+    }
+
+    if (v6id < 0 || v6id > 255) {
+        fprintf(stderr, "%s: ERROR: invalid %s mapping option: filesystem %s value out of range\n", v6fuse_cmdname, idtype, idtype);
+        return -1;
+    }
+
+    if (strcmp(idtype, "uid") == 0)
+        res = v6fs_adduidmap((uid_t)hostid, v6id);
+    else
+        res = v6fs_addgidmap((uid_t)hostid, v6id);
+    switch (res)
+    {
+    case 0:
+        return 0;
+    case -EOVERFLOW:
+        fprintf(stderr, "%s: ERROR: too many %s mapping entries\n", v6fuse_cmdname, idtype);
+        return -1;
+    default:
+        fprintf(stderr, "%s: ERROR: failed to add %s mapping: %s\n", v6fuse_cmdname, idtype, strerror(-res));
+        return -1;
+    }
+
+badsyntax:
+    fprintf(stderr, "%s: ERROR: invalid %s mapping option: expected -o map%s=<host-%s>:<fs-%s>\n", v6fuse_cmdname, idtype, idtype, idtype, idtype);
+    return -1;
+}
 
 static int v6fuse_parseopt(void* data, const char* arg, int key, struct fuse_args* args)
 {
@@ -69,6 +147,8 @@ static int v6fuse_parseopt(void* data, const char* arg, int key, struct fuse_arg
     {
     case FUSE_OPT_KEY_OPT:
         return 1;
+    case V6FUSE_OPT_KEY_MAPID:
+        return v6fuse_parsemapopt(arg);
     case FUSE_OPT_KEY_NONOPT:
         if (cfg->dskfilename == NULL) {
             cfg->dskfilename = arg;
@@ -78,10 +158,10 @@ static int v6fuse_parseopt(void* data, const char* arg, int key, struct fuse_arg
             cfg->mountpoint = arg;
             return 0;
         }
-        fprintf(stderr, "%s: Unexpected argument: %s\n", v6fuse_cmdname, arg);
+        fprintf(stderr, "%s: ERROR: Unexpected argument: %s\n", v6fuse_cmdname, arg);
         return -1;
     default:
-        fprintf(stderr, "%s: Invalid option key: %d\n", v6fuse_cmdname, key);
+        fprintf(stderr, "%s: ERROR: Invalid option key: %d\n", v6fuse_cmdname, key);
         return -1;
     }
 }
@@ -89,20 +169,66 @@ static int v6fuse_parseopt(void* data, const char* arg, int key, struct fuse_arg
 static void v6fuse_showhelp()
 {
     printf(
-        "usage: %s [options] <device-or-image-name> <mount-point>\n"
+        "usage: %s [options] <device-or-image-file> <mount-point>\n"
         "\n"
-        "options:\n"
-        "    -o dsksize=N               size of filesystem, in 512-byte blocks\n"
-        "    -o dskoffset=N             offset to start of filesystem in device/image,\n"
-        "                                 in 512-byte blocks (defaults to 0)\n"
-        "    -o [mount-options]         comma-separated list of standard mount options\n"
-        "                                 (see man 8 mount for details)\n"
-        "    -o [fuse-options]          comma-separated list of FUSE mount options\n"
-        "                                 (see man 8 mount.fuse for details)\n"
-        "    -f  --foreground           run in foreground\n"
-        "    -d  --debug                enable debug output (implies -f)\n"
-        "    -V  --version              print version information\n"
-        "    -h  --help                 print help\n",
+        "OPTIONS\n"
+        "  -o dsksize=N\n"
+        "        Logical size of the underlying device/image, in 512-byte blocks.\n"
+        "        The filesystem will be blocked from reading or writing data beyond\n"
+        "        this point. Defaults to the size of the underlying device, or no\n"
+        "        limit in the case of an image file.\n"
+        "\n"
+        "  -o dskoffset=N\n"
+        "        Offset into the device/image at which the filesystem starts, in\n"
+        "        512-byte blocks.  Defaults to 0.\n"
+        "\n"
+        "  -o ro\n"
+        "        Mount the filesystem in read-only mode.\n"
+        "\n"
+        "  -o rw\n"
+        "        Mount the filesystem in read-write mode.  This is the default.\n"
+        "\n"
+        "  -o allow_root\n"
+        "        Allow the root user to access the filesystem, in addition to the\n"
+        "        mounting user.  Mutually exclusive with the allow_other option.\n"
+        "\n"
+        "  -o allow_other\n"
+        "        Allow any user to access the filesystem, including root and the\n"
+        "        mounting user.  Mutually exclusive with the allow_root option.\n"
+        "\n"
+        "  -o mapuid=<host-uid>:<fs-uid>\n"
+        "  -o mapgid=<host-gid>:<fs-gid>\n"
+        "        Map a particular user or group id on the host system to different\n"
+        "        id on the mounted filesystem. The id mapping applies both ways.\n"
+        "        Specifically, the uid/gid on the host is mapped to the corresponding\n"
+        "        id for the purpose of access control checking, and when the id is\n"
+        "        stored in an inode. Conversely, the filesystem id is mapped to the\n"
+        "        host system id whenever a file is stat()ed or a directory is read.\n"
+        "        Multiple map options may be given, up to a limit of 100.\n"
+        "\n"
+        "  -o <mount-options>\n"
+        "        Comma-separated list of standard mount options. See man 8 mount\n"
+        "        for further details.\n"
+        "\n"
+        "  -o <fuse-options>\n"
+        "        Comma-separated list of FUSE mount options. see man 8 mount.fuse\n"
+        "        for further details.\n"
+        "\n"
+        "  -f\n"
+        "  --foreground\n"
+        "        Run in foreground (useful for debugging).\n"
+        "\n"
+        "  -d\n"
+        "  --debug\n"
+        "        Enable debug output to stderr (implies -f)\n"
+        "\n"
+        "  -V\n"
+        "  --version\n"
+        "        Print version information\n"
+        "\n"
+        "  -h\n"
+        "  --help\n"
+        "        Print this help message.\n",
         v6fuse_cmdname);
 }
 
@@ -314,6 +440,8 @@ int main(int argc, char *argv[])
     v6fuse_cmdname = rindex(argv[0], '/');
     if (v6fuse_cmdname == NULL)
         v6fuse_cmdname = argv[0];
+    else
+        v6fuse_cmdname++;
 
     if (fuse_opt_parse(&args, &cfg, v6fuse_options, v6fuse_parseopt) == -1)
         goto exit;
@@ -339,25 +467,25 @@ int main(int argc, char *argv[])
     }
 
     if (access(cfg.dskfilename, (cfg.readonly) ? R_OK : R_OK|W_OK) != 0) {
-        fprintf(stderr, "%s: Unable to access disk/image file: %s\n%s\n", v6fuse_cmdname, cfg.dskfilename, strerror(errno));
+        fprintf(stderr, "%s: ERROR: Unable to access disk/image file: %s\n%s\n", v6fuse_cmdname, cfg.dskfilename, strerror(errno));
         goto exit;
     }
 
     chan = fuse_mount(cfg.mountpoint, &args);
     if (chan == NULL) {
-        fprintf(stderr, "%s: Failed to mount FUSE filesystem: %s\n", v6fuse_cmdname, strerror(errno));
+        fprintf(stderr, "%s: ERROR: Failed to mount FUSE filesystem: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
     }
 
     fuse = fuse_new(chan, &args, &v6fuse_ops, sizeof(v6fuse_ops), &cfg);
     if (fuse == NULL) {
-        fprintf(stderr, "%s: Failed to initialize FUSE connection: %s\n", v6fuse_cmdname, strerror(errno));
+        fprintf(stderr, "%s: ERROR: Failed to initialize FUSE connection: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
     }
 
     /* initialize disk i/o subssytem */
     if (!dsk_open(cfg.dskfilename, cfg.dsksize, cfg.dskoffset, cfg.readonly)) {
-        fprintf(stderr, "%s: Failed to open disk/image file: %s\n", v6fuse_cmdname, strerror(errno));
+        fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
     }
 
@@ -365,19 +493,19 @@ int main(int argc, char *argv[])
     v6fs_init(cfg.readonly);
 
     if (fuse_daemonize(cfg.foreground) != 0) {
-        fprintf(stderr, "%s: Failed to daemonize FUSE process: %s\n", v6fuse_cmdname, strerror(errno));
+        fprintf(stderr, "%s: ERROR: Failed to daemonize FUSE process: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
     }
 
     session = fuse_get_session(fuse);
     if (fuse_set_signal_handlers(session) != 0) {
-        fprintf(stderr, "%s: Failed to set FUSE signal handlers: %s\n", v6fuse_cmdname, strerror(errno));
+        fprintf(stderr, "%s: ERROR: Failed to set FUSE signal handlers: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
     }
     sighandlersset = 1;
 
     if (fuse_loop(fuse) != 0) {
-        fprintf(stderr, "%s: fuse_loop() failed: %s\n", v6fuse_cmdname, strerror(errno));
+        fprintf(stderr, "%s: ERROR: fuse_loop() failed: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
     }
 

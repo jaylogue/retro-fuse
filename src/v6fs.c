@@ -25,8 +25,25 @@
 #include "filsys.h"
 #include "conf.h"
 
+struct IDMapEntry {
+    uint32_t hostid;
+    char v6id;
+};
+
+#define V6FS_MAX_ID_MAP_ENTRIES 100
+static size_t v6fs_uidmapcount = 0;
+static struct IDMapEntry v6fs_uidmap[V6FS_MAX_ID_MAP_ENTRIES];
+static size_t v6fs_gidmapcount = 0;
+static struct IDMapEntry v6fs_gidmap[V6FS_MAX_ID_MAP_ENTRIES];
+
 static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statbuf);
 static int v6fs_isdirlink(const char *entryname, const struct stat *statbuf, void *context);
+static char v6fs_maphostid(uint32_t hostid, const struct IDMapEntry *table, size_t count);
+static uint32_t v6fs_mapv6id(char v6id, const struct IDMapEntry *table, size_t count);
+static inline char v6fs_maphostuid(uid_t hostuid) { return v6fs_maphostid((uint32_t)hostuid, v6fs_uidmap, v6fs_uidmapcount); }
+static inline char v6fs_maphostgid(gid_t hostgid) { return v6fs_maphostid((uint32_t)hostgid, v6fs_gidmap, v6fs_gidmapcount); }
+static inline uid_t v6fs_mapv6uid(char v6uid) { return (uid_t)v6fs_mapv6id(v6uid, v6fs_uidmap, v6fs_uidmapcount); }
+static inline gid_t v6fs_mapv6gid(char v6gid) { return (gid_t)v6fs_mapv6id(v6gid, v6fs_gidmap, v6fs_gidmapcount); }
 
 /** Initialize the Unix v6 filesystem.
  */
@@ -378,26 +395,24 @@ int v6fs_chown(const char *pathname, uid_t owner, gid_t group)
 {
     int res = 0;
     struct inode *ip;
+    char v6uid = v6fs_maphostuid(owner);
+    char v6gid = v6fs_maphostgid(group);
 
     v6_refreshclock();
     u.u_error = 0;
-
-    if ((owner != (uid_t)-1 && owner > 0xFF) || 
-        (group != (gid_t)-1 && group > 0xFF))
-        return -EINVAL;
 
     u.u_dirp = (char *)pathname;
 	if ((ip = v6_namei(v6_uchar, 0)) == NULL)
 		return -u.u_error;
 
     if (owner != -1 || group != -1) {
-        if (owner != -1 && ip->i_uid != (char)owner) {
+        if (owner != -1 && ip->i_uid != v6uid) {
             if (!v6_suser()) {
                 res = -EPERM;
                 goto exit;
             }
         }
-        if (group != -1 && ip->i_gid != (char)group) {
+        if (group != -1 && ip->i_gid != v6gid) {
             if (!v6_suser() && u.u_uid != ip->i_uid) {
                 res = -EPERM;
                 goto exit;
@@ -405,9 +420,9 @@ int v6fs_chown(const char *pathname, uid_t owner, gid_t group)
         }
 
         if (owner != -1)
-            ip->i_uid = (char)owner;
+            ip->i_uid = v6uid;
         if (group != -1)
-            ip->i_gid = (char)group;
+            ip->i_gid = v6gid;
         ip->i_flag |= IUPD;
     }
 
@@ -561,8 +576,16 @@ int v6fs_mkdir(const char *pathname, mode_t mode)
 
     /* change the owner of the new directory from root to the
        current real user id. */
-    res = v6fs_chown(pathname, (uint8_t)u.u_ruid, -1);
-    if (res < 0)
+    u.u_error = 0;
+    u.u_dirp = (char *)pathname;
+	if ((ip = v6_namei(v6_uchar, 0)) == NULL) {
+		res = -u.u_error;
+        goto exit;
+    }
+    ip->i_uid = u.u_ruid;
+    ip->i_flag |= IUPD;
+    v6_iput(ip);
+    if ((res = -u.u_error) < 0)
         goto exit;
 
     /* set the final access permissions on the new directory. */
@@ -828,17 +851,9 @@ int v6fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
 int v6fs_setreuid(uid_t ruid, uid_t euid)
 {
     if (ruid != -1)
-    {
-        if (ruid > 0xFF)
-            ruid = 0xFF;
-        u.u_ruid = (char)ruid;
-    }
+        u.u_ruid = v6fs_maphostuid(ruid);
     if (euid != -1)
-    {
-        if (euid > 0xFF)
-            euid = 0xFF;
-        u.u_uid = (char)euid;
-    }
+        u.u_uid = v6fs_maphostuid(euid);
     return 0;
 }
 
@@ -847,17 +862,31 @@ int v6fs_setreuid(uid_t ruid, uid_t euid)
 int v6fs_setregid(gid_t rgid, gid_t egid)
 {
     if (rgid != -1)
-    {
-        if (rgid > 0xFF)
-            rgid = 0xFF;
-        u.u_rgid = (char)rgid;
-    }
+        u.u_rgid = v6fs_maphostgid(rgid);
     if (egid != -1)
-    {
-        if (egid > 0xFF)
-            egid = 0xFF;
-        u.u_gid = (char)egid;
-    }
+        u.u_gid = v6fs_maphostgid(egid);
+    return 0;
+}
+
+/** Add an entry to the uid mapping table.
+ */
+int v6fs_adduidmap(uid_t hostuid, char fsuid)
+{
+    if (v6fs_uidmapcount >= V6FS_MAX_ID_MAP_ENTRIES)
+        return -EOVERFLOW;
+    v6fs_uidmap[v6fs_uidmapcount].hostid = (uint32_t)hostuid;
+    v6fs_uidmap[v6fs_uidmapcount++].v6id = fsuid;
+    return 0;
+}
+
+/** Add an entry to the gid mapping table.
+ */
+int v6fs_addgidmap(uid_t hostgid, char fsgid)
+{
+    if (v6fs_gidmapcount >= V6FS_MAX_ID_MAP_ENTRIES)
+        return -EOVERFLOW;
+    v6fs_gidmap[v6fs_gidmapcount].hostid = (uint32_t)hostgid;
+    v6fs_gidmap[v6fs_gidmapcount++].v6id = fsgid;
     return 0;
 }
 
@@ -868,8 +897,8 @@ static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statb
     statbuf->st_ino = v6statbuf->inumber;
     statbuf->st_mode = v6statbuf->mode ;
     statbuf->st_nlink = v6statbuf->nlinks;
-    statbuf->st_uid = v6statbuf->uid;
-    statbuf->st_gid = v6statbuf->gid;
+    statbuf->st_uid = v6fs_mapv6uid(v6statbuf->uid);
+    statbuf->st_gid = v6fs_mapv6gid(v6statbuf->gid);
     statbuf->st_size = ((off_t)(uint16_t)v6statbuf->size0) << 16 | (uint16_t)v6statbuf->size1;
     statbuf->st_blocks = (statbuf->st_size + 511) >> 9;
     switch (v6statbuf->mode & IFMT)
@@ -899,4 +928,26 @@ static int v6fs_isdirlink(const char *entryname, const struct stat *statbuf, voi
     if ((statbuf->st_mode & S_IFMT) == S_IFDIR && (strcmp(entryname, ".") == 0 || strcmp(entryname, "..") == 0))
         return 0;
     return -ENOTEMPTY;
+}
+
+static char v6fs_maphostid(uint32_t hostid, const struct IDMapEntry *table, size_t count)
+{
+    for (size_t i = 0; i < count; i++)
+        if (table[i].hostid == hostid)
+            return table[i].v6id;
+    /* map any ids larger than what will fit in a v6 id to 255 */
+    if ((uint32_t)hostid > 0xFF)
+        return (char)255;
+    return (char)hostid;
+}
+
+static uint32_t v6fs_mapv6id(char v6id, const struct IDMapEntry *table, size_t count)
+{
+    for (size_t i = 0; i < count; i++)
+        if (table[i].v6id == v6id)
+            return table[i].hostid;
+    /* map the v6 id 255 to the standard nobody/nogroup host ids */
+    if (v6id == (char)255)
+        return (uint32_t)65534;
+    return (uint32_t)v6id;
 }
