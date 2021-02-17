@@ -1,3 +1,24 @@
+/*
+ * Copyright 2021 Jay Logue
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file  Adaptation code used to help build ancient Unix C source code in
+ * modern context.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -24,6 +45,10 @@ static void v6_dsk_open(int16_t dev, int16_t flag);
 static void v6_dsk_close(int16_t dev, int16_t flag);
 static void v6_dsk_strategy(struct buf *bp);
 
+
+
+/* Unix v6 global structures and values. */
+
 struct v6_user v6_u;
 struct v6_mount v6_mount[NMOUNT];
 struct v6_inode v6_inode[NINODE];
@@ -40,6 +65,9 @@ int16_t	v6_updlock;         /* lock for sync */
 int16_t	v6_rablock;         /* block to be read ahead */
 struct integ v6_PS;         /* dummy processor status word */
 
+
+/* Block and character device switch tables, and the root device table. */
+
 static struct v6_devtab v6fs_rootdsktab = { 0 };
 
 struct v6_bdevsw v6_bdevsw[] = {
@@ -51,8 +79,7 @@ struct v6_cdevsw v6_cdevsw[1] = {
     { NULL }
 };
 
-/**
- * Initialize the Unix v6 kernel.
+/** Initialize the Unix v6 kernel.
  * 
  * This function is analogous to the v6 main() routine.
  */
@@ -92,6 +119,40 @@ void v6_init_kernel(int readonly)
     /* set the user's current directory. */
     v6_u.u_cdir = v6_rootdir;
 }
+
+/*
+ * Block device callback functions.
+ */
+
+static void v6_dsk_open(int16_t dev, int16_t flag)
+{
+    /* no-op */
+}
+
+static void v6_dsk_close(int16_t dev, int16_t flag)
+{
+    /* no-op */
+}
+
+static void v6_dsk_strategy(struct buf *bp)
+{
+    int ioRes;
+    if ((bp->b_flags & B_READ) != 0)
+        ioRes = dsk_read(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
+    else
+        ioRes = dsk_write(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
+    if (!ioRes)
+    {
+        bp->b_flags |= B_ERROR;
+    }
+    v6_refreshclock();
+	v6_iodone(bp);
+}
+
+/*
+ * Replacements for various Unix v6 functions that either require significantly
+ * different behavior or were originally written in PDP-11 assembly.
+ */
 
 void v6_spl0()
 {
@@ -221,45 +282,12 @@ void v6_printf(const char * str, ...)
     va_end(ap);
 }
 
-/**
- * Unix block device open function
- */
-static void v6_dsk_open(int16_t dev, int16_t flag)
-{
-    /* no-op */
-}
 
-/**
- * Unix block device close function
- */
-static void v6_dsk_close(int16_t dev, int16_t flag)
-{
-    /* no-op */
-}
-
-/** Unix block device strategy function
- * 
- * Called by v6 kernel to read/write a block in the filesystem.
- */
-static void v6_dsk_strategy(struct buf *bp)
-{
-    int ioRes;
-    if ((bp->b_flags&B_READ) != 0)
-        ioRes = dsk_read(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
-    else
-        ioRes = dsk_write(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
-    if (!ioRes)
-    {
-        bp->b_flags |= B_ERROR;
-    }
-    v6_refreshclock();
-	v6_iodone(bp);
-}
 
 #undef time
 #include <time.h>
 
-/** Refresh the kernel's notion of current time.
+/** Utility function to refresh the kernel's notion of current time.
  */
 void v6_refreshclock()
 {
@@ -267,4 +295,3 @@ void v6_refreshclock()
     v6_time[0] = (int16_t)(now >> 16);
     v6_time[1] = (int16_t)(now);
 }
-

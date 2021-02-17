@@ -1,4 +1,18 @@
-CC = gcc
+#
+# Copyright 2021 Jay Logue
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 PROG = v6fs
 
@@ -24,11 +38,12 @@ V6SRC = \
 V6OBJS = $(V6SRC:.c=.o)
 OBJS = $(SRC:.c=.o) $(V6OBJS)
 
-CFLAGS = -std=c11 -ggdb -Wall -O0 $(foreach I,$(INCS),-I $(I))
-
 INCS = ./src ./ancient-src/v6
 
 LIBS = -lfuse
+
+CC = gcc
+CFLAGS = -std=c11 -g -Wall -O3 $(foreach I,$(INCS),-I $(I))
 
 $(V6OBJS) : CFLAGS += -DANCIENT_SRC
 

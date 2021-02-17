@@ -1,15 +1,34 @@
+/*
+ * Copyright 2021 Jay Logue
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file  Adaptation code used to help build ancient Unix C source code in
+ * modern context.
+ */
+
 #ifndef __V6ADAPT_H__
 #define __V6ADAPT_H__
 
 #include "stdint.h"
 
-/* forward declarations of v6 struct types */
-
+/* Forward declarations of v6 struct types, suitably name-mangled */
 struct v6_buf;
 struct v6_filsys;
 struct v6_inode;
 struct v6_file;
-
 
 /* Structure returned by v6 stat/fstat system calls. */
 struct v6_stat {
@@ -32,10 +51,11 @@ struct v6_direntry {
    char d_name[14];
 };
 
+/* Helper functions */
 extern void v6_init_kernel(int readonly);
 extern void v6_refreshclock();
 
-/* forward declarations of v6 functions */
+/* Forward declarations of name-mangled v6 functions */
 
 /* bio.c */
 extern struct v6_buf * v6_bread(int16_t dev, int16_t blkno);
@@ -140,8 +160,7 @@ extern void v6_chmod();
 extern void v6_chown();
 
 
-/* map struct and global variable names to avoid conflicts with modern code */
-
+/* Map struct and global variable names to avoid conflicts with modern code */
 #define bdevsw    v6_bdevsw
 #define bfreelist v6_bfreelist
 #define buf       v6_buf
@@ -171,98 +190,104 @@ extern void v6_chown();
 #define user      v6_user
 
 
-/* map function names to avoid conflicts with modern code, 
+/* Map function names to avoid conflicts with modern code, 
    but only when compiling v6 source. */
 
 #ifdef ANCIENT_SRC
 
+#define access    v6_access
+#define alloc     v6_alloc
+#define badblock  v6_badblock
+#define bawrite   v6_bawrite
+#define bcopy     v6_bcopy
+#define bdwrite   v6_bdwrite
+#define bflush    v6_bflush
+#define binit     v6_binit
+#define bmap      v6_bmap
 #define bread     v6_bread
 #define breada    v6_breada
-#define bwrite    v6_bwrite
-#define bdwrite   v6_bdwrite
-#define bawrite   v6_bawrite
 #define brelse    v6_brelse
-#define incore    v6_incore
-#define getblk    v6_getblk
-#define iowait    v6_iowait
-#define notavail  v6_notavail
-#define iodone    v6_iodone
-#define clrbuf    v6_clrbuf
-#define binit     v6_binit
-#define mapfree   v6_mapfree
-#define bflush    v6_bflush
-#define geterror  v6_geterror
-#define sleep     v6_sleep
-#define wakeup    v6_wakeup
-#define printf    v6_printf
-#define panic     v6_panic
-#define prdev     v6_prdev
-#define bmap      v6_bmap
-#define bcopy     v6_bcopy
-#define iinit     v6_iinit
-#define alloc     v6_alloc
-#define free      v6_free
-#define badblock  v6_badblock
-#define ialloc    v6_ialloc
-#define ifree     v6_ifree
-#define getfs     v6_getfs
-#define update    v6_update
-#define iget      v6_iget
-#define iput      v6_iput
-#define iupdat    v6_iupdat
-#define itrunc    v6_itrunc
-#define maknode   v6_maknode
-#define wdir      v6_wdir
-#define prele     v6_prele
-#define ldiv      v6_ldiv
-#define lrem      v6_lrem
-#define lshift    v6_lshift
-#define dpadd     v6_dpadd
-#define dpcmp     v6_dpcmp
-#define spl0      v6_spl0
-#define spl6      v6_spl6
-#define suword    v6_suword
-#define readi     v6_readi
-#define writei    v6_writei
-#define max       v6_max
-#define min       v6_min
-#define iomove    v6_iomove
-#define namei     v6_namei
-#define schar     v6_schar
-#define uchar     v6_uchar
-#define getf      v6_getf
-#define closef    v6_closef
-#define closei    v6_closei
-#define openi     v6_openi
-#define access    v6_access
-#define owner     v6_owner
-#define suser     v6_suser
-#define ufalloc   v6_ufalloc
-#define falloc    v6_falloc
-#define rdwr      v6_rdwr
-#define open1     v6_open1
-#define close     v6_close
-#define link      v6_link
-#define mknod     v6_mknod
-#define stat1     v6_stat1
-#define readp     v6_readp
-#define writep    v6_writep
-#define unlink    v6_unlink
+#define bwrite    v6_bwrite
 #define chmod     v6_chmod
 #define chown     v6_chown
-
+#define close     v6_close
+#define closef    v6_closef
+#define closei    v6_closei
+#define clrbuf    v6_clrbuf
+#define dpadd     v6_dpadd
+#define dpcmp     v6_dpcmp
+#define falloc    v6_falloc
+#define free      v6_free
+#define getblk    v6_getblk
+#define geterror  v6_geterror
+#define getf      v6_getf
+#define getfs     v6_getfs
+#define ialloc    v6_ialloc
+#define ifree     v6_ifree
+#define iget      v6_iget
+#define iinit     v6_iinit
+#define incore    v6_incore
+#define iodone    v6_iodone
+#define iomove    v6_iomove
+#define iowait    v6_iowait
+#define iput      v6_iput
+#define itrunc    v6_itrunc
+#define iupdat    v6_iupdat
+#define ldiv      v6_ldiv
+#define link      v6_link
+#define lrem      v6_lrem
+#define lshift    v6_lshift
+#define maknode   v6_maknode
+#define mapfree   v6_mapfree
+#define max       v6_max
+#define min       v6_min
+#define mknod     v6_mknod
+#define namei     v6_namei
+#define notavail  v6_notavail
+#define open1     v6_open1
+#define openi     v6_openi
+#define owner     v6_owner
+#define panic     v6_panic
+#define prdev     v6_prdev
+#define prele     v6_prele
+#define printf    v6_printf
+#define rdwr      v6_rdwr
+#define readi     v6_readi
+#define readp     v6_readp
+#define schar     v6_schar
+#define sleep     v6_sleep
+#define spl0      v6_spl0
+#define spl6      v6_spl6
+#define stat1     v6_stat1
+#define suser     v6_suser
+#define suword    v6_suword
+#define uchar     v6_uchar
+#define ufalloc   v6_ufalloc
+#define unlink    v6_unlink
+#define update    v6_update
+#define wakeup    v6_wakeup
+#define wdir      v6_wdir
+#define writei    v6_writei
+#define writep    v6_writep
 
 #endif /* ANCIENT_SRC */
 
-/* alias a 16-bit device id integer to a struct containing device major and minor numbers. 
-   this replaces the archaic 'int dev; ...  dev.d_major' idiom. */
-#define todevst(DEV) (*((struct devst *)&(DEV)))
+/* Alias a 16-bit device id integer to a struct containing device major and minor numbers.
+   This is used to replace the archaic 'int dev; ...  dev.d_major' idiom. */
+union v6_devu {
+   uint16_t dev;
+   struct {
+      int8_t d_minor;
+      int8_t d_major;
+   } devst;
+};
+#define todevst(DEV) (((union v6_devu *)&(DEV))->devst)
 
-/* replacement for v6 PS (processor status word) define. */
+/* Replacement for v6 PS (processor status word) define. */
 extern struct v6_integ v6_PS;
 #define PS (&v6_PS)
 
-/* allow v6 code to redefine NULL without warning */
+/* Allow v6 code to redefine NULL without warning */
 #undef NULL
 
 #endif /* __V6ADAPT_H__ */
