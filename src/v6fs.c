@@ -42,6 +42,7 @@
 
 #include "v6fs.h"
 #include "v6adapt.h"
+#include "dskio.h"
 
 #include "param.h"
 #include "user.h"
@@ -57,12 +58,15 @@ struct IDMapEntry {
     char v6id;
 };
 
+int v6fs_initialized = 0;
+
 #define V6FS_MAX_ID_MAP_ENTRIES 100
 static size_t v6fs_uidmapcount = 0;
 static struct IDMapEntry v6fs_uidmap[V6FS_MAX_ID_MAP_ENTRIES];
 static size_t v6fs_gidmapcount = 0;
 static struct IDMapEntry v6fs_gidmap[V6FS_MAX_ID_MAP_ENTRIES];
 
+static void v6fs_initfreelist(struct v6_filsys *fp, uint16_t n, uint16_t m);
 static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statbuf);
 static int v6fs_isdirlink(const char *entryname, const struct stat *statbuf, void *context);
 static char v6fs_maphostid(uint32_t hostid, const struct IDMapEntry *table, size_t count);
@@ -73,10 +77,183 @@ static inline uid_t v6fs_mapv6uid(char v6uid) { return (uid_t)v6fs_mapv6id(v6uid
 static inline gid_t v6fs_mapv6gid(char v6gid) { return (gid_t)v6fs_mapv6id(v6gid, v6fs_gidmap, v6fs_gidmapcount); }
 
 /** Initialize the Unix v6 filesystem.
+ * 
+ * This function is very similar to the v6 kernel main() function.
  */
-void v6fs_init(int readonly)
+int v6fs_init(int readonly)
 {
-    v6_init_kernel(readonly);
+    if (v6fs_initialized)
+        return -EBUSY;
+
+    /* zero kernel data structures and globals */
+    v6_zerocore();
+
+    /* set the device id for the root device. */
+    v6_rootdev = 0;
+
+    u.u_error = 0;
+
+    /* initialize the buffer pool. */
+    v6_binit();
+    if (u.u_error != 0)
+        return -u.u_error;
+
+    /* mount the root device and read the superblock. */
+    v6_iinit();
+    if (u.u_error != 0)
+        return -u.u_error;
+
+    struct v6_filsys *fs = v6_getfs(v6_rootdev);
+
+    /* if the size of the underlying virtual disk is unknown, or
+       is smaller than the size declared in the filesystem superblock
+       set the virtual disk size to the size from the superblock. */
+    off_t dsksize = dsk_getsize();
+    if (dsksize == 0 || dsksize > fs->s_fsize)
+        dsk_setsize(fs->s_fsize);
+
+    /* mark the filesystem read-only if requested. */
+    if (readonly)
+        fs->s_ronly = 1;
+
+    /* get the root directory inode. */
+    v6_rootdir = v6_iget(v6_rootdev, ROOTINO);
+    v6_rootdir->i_flag &= ~ILOCK;
+
+    /* set the user's current directory. */
+    v6_u.u_cdir = v6_rootdir;
+
+    v6fs_initialized = 1;
+
+    return 0;
+}
+
+/** Shutdown the Unix v6 filesystem, sycning any unwritten data.
+ */
+int v6fs_shutdown()
+{
+    int res = 0;
+    if (v6fs_initialized) {
+        u.u_error = 0;
+        v6_update();
+        res = -u.u_error;
+        v6_zerocore();
+        v6fs_initialized = 0;
+    }
+    return res;
+}
+
+/** Initialize a new filesystem.
+ * 
+ * Thus function is effectly a minimal re-implementation of the
+ * v6 mkfs command.
+ */
+int v6fs_mkfs(uint16_t isize, const struct flparams *flparams)
+{
+    struct v6_buf *bp;
+    struct v6_filsys *fp;
+    struct v6_direntry *dp;
+    int16_t rootdirblkno = 0;
+    off_t fsize;
+
+    if (v6fs_initialized)
+        return -EBUSY;
+
+    v6_refreshclock();
+
+    /* zero kernel data structures and globals */
+    v6_zerocore();
+
+    /* set the device id for the root device. */
+    v6_rootdev = 0;
+
+    /* initialize the buffer pool. */
+    v6_binit();
+
+    u.u_error = 0;
+
+    /* get the size of the underlying virtual disk. Fail if this
+       is not known. */
+    fsize = dsk_getsize();
+    if (fsize <= 0) {
+        u.u_error = EINVAL;
+        goto exit;
+    }
+
+    /* compute the number of inode blocks if not given. */
+    if (isize == 0) {
+        /* from the code in mkfs */
+        isize = fsize / (43 + (fsize / 1000));
+    }
+
+    /* initialize the filesystem superblock in memory. */
+	bp = v6_getblk(NODEV, -1);
+    v6_clrbuf(bp);
+	fp = (struct filsys *)bp->b_addr;
+    fp->s_isize = isize;
+    fp->s_fsize = fsize;
+    fp->s_time[0] = v6_time[0];
+    fp->s_time[1] = v6_time[1];
+    fp->s_fmod = 1;
+
+    /* create the mount for the root device. */
+	mount[0].m_bufp = bp;
+	mount[0].m_dev = v6_rootdev;
+
+    /* initialize the free block list on disk. */
+    v6fs_initfreelist(fp, flparams->n, flparams->m);
+    if (u.u_error != 0)
+        goto exit;
+
+    /* allocate block for root directory and initialize '..' and '.' entries. */
+    bp = v6_alloc(v6_rootdev);
+    if (bp == NULL)
+        goto exit;
+    rootdirblkno = bp->b_blkno;
+    dp = (struct v6_direntry *)bp->b_addr;
+    dp->d_name[0] = '.';
+    dp->d_name[1] = '.';
+    dp->d_inode = ROOTINO;
+    dp++;
+    dp->d_name[0] = '.';
+    dp->d_inode = ROOTINO;
+    v6_bwrite(bp);
+    if ((bp->b_flags & B_ERROR) != 0)
+        goto exit;
+
+    /* initialize the inode table on disk. setup the first inode to represent
+       the root directory. */
+    for (uint16_t i = 0; i < isize; i++) {
+        bp = v6_getblk(v6_rootdev, i + 2);
+        v6_clrbuf(bp);
+        if (i == 0) {
+            struct v6_inode_dsk * ip = (struct v6_inode_dsk *)bp->b_addr;
+            ip->i_mode = IALLOC|IFDIR|0777;
+            ip->i_nlink = 2;
+            ip->i_uid = u.u_uid;
+            ip->i_gid = u.u_gid;
+            ip->i_size0 = 0;
+            ip->i_size1 = (DIRSIZ+2)*2; /* size of 2 directory entries */
+            ip->i_addr[0] = rootdirblkno;
+            ip->i_atime[0] = ip->i_mtime[0] = v6_time[0];
+            ip->i_atime[1] = ip->i_mtime[1] = v6_time[1];
+        }
+        v6_bwrite(bp);
+        if ((bp->b_flags & B_ERROR) != 0)
+            goto exit;
+    }
+
+    /* make the superblock "pristine" by zeroing unused entries in 
+       the free table. */
+    for (int i = fp->s_nfree; i < 100; i++)
+        fp->s_free[i] = 0;
+
+    /* sync the superblock */
+    v6_update();
+
+exit:
+    v6_zerocore();
+    return -u.u_error;
 }
 
 /** Open file or directory in the v6 filesystem.
@@ -915,6 +1092,54 @@ int v6fs_addgidmap(uid_t hostgid, char fsgid)
     v6fs_gidmap[v6fs_gidmapcount].hostid = (uint32_t)hostgid;
     v6fs_gidmap[v6fs_gidmapcount++].v6id = fsgid;
     return 0;
+}
+
+/** Construct the initial free block list for a new filesystem.
+ *
+ * This function is effectively identical to the bflist() function in the
+ * v6 mkfs command.
+ * 
+ * n and m are values used to create an initial interleave in the order
+ * that blocks appear on the free list.  The reasoning behind this
+ * algorithm is unclear.  It's possible its purpose was to opimize
+ * seeking in some way.  The v6 mkfs command used values of n=23,m=3
+ * for rk devices, 10,4 for rp devices and 1,1 (i.e. no interleave)
+ * for all others.
+ */
+static void v6fs_initfreelist(struct v6_filsys *fp, uint16_t n, uint16_t m)
+{
+    uint8_t flg[100], adr[100];
+    uint16_t i, j, low, high;
+    
+    if (n > 100)
+        n = 100;
+    for (i = 0; i < n; i++)
+        flg[i] = 0;
+    i = 0;
+    for (j = 0; j < n; j++) {
+        while (flg[i])
+            i = (i+1)%n;
+        adr[j] = i;
+        flg[i]++;
+        i = (i+m)%n;
+    }
+
+    high = fp->s_fsize-1;
+    low = fp->s_isize+2;
+    /* The following code was a bit of cleverness used to
+       set the NULL terminator for the free block list. It
+       is unnecessary in this implementation. */
+    /* free(0); */
+    for (i = high; ((i+1) % n) != 0; i--) {
+        if (i < low)
+            break;
+        v6_free(v6_rootdev, i);
+    }
+    for (; i >= low+n; i -= n)
+        for (j=0; j < n; j++)
+            v6_free(v6_rootdev, i-adr[j]);
+    for (; i >= low; i--)
+        v6_free(v6_rootdev, i);
 }
 
 static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statbuf)

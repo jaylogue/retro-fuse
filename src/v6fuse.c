@@ -32,6 +32,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <inttypes.h>
 #include <errno.h>
 #include <unistd.h>
 #include <ctype.h>
@@ -42,28 +43,34 @@
 
 struct v6fuse_config {
     const char *dskfilename;
-    uint32_t dsksize;
-    uint32_t dskoffset;
+    uint32_t fssize;
+    uint32_t fsoffset;
     const char *mountpoint;
     int readonly;
     int foreground;
     int debug;
     int showversion;
     int showhelp;
+    int initfs;
+    uint16_t isize;
+    struct flparams flparams;
 };
 
 #define V6FUSE_OPT(TEMPLATE, FIELD, VALUE) \
     { TEMPLATE, offsetof(struct v6fuse_config, FIELD), VALUE }
 
 #define V6FUSE_OPT_KEY_MAPID 100
+#define V6FUSE_OPT_KEY_INITFS 101
 
 static const struct fuse_opt v6fuse_options[] = {
-    V6FUSE_OPT("dsksize=%u", dsksize, 0),
-    V6FUSE_OPT("dskoffset=%llu", dskoffset, 0),
+    V6FUSE_OPT("fssize=%u", fssize, 0),
+    V6FUSE_OPT("fsoffset=%llu", fsoffset, 0),
     FUSE_OPT_KEY("mapuid", V6FUSE_OPT_KEY_MAPID),
-    FUSE_OPT_KEY("mapuid=%s", V6FUSE_OPT_KEY_MAPID),
+    FUSE_OPT_KEY("mapuid=", V6FUSE_OPT_KEY_MAPID),
     FUSE_OPT_KEY("mapgid", V6FUSE_OPT_KEY_MAPID),
-    FUSE_OPT_KEY("mapgid=%s", V6FUSE_OPT_KEY_MAPID),
+    FUSE_OPT_KEY("mapgid=", V6FUSE_OPT_KEY_MAPID),
+    FUSE_OPT_KEY("initfs", V6FUSE_OPT_KEY_INITFS),
+    FUSE_OPT_KEY("initfs=", V6FUSE_OPT_KEY_INITFS),
     V6FUSE_OPT("-r", readonly, 1),
     V6FUSE_OPT("ro", readonly, 1),
     V6FUSE_OPT("rw", readonly, 0),
@@ -92,7 +99,6 @@ static const char *v6fuse_cmdname;
 static int v6fuse_parsemapopt(const char *arg)
 {
     long hostid, v6id;
-    char *p, *end;
     const char *idtype;
     int res;
 
@@ -103,48 +109,31 @@ static int v6fuse_parsemapopt(const char *arg)
         idtype = "gid";
     }
     else
-        return -1; /* should never get here */
-    p = (char *)arg + 6;
+        return -1; /* shouldn't happen */
+    
+    arg += 6;
 
-    while (isspace(*p)) p++;
-
-    if (*p++ != '=')
-        goto badsyntax;
-
-    hostid = strtol(p, &end, 10);
-    if (p == end)
-        goto badsyntax;
-    p = end;
-
-    while (isspace(*p)) p++;
-
-    if (*p++ != ':')
-        goto badsyntax;
-
-    v6id = strtol(p, &end, 10);
-    if (p == end)
-        goto badsyntax;
-    p = end;
-
-    while (isspace(*p)) p++;
-
-    if (*p != 0)
-        goto badsyntax;
+    int matchend = -1;
+    res = sscanf(arg, " = %ld : %ld %n", &hostid, &v6id, &matchend);
+    if (res != 2 || arg[matchend] != 0) {
+        fprintf(stderr, "%s: ERROR: invalid %s mapping option: expected -o map%s=<host-%s>:<fs-%s>\n", v6fuse_cmdname, idtype, idtype, idtype, idtype);
+        return -1;
+    }
 
     if (hostid < 0) {
-        fprintf(stderr, "%s: ERROR: invalid %s mapping option: host %s value out of range\n", v6fuse_cmdname, idtype, idtype);
+        fprintf(stderr, "%s: ERROR: invalid %s mapping option: host %s value out of range (expected >= 0)\n", v6fuse_cmdname, idtype, idtype);
         return -1;
     }
 
     if (v6id < 0 || v6id > 255) {
-        fprintf(stderr, "%s: ERROR: invalid %s mapping option: filesystem %s value out of range\n", v6fuse_cmdname, idtype, idtype);
+        fprintf(stderr, "%s: ERROR: invalid %s mapping option: filesystem %s value out of range (expected 0-255)\n", v6fuse_cmdname, idtype, idtype);
         return -1;
     }
 
     if (strcmp(idtype, "uid") == 0)
-        res = v6fs_adduidmap((uid_t)hostid, v6id);
+        res = v6fs_adduidmap((uid_t)hostid, (char)v6id);
     else
-        res = v6fs_addgidmap((uid_t)hostid, v6id);
+        res = v6fs_addgidmap((uid_t)hostid, (char)v6id);
     switch (res)
     {
     case 0:
@@ -156,9 +145,42 @@ static int v6fuse_parsemapopt(const char *arg)
         fprintf(stderr, "%s: ERROR: failed to add %s mapping: %s\n", v6fuse_cmdname, idtype, strerror(-res));
         return -1;
     }
+}
 
-badsyntax:
-    fprintf(stderr, "%s: ERROR: invalid %s mapping option: expected -o map%s=<host-%s>:<fs-%s>\n", v6fuse_cmdname, idtype, idtype, idtype, idtype);
+static int v6fuse_parseinitopt(struct v6fuse_config *cfg, const char *arg)
+{
+    if (strncasecmp(arg, "initfs", 6) != 0)
+        return -1; /* shouldn't happen */
+    
+    arg += 6;
+
+    cfg->initfs = 1;
+    cfg->isize = 0;
+    cfg->flparams.n = 1;
+    cfg->flparams.m = 1;
+
+    int matchend = -1;
+    int scanres = sscanf(arg, " %n= %" SCNu16 " %n: %" SCNu16 " : %" SCNu16 " %n",
+                         &matchend, &cfg->isize, &matchend, &cfg->flparams.n, &cfg->flparams.m, &matchend);
+    /* got -oinitfs ? */
+    if (scanres == EOF && arg[matchend] == 0)
+        return 0;
+    /* got -oinitfs=<isize> ? */
+    if (scanres == 1 && arg[matchend] == 0)
+        return 0;
+    /* got -oinitfs=<isize>:<n>:<m> ? */
+    if (scanres == 3 && arg[matchend] == 0) {
+        if (cfg->flparams.n < 1 || cfg->flparams.n > 100) {
+            fprintf(stderr, "%s: ERROR: invalid initfs option: free list parameter n must be between 1 and 100\n", v6fuse_cmdname);
+            return -1;
+        }
+        if (cfg->flparams.m < 1 || cfg->flparams.m > 32767) {
+            fprintf(stderr, "%s: ERROR: invalid initfs option: free list parameter m must be between 1 and 32767\n", v6fuse_cmdname);
+            return -1;
+        }
+        return 0;
+    }
+    fprintf(stderr, "%s: ERROR: invalid initfs option: expected -o initfs=<isize>[:<n>:<m>]\n", v6fuse_cmdname);
     return -1;
 }
 
@@ -172,6 +194,8 @@ static int v6fuse_parseopt(void* data, const char* arg, int key, struct fuse_arg
         return 1;
     case V6FUSE_OPT_KEY_MAPID:
         return v6fuse_parsemapopt(arg);
+    case V6FUSE_OPT_KEY_INITFS:
+        return v6fuse_parseinitopt(cfg, arg);
     case FUSE_OPT_KEY_NONOPT:
         if (cfg->dskfilename == NULL) {
             cfg->dskfilename = arg;
@@ -195,13 +219,13 @@ static void v6fuse_showhelp()
         "usage: %s [options] <device-or-image-file> <mount-point>\n"
         "\n"
         "OPTIONS\n"
-        "  -o dsksize=N\n"
-        "        Logical size of the underlying device/image, in 512-byte blocks.\n"
-        "        The filesystem will be blocked from reading or writing data beyond\n"
-        "        this point. Defaults to the size of the underlying device, or no\n"
-        "        limit in the case of an image file.\n"
+        "  -o fssize=N\n"
+        "        The size of the filesystem, in 512-byte blocks. This is used to\n"
+        "        limit I/O on the underlying device/image file, e.g. in case the\n"
+        "        filesystem contains malformed block pointers.  Defaults to the\n"
+        "        size given in the filesystem superblock.\n"
         "\n"
-        "  -o dskoffset=N\n"
+        "  -o fsoffset=N\n"
         "        Offset into the device/image at which the filesystem starts, in\n"
         "        512-byte blocks.  Defaults to 0.\n"
         "\n"
@@ -228,6 +252,23 @@ static void v6fuse_showhelp()
         "        stored in an inode. Conversely, the filesystem id is mapped to the\n"
         "        host system id whenever a file is stat()ed or a directory is read.\n"
         "        Multiple map options may be given, up to a limit of 100.\n"
+        "\n"
+        "  -o initfs\n"
+        "  -o initfs=<isize>\n"
+        "  -o initfs=<isize>:<n>:<m>\n"
+        "        Create an empty filesystem on the underlying device/image file before\n"
+        "        mounting.  When using the initfs option on an image file the size of\n"
+        "        the filesystem must be specified via the -ofssize option.\n"
+        "\n"
+        "        isize gives the size of the filesystem's inode table in 512-byte\n"
+        "        blocks (32 inodes per block).  If not specified, or if 0 is given,\n"
+        "        the size of the inode table is computed automatically from the size\n"
+        "        of the filesystem.\n"
+        "\n"
+        "        n and m are the interleave parameters for the initial free block list.\n"
+        "        Traditionally, the v6 mkfs command used n=10,m=4 for rp devices, 24,3\n"
+        "        for rk devices, and 1,1 (i.e. no interleave) for all other devices.\n"
+        "        If not specified, no interleave is used.\n"
         "\n"
         "  -o <mount-options>\n"
         "        Comma-separated list of standard mount options. See man 8 mount\n"
@@ -282,7 +323,8 @@ static void * v6fuse_init(struct fuse_conn_info * conn)
 
 static void v6fuse_destroy(void * userdata)
 {
-    v6fs_sync();
+    v6fs_shutdown();
+    dsk_close();
 }
 
 static int v6fuse_getattr(const char *pathname, struct stat *statbuf)
@@ -489,7 +531,33 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-    if (access(cfg.dskfilename, (cfg.readonly) ? R_OK : R_OK|W_OK) != 0) {
+    if (cfg.initfs) {
+        // TODO: fix this so that fssize isn't required when using a block device.
+        if (cfg.fssize == 0) {
+            fprintf(stderr, "%s: ERROR: Missing -ofssize option\nThe size of the filesystem must be specified when using -oinitfs\n", v6fuse_cmdname);
+            goto exit;
+        }
+
+        // TODO: fix this to not fail when using a block device.
+        if (access(cfg.dskfilename, F_OK) == 0) {
+            fprintf(stderr, "%s: ERROR: Filesystem image file exists: %s\nTo prevent accidents, the filesystem image file must NOT existing when using -oinitfs.", v6fuse_cmdname, cfg.dskfilename);
+            goto exit;
+        }
+
+        if (!dsk_open(cfg.dskfilename, cfg.fssize, cfg.fsoffset, 0)) {
+            fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", v6fuse_cmdname, strerror(errno));
+            goto exit;
+        }
+
+        res = v6fs_mkfs(cfg.isize, &cfg.flparams);
+        dsk_close();
+        if (res != 0) {
+            fprintf(stderr, "%s: ERROR: Failed to initialize filesystem: %s\n", v6fuse_cmdname, strerror(-res));
+            goto exit;
+        }
+    }
+
+    if (access(cfg.dskfilename, cfg.readonly ? R_OK : R_OK|W_OK) != 0) {
         fprintf(stderr, "%s: ERROR: Unable to access disk/image file: %s\n%s\n", v6fuse_cmdname, cfg.dskfilename, strerror(errno));
         goto exit;
     }
@@ -507,7 +575,7 @@ int main(int argc, char *argv[])
     }
 
     /* initialize disk i/o subssytem */
-    if (!dsk_open(cfg.dskfilename, cfg.dsksize, cfg.dskoffset, cfg.readonly)) {
+    if (!dsk_open(cfg.dskfilename, cfg.fssize, cfg.fsoffset, cfg.readonly)) {
         fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
     }

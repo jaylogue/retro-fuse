@@ -25,5 +25,7 @@ extern int dsk_open(const char *filename, off_t size, off_t offset, int ro);
 extern int dsk_close();
 extern int dsk_read(int blkno, void * buf, int byteCount);
 extern int dsk_write(int blkno, void * buf, int byteCount);
+extern off_t dsk_getsize();
+extern void dsk_setsize(off_t size);
 
 #endif /* __DSKIO_H__ */

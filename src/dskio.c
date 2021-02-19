@@ -22,47 +22,59 @@
 
 #include <stdlib.h>
 #include <sys/types.h>
+#include <limits.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "dskio.h"
 
 #define BLKSIZE 512
 
-static int dskfd = -1;
-static off_t dsksize = -1;
-static off_t dskoffset = -1;
+static int dsk_fd = -1;
+static off_t dsk_size = -1;     /* size of disk, in 512-byte blocks */
+static off_t dsk_start = -1;    /* logical start of disk, in bytes */
+static off_t dsk_end = -1;      /* logical end of disk, in bytes */
 
-/** Open a filesystem device/image file.
+/** Open/create a virtual disk backed by a block device or image file.
  * 
  * @param[in]   filename    The name of the device or image file to be 
  *                          opened.
  * 
- * @param[in]   size        Size (in 512-byte blocks) of the filesystem.
- *                          Access to the underlying file will be limited
- *                          to blocks within this range.
+ * @param[in]   size        Size of the virtual disk, in 512-byte blocks.
+ *                          Access to the underlying device/file will be
+ *                          limited to blocks within the range 0 to size.
+ *                          If size <= 0, and the underlying storage is a
+ *                          block device, size is inferred from the size
+ *                          of the block device.
  * 
- * @param[in]   offset      Offset (in blocks) into the device/image file
- *                          at which the filesystem starts.  This value is
- *                          added to the blkno arguemtn to dsk_read()/dsk_write().
+ * @param[in]   offset      Offset (in blocks) into the underlying device/
+ *                          image file at which the virtual disk starts.
+ *                          This value is added to the blkno argument to
+ *                          dsk_read()/dsk_write() to determine the actual
+ *                          read/write position.
  * 
  * @param[in]   ro          If != 0, open the device/file in read-only mode.
  */
 int dsk_open(const char *filename, off_t size, off_t offset, int ro)
 {
-    dskfd = open(filename, (ro) ? O_RDONLY : O_RDWR);
-    if (dskfd < 0)
+    int flags = (ro) ? O_RDONLY : O_RDWR;
+    if (!ro && size > 0 && access(filename, F_OK) != 0 && errno == ENOENT)
+        flags |= O_CREAT;
+    dsk_fd = open(filename, flags, 0666);
+    if (dsk_fd < 0)
         return 0;
-    dsksize = size * BLKSIZE;
-    if (dsksize <= 0) {
-        dsksize = lseek(dskfd, 0, SEEK_END);
-        if (dsksize < 0)
-        {
+    if (size <= 0) {
+        // TODO: use BLKGETSIZE64 ioctl to get size of device.
+    }
+    dsk_start = offset * BLKSIZE;
+    dsk_setsize(size);
+    if ((flags & O_CREAT) != 0) {
+        if (ftruncate(dsk_fd, dsk_end) != 0) {
             dsk_close();
             return 0;
         }
     }
-    dskoffset = offset * BLKSIZE;
     return 1;
 }
 
@@ -70,10 +82,9 @@ int dsk_open(const char *filename, off_t size, off_t offset, int ro)
  */
 int dsk_close()
 {
-    if (dskfd >= 0)
-    {
-        close(dskfd);
-        dskfd = -1;
+    if (dsk_fd >= 0) {
+        close(dsk_fd);
+        dsk_fd = -1;
     }
     return 1;
 }
@@ -82,11 +93,10 @@ int dsk_close()
  */
 int dsk_read(int blkno, void * buf, int count) 
 {
-    off_t blkoff = blkno * BLKSIZE;
-    if (blkoff < 0 || count < 0 || (blkoff + count) > dsksize)
+    off_t blkoff = dsk_start + blkno * BLKSIZE;
+    if (count < 0 || blkoff < dsk_start || (blkoff + count) > dsk_end)
         return 0;
-    blkoff += dskoffset;
-    ssize_t res = pread(dskfd, buf, count, blkoff);
+    ssize_t res = pread(dsk_fd, buf, count, blkoff);
     return (res == count);
 }
 
@@ -94,11 +104,23 @@ int dsk_read(int blkno, void * buf, int count)
  */
 int dsk_write(int blkno, void * buf, int count) 
 {
-    off_t blkoff = blkno * BLKSIZE;
-    if (blkoff < 0 || count < 0 || (blkoff + count) > dsksize)
+    off_t blkoff = dsk_start + blkno * BLKSIZE;
+    if (count < 0 || blkoff < dsk_start || (blkoff + count) > dsk_end)
         return 0;
-    blkoff += dskoffset;
-    ssize_t res = pwrite(dskfd, buf, count, blkoff);
+    ssize_t res = pwrite(dsk_fd, buf, count, blkoff);
     return (res == count);
 }
 
+off_t dsk_getsize()
+{
+    return dsk_size;
+}
+
+void dsk_setsize(off_t size)
+{
+    dsk_size = size;
+    if (size > 0)
+        dsk_end = dsk_start + (size * BLKSIZE);
+    else
+        dsk_end = LLONG_MAX;
+}

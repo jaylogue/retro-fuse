@@ -46,7 +46,6 @@ static void v6_dsk_close(int16_t dev, int16_t flag);
 static void v6_dsk_strategy(struct buf *bp);
 
 
-
 /* Unix v6 global structures and values. */
 
 struct v6_user v6_u;
@@ -56,98 +55,28 @@ struct v6_buf v6_buf[NBUF];
 struct v6_file v6_file[NFILE];
 struct v6_buf v6_bfreelist;
 
-int16_t	v6_rootdev;         /* root device number (always 0) */
-int16_t	v6_nblkdev;         /* number of entries in the block device table */
-int16_t	v6_nchrdev;         /* number of entries in the character device table */
-struct inode *v6_rootdir;   /* pointer to root directory inode */
-int16_t	v6_time[2];         /* time in sec from 1970 */
-int16_t	v6_updlock;         /* lock for sync */
-int16_t	v6_rablock;         /* block to be read ahead */
-struct integ v6_PS;         /* dummy processor status word */
+int16_t	v6_rootdev;                             /* root device number (always 0) */
+int16_t	v6_nblkdev;                             /* number of entries in the block device switch table */
+int16_t	v6_nchrdev;                             /* number of entries in the character device table (always 0) */
+struct inode *v6_rootdir;                       /* pointer to root directory inode */
+int16_t	v6_time[2];                             /* time in sec from 1970 (big-endian) */
+int16_t	v6_updlock;                             /* lock for sync */
+int16_t	v6_rablock;                             /* block to be read ahead */
+struct integ v6_PS;                             /* dummy processor status word */
 
+/* root device table */
+static struct v6_devtab v6_rootdsktab = { 0 };
 
-/* Block and character device switch tables, and the root device table. */
-
-static struct v6_devtab v6fs_rootdsktab = { 0 };
-
+/* Block device switch table */
 struct v6_bdevsw v6_bdevsw[] = {
-    { .d_open = v6_dsk_open, .d_close = v6_dsk_close, .d_strategy = v6_dsk_strategy, .d_tab = &v6fs_rootdsktab },
+    { .d_open = v6_dsk_open, .d_close = v6_dsk_close, .d_strategy = v6_dsk_strategy, .d_tab = &v6_rootdsktab },
     { NULL }
 };
 
+/* Character device switch table (alway empty) */
 struct v6_cdevsw v6_cdevsw[1] = {
     { NULL }
 };
-
-/** Initialize the Unix v6 kernel.
- * 
- * This function is analogous to the v6 main() routine.
- */
-void v6_init_kernel(int readonly)
-{
-    /* zero various kernel data structures and globals */
-    memset(&v6_u, 0, sizeof(v6_u));
-    memset(v6_mount, 0, sizeof(v6_mount));
-    memset(v6_inode, 0, sizeof(v6_inode));
-    memset(v6_buf, 0, sizeof(v6_buf));
-    memset(v6_file, 0, sizeof(v6_file));
-    memset(&v6_bfreelist, 0, sizeof(v6_bfreelist));
-    v6_updlock = 0;
-    v6_rablock = 0;
-    v6_nchrdev = 0;
-    v6_nblkdev = 0;
-
-    /* set the device id for the root device. */
-    v6_rootdev = 0;
-
-    /* initialize the buffer pool. */
-    v6_binit();
-
-    /* mount the root device and read the superblock. */
-    v6_iinit();
-
-    /* mark the filesystem read-only if requested. */
-    if (readonly) {
-        struct v6_filsys *fs = v6_getfs(v6_rootdev);
-        fs->s_ronly = 1;
-    }
-
-    /* get the root directory inode. */
-    v6_rootdir = v6_iget(v6_rootdev, ROOTINO);
-    v6_rootdir->i_flag &= ~ILOCK;
-
-    /* set the user's current directory. */
-    v6_u.u_cdir = v6_rootdir;
-}
-
-/*
- * Block device callback functions.
- */
-
-static void v6_dsk_open(int16_t dev, int16_t flag)
-{
-    /* no-op */
-}
-
-static void v6_dsk_close(int16_t dev, int16_t flag)
-{
-    /* no-op */
-}
-
-static void v6_dsk_strategy(struct buf *bp)
-{
-    int ioRes;
-    if ((bp->b_flags & B_READ) != 0)
-        ioRes = dsk_read(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
-    else
-        ioRes = dsk_write(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
-    if (!ioRes)
-    {
-        bp->b_flags |= B_ERROR;
-    }
-    v6_refreshclock();
-	v6_iodone(bp);
-}
 
 /*
  * Replacements for various Unix v6 functions that either require significantly
@@ -282,12 +211,68 @@ void v6_printf(const char * str, ...)
     va_end(ap);
 }
 
+/*
+ * Root device callback functions.
+ */
 
+static void v6_dsk_open(int16_t dev, int16_t flag)
+{
+    /* no-op */
+}
+
+static void v6_dsk_close(int16_t dev, int16_t flag)
+{
+    /* no-op */
+}
+
+static void v6_dsk_strategy(struct buf *bp)
+{
+    /* Perform a synchronous read/write of the underlying device/image file
+       by forwarding the operation to the dskio layer. */
+    int ioRes;
+    if ((bp->b_flags & B_READ) != 0)
+        ioRes = dsk_read(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
+    else
+        ioRes = dsk_write(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
+    if (!ioRes)
+    {
+        bp->b_flags |= B_ERROR;
+    }
+
+    /* Refresh the kernel's notion of time in case the I/O took awhile. */
+    v6_refreshclock();
+
+    /* Tell the v6 kernel that the I/O is complete. */
+	v6_iodone(bp);
+}
+
+/*
+ * Utility functions
+ */
+
+/** Clear kernel data structures and globals.
+ */
+void v6_zerocore()
+{
+    memset(&v6_u, 0, sizeof(v6_u));
+    memset(v6_mount, 0, sizeof(v6_mount));
+    memset(v6_inode, 0, sizeof(v6_inode));
+    memset(v6_buf, 0, sizeof(v6_buf));
+    memset(v6_file, 0, sizeof(v6_file));
+    memset(&v6_bfreelist, 0, sizeof(v6_bfreelist));
+    memset(v6_time, 0, sizeof(v6_time));
+    v6_rootdev = 0;
+    v6_nblkdev = 0;
+    v6_nchrdev = 0;
+    v6_rootdir = NULL;
+    v6_updlock = 0;
+    v6_rablock = 0;
+}
 
 #undef time
 #include <time.h>
 
-/** Utility function to refresh the kernel's notion of current time.
+/** Refresh the kernel's notion of current time.
  */
 void v6_refreshclock()
 {

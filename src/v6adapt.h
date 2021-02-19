@@ -51,8 +51,22 @@ struct v6_direntry {
    char d_name[14];
 };
 
-/* Helper functions */
-extern void v6_init_kernel(int readonly);
+/* Structure of inoode on disk */
+struct v6_inode_dsk {
+	int16_t	i_mode;
+	char	i_nlink;
+	char	i_uid;
+	char	i_gid;
+	char	i_size0;
+	uint16_t i_size1;
+	int16_t	i_addr[8];
+	int16_t	i_atime[2];
+	int16_t	i_mtime[2];
+};
+
+
+/* Utility functions */
+extern void v6_zerocore();
 extern void v6_refreshclock();
 
 /* Forward declarations of name-mangled v6 functions */

@@ -43,7 +43,7 @@ INCS = ./src ./ancient-src/v6
 LIBS = -lfuse
 
 CC = gcc
-CFLAGS = -std=c11 -g -Wall -O3 $(foreach I,$(INCS),-I $(I))
+CFLAGS = -std=c11 -g -Wall -O0 $(foreach I,$(INCS),-I $(I))
 
 $(V6OBJS) : CFLAGS += -DANCIENT_SRC
 

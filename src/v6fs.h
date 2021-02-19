@@ -21,13 +21,24 @@
 #ifndef __V6FS_H__
 #define __V6FS_H__
 
+#include <stdint.h>
+
 struct stat;
 struct timespec;
 struct statvfs;
 
+/* free list interleave parameters */
+struct flparams
+{
+    uint16_t m;
+    uint16_t n;
+};
+
 typedef int (*v6fs_enum_dir_funct)(const char *entryname, const struct stat *statbuf, void *context);
 
-extern void v6fs_init(int readonly);
+extern int v6fs_init(int readonly);
+extern int v6fs_shutdown();
+extern int v6fs_mkfs(uint16_t isize, const struct flparams *flparams);
 extern int v6fs_open(const char * name, int flags, mode_t mode);
 extern int v6fs_close(int fd);
 extern off_t v6fs_seek(int fd, off_t offset, int whence);
