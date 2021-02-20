@@ -109,8 +109,8 @@ int v6fs_init(int readonly)
        is smaller than the size declared in the filesystem superblock
        set the virtual disk size to the size from the superblock. */
     off_t dsksize = dsk_getsize();
-    if (dsksize == 0 || dsksize > fs->s_fsize)
-        dsk_setsize(fs->s_fsize);
+    if (dsksize == 0 || dsksize > (uint16_t)fs->s_fsize)
+        dsk_setsize((uint16_t)fs->s_fsize);
 
     /* mark the filesystem read-only if requested. */
     if (readonly)
@@ -134,9 +134,7 @@ int v6fs_shutdown()
 {
     int res = 0;
     if (v6fs_initialized) {
-        u.u_error = 0;
-        v6_update();
-        res = -u.u_error;
+        res = v6fs_sync();
         v6_zerocore();
         v6fs_initialized = 0;
     }
@@ -145,19 +143,29 @@ int v6fs_shutdown()
 
 /** Initialize a new filesystem.
  * 
- * Thus function is effectly a minimal re-implementation of the
+ * Thus function is effectly a simplified re-implementation of the
  * v6 mkfs command.
  */
-int v6fs_mkfs(uint16_t isize, const struct flparams *flparams)
+int v6fs_mkfs(int16_t fssize, int16_t isize, const struct flparams *flparams)
 {
     struct v6_buf *bp;
     struct v6_filsys *fp;
     struct v6_direntry *dp;
     int16_t rootdirblkno = 0;
-    off_t fsize;
 
     if (v6fs_initialized)
         return -EBUSY;
+
+    if (fssize < 5)
+        return -EINVAL;
+
+    if (isize < 0 || isize > (fssize - 4))
+        return -EINVAL;
+
+    /* compute the number of inode blocks if not given. 
+       (based on code in v6 mkfs) */
+    if (isize == 0)
+        isize = fssize / (43 + (fssize / 1000));
 
     v6_refreshclock();
 
@@ -172,26 +180,12 @@ int v6fs_mkfs(uint16_t isize, const struct flparams *flparams)
 
     u.u_error = 0;
 
-    /* get the size of the underlying virtual disk. Fail if this
-       is not known. */
-    fsize = dsk_getsize();
-    if (fsize <= 0) {
-        u.u_error = EINVAL;
-        goto exit;
-    }
-
-    /* compute the number of inode blocks if not given. */
-    if (isize == 0) {
-        /* from the code in mkfs */
-        isize = fsize / (43 + (fsize / 1000));
-    }
-
     /* initialize the filesystem superblock in memory. */
 	bp = v6_getblk(NODEV, -1);
     v6_clrbuf(bp);
 	fp = (struct filsys *)bp->b_addr;
     fp->s_isize = isize;
-    fp->s_fsize = fsize;
+    fp->s_fsize = fssize;
     fp->s_time[0] = v6_time[0];
     fp->s_time[1] = v6_time[1];
     fp->s_fmod = 1;
@@ -936,14 +930,17 @@ int v6fs_enumdir(const char *pathname, v6fs_enum_dir_funct enum_funct, void *con
     return readRes;
 }
 
-/** Commit filesystem caches to disk.
+/** Commit filesystem changes to disk.
  */
-void v6fs_sync()
+int v6fs_sync()
 {
     v6_refreshclock();
     u.u_error = 0;
-
     v6_update();
+    int res = dsk_flush();
+    if (u.u_error != 0)
+        return -u.u_error;
+    return res;
 }
 
 /** Get filesystem statistics.
@@ -964,7 +961,7 @@ int v6fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
 
     statvfsbuf->f_bsize = 512;
     statvfsbuf->f_frsize = 512;
-    statvfsbuf->f_blocks = fp->s_fsize;
+    statvfsbuf->f_blocks = (uint16_t)fp->s_fsize;
     statvfsbuf->f_files = fp->s_isize * 16;
     statvfsbuf->f_namemax = DIRSIZ;
 
@@ -1017,8 +1014,8 @@ int v6fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
             if (nextidxblk == 0)
                 break;
             idxblkcount++;
-            if (idxblkcount > fp->s_fsize) {
-                fprintf(stderr, "V6FS ERROR: loop detected in free list");
+            if (idxblkcount > (uint16_t)fp->s_fsize) {
+                fprintf(stderr, "V6FS ERROR: loop detected in free list\n");
                 return -EIO;
             }
             if (v6_badblock(fp, nextidxblk, v6_rootdev))

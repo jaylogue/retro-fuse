@@ -146,11 +146,11 @@ int16_t
 badblock(struct filsys * afp, int16_t abn, int16_t dev)
 {
 	register struct filsys *fp;
-	register int16_t bn;
+	register uint16_t bn;
 
 	fp = afp;
-	bn = abn;
-	if (bn < fp->s_isize+2 || bn >= fp->s_fsize) {
+	bn = (uint16_t)abn;
+	if (bn < (uint16_t)fp->s_isize+2 || bn >= (uint16_t)fp->s_fsize) {
 		prdev("bad block", dev);
 		return(1);
 	}

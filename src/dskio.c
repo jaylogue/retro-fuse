@@ -21,11 +21,18 @@
 #define _XOPEN_SOURCE 500
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <limits.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+
+#ifdef __linux__
+#include <linux/fs.h>
+#endif // __linux__
 
 #include "dskio.h"
 
@@ -35,6 +42,7 @@ static int dsk_fd = -1;
 static off_t dsk_size = -1;     /* size of disk, in 512-byte blocks */
 static off_t dsk_start = -1;    /* logical start of disk, in bytes */
 static off_t dsk_end = -1;      /* logical end of disk, in bytes */
+static int dsk_isblkdev = 0;    /* underlying storage is block device */
 
 /** Open/create a virtual disk backed by a block device or image file.
  * 
@@ -54,31 +62,77 @@ static off_t dsk_end = -1;      /* logical end of disk, in bytes */
  *                          dsk_read()/dsk_write() to determine the actual
  *                          read/write position.
  * 
- * @param[in]   ro          If != 0, open the device/file in read-only mode.
+ * @param[in]   create      If != 0, create a new disk image file. If
+ *                          specified, the target file must *not* exist.
+ *                          Ignored if the filename specifies a block device.
+ * 
+ * @param[in]   ro          If != 0, open the device/image file in read-only
+ *                          mode.  Ignored if create != 0.
  */
-int dsk_open(const char *filename, off_t size, off_t offset, int ro)
+int dsk_open(const char *filename, off_t size, off_t offset, int create, int ro)
 {
-    int flags = (ro) ? O_RDONLY : O_RDWR;
-    if (!ro && size > 0 && access(filename, F_OK) != 0 && errno == ENOENT)
-        flags |= O_CREAT;
-    dsk_fd = open(filename, flags, 0666);
-    if (dsk_fd < 0)
-        return 0;
-    if (size <= 0) {
-        // TODO: use BLKGETSIZE64 ioctl to get size of device.
+    struct stat statbuf;
+    int oflags = (ro && !create) ? O_RDONLY : O_RDWR;
+
+    if (stat(filename, &statbuf) == 0) {
+        dsk_isblkdev = S_ISBLK(statbuf.st_mode);
+        /* image file must not exist when creating */
+        if (!dsk_isblkdev && create)
+            return -EEXIST;
     }
+    else {
+        if (errno != ENOENT || !create)
+            return 0;
+        dsk_isblkdev = 0;
+        oflags |= O_CREAT|O_EXCL;
+    }
+
+    dsk_fd = open(filename, oflags, 0666);
+    if (dsk_fd < 0)
+        return -errno;
+
+    if (dsk_isblkdev && size <= 0) {
+#if defined(__linux__)
+        uint64_t devsize;
+        if (ioctl(dsk_fd, BLKGETSIZE64, &devsize) >= 0) {
+            size = (devsize / BLKSIZE) - offset;
+        }
+#elif defined(__APPLE__)
+		uint32_t blocksize;
+        uint64_t blockcount;
+		if (ioctl(dev, DKIOCGETBLOCKSIZE, &blocksize) >= 0 &&
+            ioctl(dev, DKIOCGETBLOCKCOUNT, &blockcount) >= 0) {
+            size = ((blockcount * blockSize) / BLKSIZE) - offset;
+		}
+#endif
+    }
+
+    /* when creating, disk size must be known. */
+    if (create && size <= 0) {
+        dsk_close();
+        if (!dsk_isblkdev)
+            unlink(filename);
+        return -EINVAL;
+    }
+
     dsk_start = offset * BLKSIZE;
     dsk_setsize(size);
-    if ((flags & O_CREAT) != 0) {
+
+    /* if creating an image file, enlarge it to the size of the
+       virtual disk */
+    if (create && !dsk_isblkdev) {
         if (ftruncate(dsk_fd, dsk_end) != 0) {
+            int res = -errno;
             dsk_close();
-            return 0;
+            unlink(filename);
+            return res;
         }
     }
-    return 1;
+
+    return 0;
 }
 
-/** Close the filesystem device/image file.
+/** Close the virtual disk.
  */
 int dsk_close()
 {
@@ -86,36 +140,57 @@ int dsk_close()
         close(dsk_fd);
         dsk_fd = -1;
     }
-    return 1;
+    return 0;
 }
 
-/** Read data from the filesystem device/image file.
+/** Read data from the virtual disk.
  */
-int dsk_read(int blkno, void * buf, int count) 
+int dsk_read(off_t blkno, void * buf, int count) 
 {
     off_t blkoff = dsk_start + blkno * BLKSIZE;
     if (count < 0 || blkoff < dsk_start || (blkoff + count) > dsk_end)
         return 0;
     ssize_t res = pread(dsk_fd, buf, count, blkoff);
-    return (res == count);
-}
+    if (res < 0)
+        return -errno;
+    return (res == count) ? 0 : -EIO;
+ }
 
-/** Write data from the filesystem device/image file.
+/** Write data to the virtual disk.
  */
-int dsk_write(int blkno, void * buf, int count) 
+int dsk_write(off_t blkno, void * buf, int count) 
 {
     off_t blkoff = dsk_start + blkno * BLKSIZE;
     if (count < 0 || blkoff < dsk_start || (blkoff + count) > dsk_end)
         return 0;
     ssize_t res = pwrite(dsk_fd, buf, count, blkoff);
-    return (res == count);
+    if (res < 0)
+        return -errno;
+    return (res == count) ? 0 : -EIO;
 }
 
+/** Flush any outstanding writes to the underlying device/image file.
+ */
+int dsk_flush()
+{
+    if (fsync(dsk_fd) != 0)
+        return -errno;
+    return 0;
+}
+
+/** Return the logical size of the virtual disk, in 512-byte blocks.
+ * 
+ * A value of 0 is returned if the size is unknown.
+ */
 off_t dsk_getsize()
 {
     return dsk_size;
 }
 
+/** Set the logical size of the virtual disk, in 512-byte blocks.
+ * 
+ * A value of 0 indicates the size is unknown.
+ */
 void dsk_setsize(off_t size)
 {
     dsk_size = size;

@@ -227,22 +227,22 @@ static void v6_dsk_close(int16_t dev, int16_t flag)
 
 static void v6_dsk_strategy(struct buf *bp)
 {
-    /* Perform a synchronous read/write of the underlying device/image file
+    /* perform a synchronous read/write of the underlying device/image file
        by forwarding the operation to the dskio layer. */
     int ioRes;
     if ((bp->b_flags & B_READ) != 0)
         ioRes = dsk_read(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
     else
         ioRes = dsk_write(bp->b_blkno, bp->b_addr, -bp->b_wcount * 2);
-    if (!ioRes)
+    if (ioRes != 0)
     {
         bp->b_flags |= B_ERROR;
     }
 
-    /* Refresh the kernel's notion of time in case the I/O took awhile. */
+    /* refresh the kernel's notion of time in case the I/O took awhile. */
     v6_refreshclock();
 
-    /* Tell the v6 kernel that the I/O is complete. */
+    /* tell the v6 kernel that the I/O is complete. */
 	v6_iodone(bp);
 }
 

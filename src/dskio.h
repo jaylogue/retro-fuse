@@ -21,10 +21,11 @@
 #ifndef __DSKIO_H__
 #define __DSKIO_H__
 
-extern int dsk_open(const char *filename, off_t size, off_t offset, int ro);
+extern int dsk_open(const char *filename, off_t size, off_t offset, int create, int ro);
 extern int dsk_close();
-extern int dsk_read(int blkno, void * buf, int byteCount);
-extern int dsk_write(int blkno, void * buf, int byteCount);
+extern int dsk_read(off_t blkno, void * buf, int byteCount);
+extern int dsk_write(off_t blkno, void * buf, int byteCount);
+extern int dsk_flush();
 extern off_t dsk_getsize();
 extern void dsk_setsize(off_t size);
 

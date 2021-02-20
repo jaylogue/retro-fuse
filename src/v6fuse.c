@@ -99,38 +99,29 @@ static const char *v6fuse_cmdname;
 static int v6fuse_parsemapopt(const char *arg)
 {
     long hostid, v6id;
-    const char *idtype;
+    char idtype;
     int res;
-
-    if (strncasecmp(arg, "mapuid", 6) == 0) {
-        idtype = "uid";
-    }
-    else if (strncasecmp(arg, "mapgid", 6) == 0) {
-        idtype = "gid";
-    }
-    else
-        return -1; /* shouldn't happen */
-    
-    arg += 6;
-
     int matchend = -1;
-    res = sscanf(arg, " = %ld : %ld %n", &hostid, &v6id, &matchend);
-    if (res != 2 || arg[matchend] != 0) {
-        fprintf(stderr, "%s: ERROR: invalid %s mapping option: expected -o map%s=<host-%s>:<fs-%s>\n", v6fuse_cmdname, idtype, idtype, idtype, idtype);
+
+    res = sscanf(arg, " map%cid = %ld : %ld %n", &idtype, &hostid, &v6id, &matchend);
+    if (res != 3 || arg[matchend] != 0) {
+        fprintf(stderr, "%s: ERROR: invalid user/group mapping option: -o %s\nExpected -o map%cid=<host-id>:<fs-id>\n", 
+                v6fuse_cmdname, arg, idtype);
         return -1;
     }
 
     if (hostid < 0) {
-        fprintf(stderr, "%s: ERROR: invalid %s mapping option: host %s value out of range (expected >= 0)\n", v6fuse_cmdname, idtype, idtype);
+        fprintf(stderr, "%s: ERROR: invalid user/group mapping option: -o %s\nHost id value out of range (expected >= 0)\n", v6fuse_cmdname, arg);
         return -1;
     }
 
     if (v6id < 0 || v6id > 255) {
-        fprintf(stderr, "%s: ERROR: invalid %s mapping option: filesystem %s value out of range (expected 0-255)\n", v6fuse_cmdname, idtype, idtype);
+        fprintf(stderr, "%s: ERROR: invalid user/group mapping option: -o %s\nFilesystem id value out of range (expected 0-255)\n", v6fuse_cmdname, arg);
         return -1;
     }
 
-    if (strcmp(idtype, "uid") == 0)
+    idtype = tolower(idtype);
+    if (idtype == 'u')
         res = v6fs_adduidmap((uid_t)hostid, (char)v6id);
     else
         res = v6fs_addgidmap((uid_t)hostid, (char)v6id);
@@ -139,36 +130,31 @@ static int v6fuse_parsemapopt(const char *arg)
     case 0:
         return 0;
     case -EOVERFLOW:
-        fprintf(stderr, "%s: ERROR: too many %s mapping entries\n", v6fuse_cmdname, idtype);
+        fprintf(stderr, "%s: ERROR: too many %s mapping entries\n", v6fuse_cmdname, (idtype == 'u') ? "user" : "group");
         return -1;
     default:
-        fprintf(stderr, "%s: ERROR: failed to add %s mapping: %s\n", v6fuse_cmdname, idtype, strerror(-res));
+        fprintf(stderr, "%s: ERROR: failed to add %s mapping: %s\n", v6fuse_cmdname, (idtype == 'u') ? "user" : "group", strerror(-res));
         return -1;
     }
 }
 
 static int v6fuse_parseinitopt(struct v6fuse_config *cfg, const char *arg)
 {
-    if (strncasecmp(arg, "initfs", 6) != 0)
-        return -1; /* shouldn't happen */
-    
-    arg += 6;
-
     cfg->initfs = 1;
     cfg->isize = 0;
     cfg->flparams.n = 1;
     cfg->flparams.m = 1;
 
     int matchend = -1;
-    int scanres = sscanf(arg, " %n= %" SCNu16 " %n: %" SCNu16 " : %" SCNu16 " %n",
+    int scanres = sscanf(arg, " initfs %n= %" SCNu16 " %n: %" SCNu16 " : %" SCNu16 " %n",
                          &matchend, &cfg->isize, &matchend, &cfg->flparams.n, &cfg->flparams.m, &matchend);
-    /* got -oinitfs ? */
+    /* match -oinitfs */
     if (scanres == EOF && arg[matchend] == 0)
         return 0;
-    /* got -oinitfs=<isize> ? */
+    /* match -oinitfs=<isize> */
     if (scanres == 1 && arg[matchend] == 0)
         return 0;
-    /* got -oinitfs=<isize>:<n>:<m> ? */
+    /* match -oinitfs=<isize>:<n>:<m> */
     if (scanres == 3 && arg[matchend] == 0) {
         if (cfg->flparams.n < 1 || cfg->flparams.n > 100) {
             fprintf(stderr, "%s: ERROR: invalid initfs option: free list parameter n must be between 1 and 100\n", v6fuse_cmdname);
@@ -508,6 +494,8 @@ int main(int argc, char *argv[])
     else
         v6fuse_cmdname++;
 
+    /* parse options specific to v6fs and store results in cfg.
+       other options are parsed by fuse_mount() and fuse_new() below. */
     if (fuse_opt_parse(&args, &cfg, v6fuse_options, v6fuse_parseopt) == -1)
         goto exit;
 
@@ -531,63 +519,98 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
+    /* if initializing a new filesystem ... */
     if (cfg.initfs) {
-        // TODO: fix this so that fssize isn't required when using a block device.
-        if (cfg.fssize == 0) {
-            fprintf(stderr, "%s: ERROR: Missing -ofssize option\nThe size of the filesystem must be specified when using -oinitfs\n", v6fuse_cmdname);
+
+        if (cfg.fssize > UINT16_MAX) {
+            fprintf(stderr, "%s: ERROR: Specified filesystem size is too big (must be <= 65535)\n", v6fuse_cmdname);
             goto exit;
         }
 
-        // TODO: fix this to not fail when using a block device.
-        if (access(cfg.dskfilename, F_OK) == 0) {
-            fprintf(stderr, "%s: ERROR: Filesystem image file exists: %s\nTo prevent accidents, the filesystem image file must NOT existing when using -oinitfs.", v6fuse_cmdname, cfg.dskfilename);
+        /* create a new disk image file or open the underlying block device */
+        res = dsk_open(cfg.dskfilename, cfg.fssize, cfg.fsoffset, 1, 0);
+        if (res != 0) {
+            if (res == -EEXIST)
+                fprintf(stderr, "%s: ERROR: Filesystem image file exists: %s\nTo prevent accidents, the filesystem image file must NOT exist when using -oinitfs.", v6fuse_cmdname, cfg.dskfilename);
+            else if (res == -EINVAL)
+                fprintf(stderr, "%s: ERROR: Missing -o fssize option\nThe size of the filesystem must be specified when using -oinitfs\n", v6fuse_cmdname);
+            else
+                fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", v6fuse_cmdname, strerror(-res));
             goto exit;
         }
 
-        if (!dsk_open(cfg.dskfilename, cfg.fssize, cfg.fsoffset, 0)) {
-            fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", v6fuse_cmdname, strerror(errno));
+        /* get the final filesystem size.  this value may have been determined by the 
+           the size of the underlying block device. */
+        off_t fssize = dsk_getsize();
+
+        /* verify the filesystem size is sane and does not exceed the capabilities of the v6 code. */
+        if (fssize < 5) {
+            fprintf(stderr, "%s: ERROR: Filesystem size is too small.  Use -o fssize option to specify a size >= 5 blocks.\n", v6fuse_cmdname);
+            goto exit;
+        }
+        if (fssize > INT16_MAX) {
+            fprintf(stderr, "%s: ERROR: Filesystem size is too big.  Use -o fssize option to specify a size <= 32767 blocks.\n", v6fuse_cmdname);
             goto exit;
         }
 
-        res = v6fs_mkfs(cfg.isize, &cfg.flparams);
-        dsk_close();
+        /* verify the request number of inode blocks is sane. */
+        if (cfg.isize > (fssize - 4)) {
+            fprintf(stderr, "%s: ERROR: Specified inode table size too big.  Must be <= filesystem size - 4 blocks.\n", v6fuse_cmdname);
+            goto exit;
+        }
+
+        /* initialize the new filesystem with the specified parameters. */
+        res = v6fs_mkfs((uint16_t)fssize, (uint16_t)cfg.isize, &cfg.flparams);
         if (res != 0) {
             fprintf(stderr, "%s: ERROR: Failed to initialize filesystem: %s\n", v6fuse_cmdname, strerror(-res));
             goto exit;
         }
+
+        /* close the virtual disk containing the new filesystem */
+        dsk_close();
     }
 
+    /* verify access to the underlying block device/image file. */
     if (access(cfg.dskfilename, cfg.readonly ? R_OK : R_OK|W_OK) != 0) {
         fprintf(stderr, "%s: ERROR: Unable to access disk/image file: %s\n%s\n", v6fuse_cmdname, cfg.dskfilename, strerror(errno));
         goto exit;
     }
 
+    /* create the FUSE mount point */
     chan = fuse_mount(cfg.mountpoint, &args);
     if (chan == NULL) {
         fprintf(stderr, "%s: ERROR: Failed to mount FUSE filesystem: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
     }
 
+    /* initialize a new FUSE session */
     fuse = fuse_new(chan, &args, &v6fuse_ops, sizeof(v6fuse_ops), &cfg);
     if (fuse == NULL) {
         fprintf(stderr, "%s: ERROR: Failed to initialize FUSE connection: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
     }
 
-    /* initialize disk i/o subssytem */
-    if (!dsk_open(cfg.dskfilename, cfg.fssize, cfg.fsoffset, cfg.readonly)) {
-        fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", v6fuse_cmdname, strerror(errno));
+    /* open the underlying block device/image file */
+    res = dsk_open(cfg.dskfilename, cfg.fssize, cfg.fsoffset, 0, cfg.readonly);
+    if (res != 0) {
+        fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", v6fuse_cmdname, strerror(-res));
         goto exit;
     }
 
-    /* initialize the unix kernel data structures */
-    v6fs_init(cfg.readonly);
+    /* 'mount' the v6 filesystem */
+    res = v6fs_init(cfg.readonly);
+    if (res != 0) {
+        fprintf(stderr, "%s: ERROR: Failed to mount v6 filesystem: %s\n", v6fuse_cmdname, strerror(-res));
+        goto exit;
+    }
 
+    /* run as a background process, unless told not to */
     if (fuse_daemonize(cfg.foreground) != 0) {
         fprintf(stderr, "%s: ERROR: Failed to daemonize FUSE process: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
     }
 
+    /* arrange for standard handling of process signals */
     session = fuse_get_session(fuse);
     if (fuse_set_signal_handlers(session) != 0) {
         fprintf(stderr, "%s: ERROR: Failed to set FUSE signal handlers: %s\n", v6fuse_cmdname, strerror(errno));
@@ -595,6 +618,7 @@ int main(int argc, char *argv[])
     }
     sighandlersset = 1;
 
+    /* process filesystem requests until told to stop */
     if (fuse_loop(fuse) != 0) {
         fprintf(stderr, "%s: ERROR: fuse_loop() failed: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
