@@ -54,25 +54,25 @@ v6fs accepts the standard set of options supported by the mount(8) command, as w
 
 Here is a summary of some of the more useful options:
 
-``-o ro`` ::
+``**-o ro**`` ::
 
 Mount the filesystem in read-only mode.
 
-``-o rw`` ::
+``**-o rw**`` ::
 
 Mount the filesystem in read-write mode.  This is the default.
 
-``-o allow_root`` ::
+``**-o allow_root**`` ::
 
 Allow the root user to access the filesystem, in addition to the
 mounting user.  Mutually exclusive with the ``allow_other`` option.
 
-``-o allow_other`` ::
+``**-o allow_other**`` ::
 
 Allow any user to access the filesystem, including root and the mounting user.  Mutually exclusive with the ``allow_root`` option.
 
-``-o mapuid=_<host-uid>_:__<fs-uid>__ `` ::
-``-o mapgid=_<host-gid>_:__<fs-gid>__ `` ::
+``**-o mapuid=_<host-uid>_:__<fs-uid>__ **`` ::
+``**-o mapgid=_<host-gid>_:__<fs-gid>__ **`` ::
 
 Map a particular user or group id on the host system to different
 id on the mounted filesystem. This is useful when accessing a filesystem
@@ -83,18 +83,18 @@ host id whenever a file is stat()ed or a directory is read.
 +
 Multiple mapping options may be given, up to a limit of 100.
 
-``-o fssize=_<blocks>_`` ::
+``**-o fssize=_<blocks>_**`` ::
 
 The size of the filesystem, in 512-byte blocks. This is used to
 limit I/O on the underlying device/image file, e.g. to protect against the case where the filesystem contains malformed block pointers.  Defaults to the size given in the filesystem superblock.
 
-``-o fsoffset=_<blocks>_`` ::
+``**-o fsoffset=_<blocks>_**`` ::
 
 Offset into the device/image at which the filesystem starts, in 512-byte blocks.  Defaults to 0.
 
-``-o initfs`` ::
-``-o initfs=__<isize>__`` ::
-``-o initfs=__<isize>__:__<n>__:__<m>__`` ::
+``**-o initfs**`` ::
+``**-o initfs=__<isize>__**`` ::
+``**-o initfs=__<isize>__:__<n>__:__<m>__**`` ::
 
 Create an empty filesystem on the underlying device/image file before
 mounting.  When using the initfs option on an image file, the size of
@@ -110,23 +110,23 @@ Traditionally, the v6 mkfs command used n=10,m=4 for rp devices, 24,3
 for rk devices, and 1,1 (i.e. no interleave) for all other devices.
 If not specified, no interleave is used.
 
-``-f`` ::
-``--foreground`` ::
+``**-f**`` ::
+``**--foreground**`` ::
 
 Run in foreground (useful for debugging).
 
-``-d`` ::
-``--debug`` ::
+``**-d**`` ::
+``**--debug**`` ::
 
 Enable debug output to stderr (implies -f)
 
-``-V`` ::
-``--version`` ::
+``**-V**`` ::
+``**--version**`` ::
 
 Print version information
 
-``-h`` ::
-``--help`` ::
+``**-h**`` ::
+``**--help**`` ::
 
 Print usage information.
 
