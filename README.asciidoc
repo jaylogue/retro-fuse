@@ -13,7 +13,7 @@ fidelity of the on-disk structures.
 *retro-fuse* provides support for a broad array of modern filesystem operations on
 top the basic capabilities of the original code.  This includes support for modern rename(2) semantics and filesystem statistics gathering (e.g. via df(1)).  Additionally, the code provides a modern C API, making it possible to incorporate ancient filesystem access into other projects.
 
-The current version of *retro-fuse* runs on Linux.  Support for MacOS is in the works (c. 2021/02).
+The current version of *retro-fuse* runs on Linux.  Support for MacOS is in the works (as of 2021/02).
 
 ## Building
 
@@ -78,16 +78,15 @@ Map a particular user or group id on the host system to different
 id on the mounted filesystem. This is useful when accessing a filesystem
 containing files owned by root or other special users. +
 +
-The specified id mapping applies both ways. Specifically, the uid/gid on the host is mapped to the corresponding id when performing access control checking, or when the id is stored in an inode. Conversely, the filesystem id is mapped to the
-host system id whenever a file is stat()ed or a directory is read.+
+The specified id mapping applies both ways. Specifically, the uid/gid on the host is mapped to the corresponding id in the filesystem when performing access control checking, or when the id is stored with a file or directory. Conversely, the filesystem id is mapped to the
+host id whenever a file is stat()ed or a directory is read.
 +
 Multiple mapping options may be given, up to a limit of 100.
 
 ``-o fssize=_<blocks>_`` ::
 
 The size of the filesystem, in 512-byte blocks. This is used to
-limit I/O on the underlying device/image file, e.g. to protect against the case where the filesystem contains malformed block pointers.  Defaults to the
-size given in the filesystem superblock.
+limit I/O on the underlying device/image file, e.g. to protect against the case where the filesystem contains malformed block pointers.  Defaults to the size given in the filesystem superblock.
 
 ``-o fsoffset=_<blocks>_`` ::
 
@@ -99,12 +98,12 @@ Offset into the device/image at which the filesystem starts, in 512-byte blocks.
 
 Create an empty filesystem on the underlying device/image file before
 mounting.  When using the initfs option on an image file, the size of
-the filesystem must be specified via the ``fssize`` option.+
+the filesystem must be specified via the ``fssize`` option.
 +
 __isize__ gives the size of the filesystem's inode table in 512-byte
 blocks (32 inodes per block).  If not specified, or if 0 is given,
 the size of the inode table is computed automatically from the size
-of the filesystem, using the formula from the v6 mkfs(8) command.+
+of the filesystem, using the formula from the v6 mkfs(8) command.
 +
 __n__ and __m__ are the interleave parameters for the initial free block list.
 Traditionally, the v6 mkfs command used n=10,m=4 for rp devices, 24,3
