@@ -51,6 +51,7 @@ extern ssize_t v6fs_pwrite(int fd, const void *buf, size_t count, off_t offset);
 extern int v6fs_truncate(const char *pathname, off_t length);
 extern int v6fs_stat(const char *pathname, struct stat *statbuf);
 extern int v6fs_unlink(const char *pathname);
+extern int v6fs_rename(const char *oldpath, const char *newpath);
 extern int v6fs_chmod(const char *pathname, mode_t mode);
 extern int v6fs_chown(const char *pathname, uid_t owner, gid_t group);
 extern int v6fs_utimens(const char *filename, const struct timespec times[2]);

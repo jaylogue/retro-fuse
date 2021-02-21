@@ -425,6 +425,12 @@ static int v6fuse_unlink(const char *pathname)
     return v6fs_unlink(pathname);
 }
 
+static int v6fuse_rename(const char *oldpath, const char *newpath)
+{
+    v6fuse_setfscontext();
+    return v6fs_rename(oldpath, newpath);
+}
+
 static int v6fuse_chmod(const char *pathname, mode_t mode)
 {
     v6fuse_setfscontext();
@@ -468,6 +474,7 @@ static const struct fuse_operations v6fuse_ops =
     .rmdir      = v6fuse_rmdir,
     .link       = v6fuse_link,
     .unlink     = v6fuse_unlink,
+    .rename     = v6fuse_rename,
     .chmod      = v6fuse_chmod,
     .chown      = v6fuse_chown,
     .utimens    = v6fuse_utimens,
@@ -531,7 +538,7 @@ int main(int argc, char *argv[])
         res = dsk_open(cfg.dskfilename, cfg.fssize, cfg.fsoffset, 1, 0);
         if (res != 0) {
             if (res == -EEXIST)
-                fprintf(stderr, "%s: ERROR: Filesystem image file exists: %s\nTo prevent accidents, the filesystem image file must NOT exist when using -oinitfs.", v6fuse_cmdname, cfg.dskfilename);
+                fprintf(stderr, "%s: ERROR: Filesystem image file exists: %s\nTo prevent accidents, the filesystem image file must NOT exist when using -oinitfs.\n", v6fuse_cmdname, cfg.dskfilename);
             else if (res == -EINVAL)
                 fprintf(stderr, "%s: ERROR: Missing -o fssize option\nThe size of the filesystem must be specified when using -oinitfs\n", v6fuse_cmdname);
             else

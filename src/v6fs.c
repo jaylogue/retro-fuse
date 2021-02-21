@@ -68,7 +68,9 @@ static struct IDMapEntry v6fs_gidmap[V6FS_MAX_ID_MAP_ENTRIES];
 
 static void v6fs_initfreelist(struct v6_filsys *fp, uint16_t n, uint16_t m);
 static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statbuf);
-static int v6fs_isdirlink(const char *entryname, const struct stat *statbuf, void *context);
+static int v6fs_isindir(const char *pathname, int16_t dirnum);
+static int v6fs_failnonemptydir(const char *entryname, const struct stat *statbuf, void *context);
+static int v6fs_isdirlinkpath(const char *pathname);
 static char v6fs_maphostid(uint32_t hostid, const struct IDMapEntry *table, size_t count);
 static uint32_t v6fs_mapv6id(char v6id, const struct IDMapEntry *table, size_t count);
 static inline char v6fs_maphostuid(uid_t hostuid) { return v6fs_maphostid((uint32_t)hostuid, v6fs_uidmap, v6fs_uidmapcount); }
@@ -574,6 +576,125 @@ int v6fs_unlink(const char *pathname)
     return -u.u_error;
 }
 
+/** Rename or move a file/directory.
+ */
+int v6fs_rename(const char *oldpath, const char *newpath)
+{
+    struct inode *oldip = NULL, *newip = NULL;
+    int res = 0;
+    int rmdirnew = 0;
+    int unlinknew = 0;
+    char preveuid = u.u_uid;
+
+    v6_refreshclock();
+    u.u_error = 0;
+
+    /* get the inode for the source file/dir */
+    u.u_dirp = (char *)oldpath;
+    oldip = v6_namei(&v6_schar, 0);
+    if (oldip == NULL) {
+        res = -u.u_error;
+        goto exit;
+    }
+    oldip->i_flag &= ~ILOCK;
+
+    /* disallow renaming the root directory, or from/to any directory with the
+       name '.' or '..' */
+    if (oldip->i_number == ROOTINO || v6fs_isdirlinkpath(oldpath) || v6fs_isdirlinkpath(newpath)) {
+        res = -EBUSY;
+        goto exit;
+    }
+
+    /* get the inode for the destination file/dir, if it exists */
+    u.u_dirp = (char *)newpath;
+    newip = v6_namei(&v6_schar, 0);
+    if (oldip == NULL && u.u_error != ENOENT) {
+        res = -u.u_error;
+        goto exit;
+    }
+
+    /* if the destination exists... */
+    if (newip != NULL) {
+        /* if source and destination refer to the same file/dir, then
+           per rename(2) semantics, do nothing */
+        if (oldip->i_number == newip->i_number)
+            goto exit;
+        /* if destination is a directory ... */
+        if ((newip->i_mode & IFMT) == IFDIR) {
+            /* fail if source is not also a directory ... */
+            if ((oldip->i_mode & IFMT) != IFDIR) {
+                res = -EISDIR;
+                goto exit;
+            }
+            /* arrange to remove the destination directory before renaming the source. */
+            rmdirnew = 1;
+        }
+        else {
+            /* otherwise, destination is a file, so fail if source is a directory */
+            if ((oldip->i_mode & IFMT) == IFDIR) {
+                res = -ENOTDIR;
+                goto exit;
+            }
+            /* arrange to remove the destination file before renaming the source */
+            unlinknew = 1;
+        }
+
+        v6_iput(newip);
+        newip = NULL;
+    }
+
+    /* if source is a directory ... */
+    if ((oldip->i_mode & IFMT) == IFDIR) {
+        /* fail if destination is a child of source */
+        res = v6fs_isindir(newpath, oldip->i_number);
+        if (res < 0)
+            goto exit;
+        if (res) {
+            res = -EINVAL;
+            goto exit;
+        }
+    }
+
+    v6_iput(oldip);
+    oldip = NULL;
+
+    /* if needed, remove an existing directory with the same name as the destination.
+       if the directory is not empty, this will fail. */
+    if (rmdirnew) {
+        res = v6fs_rmdir(newpath);
+        if (res < 0)
+            goto exit;
+    }
+
+    /* if needed, remove an existing file with the same name as the destination.
+     */
+    if (unlinknew) {
+        res = v6fs_unlink(newpath);
+        if (res < 0)
+            goto exit;
+    }
+
+    /* perform the following as "set-uid" root. this allows creating addition temporary
+       links to source directory. */
+    u.u_uid = 0;
+
+    /* create destination file/dir as a link to the source */
+    res = v6fs_link(oldpath, newpath);
+    if (res < 0)
+        goto exit;
+
+    /* remove the source */
+    res = v6fs_unlink(oldpath);
+
+exit:
+    if (oldip != NULL)
+        v6_iput(oldip);
+    if (newip != NULL)
+        v6_iput(newip);
+    u.u_uid = preveuid;
+    return res;
+}
+
 /** Change permissions of a file.
  */
 int v6fs_chmod(const char *pathname, mode_t mode)
@@ -718,6 +839,7 @@ int v6fs_mkdir(const char *pathname, mode_t mode)
     char *namebuf;
     char *parentname;
     int dircreated = 0;
+    char preveuid = u.u_uid;
 
     v6_refreshclock();
     u.u_error = 0;
@@ -801,7 +923,7 @@ exit:
 
         v6fs_unlink(pathname);
     }
-    u.u_uid = u.u_ruid;
+    u.u_uid = preveuid;
     free(namebuf);
     free(parentname);
     return res;
@@ -815,6 +937,7 @@ int v6fs_rmdir(const char *pathname)
     int res;
     char *dirname;
     char *namebuf;
+    char preveuid = u.u_uid;
 
     namebuf = (char *)malloc(strlen(pathname) + 4);
     
@@ -833,7 +956,7 @@ int v6fs_rmdir(const char *pathname)
     }
 
     /* verify directory is empty */
-    res = v6fs_enumdir(pathname, v6fs_isdirlink, NULL);
+    res = v6fs_enumdir(pathname, v6fs_failnonemptydir, NULL);
     if (res < 0)
         goto exit;
 
@@ -843,6 +966,9 @@ int v6fs_rmdir(const char *pathname)
         res = -EINVAL;
         goto exit;
     }
+
+    /* perform the following as "set-uid" root */
+    u.u_uid = 0;
 
     strcpy(namebuf, pathname);
     strcat(namebuf, "/..");
@@ -860,6 +986,7 @@ int v6fs_rmdir(const char *pathname)
 
 exit:
     free(namebuf);
+    u.u_uid = preveuid;
     return res;
 }
 
@@ -983,7 +1110,7 @@ int v6fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
        Like the superblock, an index block also contains a table of 100 block
        numbers (starting at offset 2) and a count of the number table entries
        that actually contain free blocks (located at offset 0).  Similarly, the
-       first poistion in the table is also used to point to a subsequent index
+       first position in the table is also used to point to a subsequent index
        block in cases where there are more than 99 additional free blocks. Thus
        index blocks are strung together to form a chain of groups of 100 free
        blocks.
@@ -1172,11 +1299,47 @@ static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statb
     statbuf->st_mtime = ((time_t)(uint16_t)v6statbuf->modtime[0]) << 16 | (uint16_t)v6statbuf->modtime[1];
 }
 
-static int v6fs_isdirlink(const char *entryname, const struct stat *statbuf, void *context)
+static int v6fs_isindir(const char *pathname, int16_t dirnum)
+{
+    char *pathnamecopy, *p;
+    int res = 0;
+
+    pathnamecopy = strdup(pathname);
+    if (pathnamecopy == NULL)
+        return 1;
+
+    p = pathnamecopy;
+    do {
+        p = dirname(p);
+        u.u_dirp = p;
+        struct inode *ip = v6_namei(&v6_uchar, 1);
+        if (ip != NULL) {
+            res = (ip->i_number == dirnum);
+            v6_iput(ip);
+        }
+        else if (u.u_error != ENOENT)
+            res = -u.u_error;
+    } while (!res && strcmp(p, "/") != 0 && strcmp(p, ".") != 0);
+
+    free(pathnamecopy);
+    return res;
+}
+
+static int v6fs_failnonemptydir(const char *entryname, const struct stat *statbuf, void *context)
 {
     if ((statbuf->st_mode & S_IFMT) == S_IFDIR && (strcmp(entryname, ".") == 0 || strcmp(entryname, "..") == 0))
         return 0;
     return -ENOTEMPTY;
+}
+
+static int v6fs_isdirlinkpath(const char *pathname)
+{
+    const char * p = strrchr(pathname, '/');
+    if (p == NULL)
+        p = pathname;
+    else
+        p++;
+    return (strcmp(p, ".") == 0 || strcmp(p, "..") == 0);
 }
 
 static char v6fs_maphostid(uint32_t hostid, const struct IDMapEntry *table, size_t count)
