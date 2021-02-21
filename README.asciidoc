@@ -52,82 +52,82 @@ The first argument to v6fs is the storage location of the filesystem.  This can 
 
 v6fs accepts the standard set of options supported by the mount(8) command, as well as the FUSE mount options described in mount.fuse(8).  Additionally, it provides its own set of options useful for dealing with ancient filesystems.
 
-Here is a summary of the most useful options:
+Here is a summary of some of the more useful options:
 
-``-o fssize=_<blocks>_``
+``-o ro`` ::
+
+Mount the filesystem in read-only mode.
+
+``-o rw`` ::
+
+Mount the filesystem in read-write mode.  This is the default.
+
+``-o allow_root`` ::
+
+Allow the root user to access the filesystem, in addition to the
+mounting user.  Mutually exclusive with the ``allow_other`` option.
+
+``-o allow_other`` ::
+
+Allow any user to access the filesystem, including root and the mounting user.  Mutually exclusive with the ``allow_root`` option.
+
+``-o mapuid=_<host-uid>_:__<fs-uid>__ `` ::
+``-o mapgid=_<host-gid>_:__<fs-gid>__ `` ::
+
+Map a particular user or group id on the host system to different
+id on the mounted filesystem. This is useful when accessing a filesystem
+containing files owned by root or other special users. +
++
+The specified id mapping applies both ways. Specifically, the uid/gid on the host is mapped to the corresponding id when performing access control checking, or when the id is stored in an inode. Conversely, the filesystem id is mapped to the
+host system id whenever a file is stat()ed or a directory is read.+
++
+Multiple mapping options may be given, up to a limit of 100.
+
+``-o fssize=_<blocks>_`` ::
 
 The size of the filesystem, in 512-byte blocks. This is used to
 limit I/O on the underlying device/image file, e.g. to protect against the case where the filesystem contains malformed block pointers.  Defaults to the
 size given in the filesystem superblock.
 
-``-o fsoffset=_<blocks>_``
+``-o fsoffset=_<blocks>_`` ::
 
 Offset into the device/image at which the filesystem starts, in 512-byte blocks.  Defaults to 0.
 
-``-o ro``
-
-Mount the filesystem in read-only mode.
-
-``-o rw``
-
-Mount the filesystem in read-write mode.  This is the default.
-
-``-o allow_root``
-
-Allow the root user to access the filesystem, in addition to the
-mounting user.  Mutually exclusive with the ``allow_other`` option.
-
-``-o allow_other``
-
-Allow any user to access the filesystem, including root and the mounting user.  Mutually exclusive with the ``allow_root`` option.
-
-``-o mapuid=_<host-uid>_:__<fs-uid>__ `` +
-``-o mapgid=_<host-gid>_:__<fs-gid>__ ``
-
-Map a particular user or group id on the host system to different
-id on the mounted filesystem. This is useful when accessing a filesystem
-containing files owned by root or other special users.
-
-The specified id mapping applies both ways. Specifically, the uid/gid on the host is mapped to the corresponding id when performing access control checking, or when the id is stored in an inode. Conversely, the filesystem id is mapped to the
-host system id whenever a file is stat()ed or a directory is read.
-
-Multiple mapping options may be given, up to a limit of 100.
-
-``-o initfs`` +
-``-o initfs=__<isize>__`` +
-``-o initfs=__<isize>__:__<n>__:__<m>__``
+``-o initfs`` ::
+``-o initfs=__<isize>__`` ::
+``-o initfs=__<isize>__:__<n>__:__<m>__`` ::
 
 Create an empty filesystem on the underlying device/image file before
 mounting.  When using the initfs option on an image file, the size of
-the filesystem must be specified via the ``fssize`` option.
-
+the filesystem must be specified via the ``fssize`` option.+
++
 __isize__ gives the size of the filesystem's inode table in 512-byte
 blocks (32 inodes per block).  If not specified, or if 0 is given,
 the size of the inode table is computed automatically from the size
-of the filesystem, using the formula from the v6 mkfs(8) command.
-
+of the filesystem, using the formula from the v6 mkfs(8) command.+
++
 __n__ and __m__ are the interleave parameters for the initial free block list.
 Traditionally, the v6 mkfs command used n=10,m=4 for rp devices, 24,3
 for rk devices, and 1,1 (i.e. no interleave) for all other devices.
 If not specified, no interleave is used.
 
-``-f`` +
-``--foreground``
+``-f`` ::
+``--foreground`` ::
 
 Run in foreground (useful for debugging).
 
-``-d`` +
-``--debug``
+``-d`` ::
+``--debug`` ::
 
 Enable debug output to stderr (implies -f)
 
-``-V`` +
-``--version``
+``-V`` ::
+``--version`` ::
 
 Print version information
 
-``-h`` +
-``--help``
+``-h`` ::
+``--help`` ::
 
 Print usage information.
 
@@ -138,7 +138,7 @@ The *retro-fuse* code has the following structure:
 
 image::doc/v6fs-architecture.png[align="center"]
 
-*v6* (ancient-src/v6/...) -- Modernized ancient Unix code.  Modifications to the ancient kernel code are purposefully minimal, and consist mostly of syntatical and type compatibility changes. Additionally, a series of #defines and selective hand editing is used to prefix functions and global variables with "v6_" to avoid conflicts with similarly named modern constructs.
+*v6* (ancient-src/v6/+*.[ch]+) -- Modernized ancient Unix source code.  Modifications to the ancient kernel code are purposefully minimal, and consist mostly of syntatical and type compatibility changes. Additionally, a series of #defines and selective hand editing is used to prefix functions and global variables with "v6_", so as to avoid conflicts with similarly named modern constructs.
 
 *v6adapt* (src/v6adapt.[ch]) -- Code supporting the modernized kernel code.  This includes replacements for various Unix v6 functions that either require significantly different behavior in the *retro-fuse* context, or were originally written in PDP-11 assembly.
 
