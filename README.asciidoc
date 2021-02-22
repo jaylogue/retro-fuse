@@ -1,5 +1,4 @@
-retro-fuse
-==========
+= retro-fuse
 
 A user-space filesystem (FUSE) for accessing ancient Unix filesystems.
 
@@ -16,7 +15,7 @@ top the basic capabilities of the original code.  This includes support for mode
 
 The current version of *retro-fuse* runs on Linux.  Support for MacOS is in the works (as of 2021/02).
 
-== Building
+## Building
 
 *retro-fuse* requires the libfuse-dev package, which can be installed on Ubuntu/debian-based systems as follows:
 
@@ -34,7 +33,7 @@ $ make
 
 This produces an executable called ``v6fs``.  This program can be run directly, or it can be installed into ``/usr/local/sbin``, which will allow v6 filesystems to be mounted using the standard mount(8) command (via the ``-t fuse.v6fs`` option).
 
-== Usage
+## Usage
 
 To mount a v6 filesystem, run the v6fs command as follows:
 
@@ -49,7 +48,7 @@ When executed directly, the v6fs program can be run by a non-root user. This is 
 The first argument to v6fs is the storage location of the filesystem.  This can be a regular file containing an image of the filesystem, or a standard Unix block device.  In the case of a block device, it may be useful to specify an offset to the start of the filesystem using the ``-o fsoffset`` option.
 
 
-=== _Options_
+### _Options_
 
 v6fs accepts the standard set of options supported by the mount(8) command, as well as the FUSE mount options described in mount.fuse(8).  Additionally, it provides its own set of options useful for dealing with ancient filesystems.
 
@@ -131,52 +130,58 @@ Print version information
 
 Print usage information.
 
-=== _Examples_
+### _Examples_
 
 **Mount an image file containing v6 filesystem**
 
-```
+[source,bash]
+----
 $ v6fs root.dsk /mnt/tmp
-```
+----
 
 **Mount a v6 filesystem occupying a particular offset and size on a block device**
 
-```
+[source,bash]
+----
 $ v6fs -o fssize=4872,fsoffset=4194304 /dev/sdc /mnt/tmp
-```
+----
 
 **Mount a v6 filesystem, mapping the host's user id 1000 to uid 3 on the filesystem**
 
-```
+[source,bash]
+----
 $ v6fs -o mapuid=1000:33 root.dsk /mnt/tmp
-```
+----
 
 **Mount a v6 filesystem as root, allowing other users to access it**
 
-```
+[source,bash]
+----
 $ sudo v6fs -oallow_other root.dsk /mnt/tmp
-```
+----
 
 **Initialize and mount a new filesystem having the same size as a DEC RK05 disk**
 
-```
+[source,bash]
+----
 $ v6fs -o initfs,fssize=4872 scratch.dsk /mnt/tmp
-```
-NOTE: When using the ``initfs`` option with an image file, the file must _**not**_ exist when the command is invoked.
+----
+__NOTE -- When using the ``initfs`` option with an image file, the file must **not** exist when the command is invoked.__
 
 **Initialize and mount a new filesystem with a specific number of inode blocks**
 
-```
+[source,bash]
+----
 $ v6fs -o initfs=200,fssize=4872 scratch.dsk /mnt/tmp
-```
+----
 
-== Code Structure and Operation
+## Code Structure and Operation
 
 The *retro-fuse* code has the following structure:
 
 image::doc/v6fs-architecture.png[align="center"]
 
-=== _Source Modules_
+### _Source Modules_
 
 *v6* (ancient-src/v6/+*.[ch]+) -- Modernized ancient Unix source code.  Modifications to the ancient kernel code are purposefully minimal, and consist mostly of syntatical and type compatibility changes. Additionally, a series of #defines and selective hand editing is used to prefix functions and global variables with "v6_", so as to avoid conflicts with similarly named modern constructs.
 
@@ -190,6 +195,6 @@ image::doc/v6fs-architecture.png[align="center"]
 
 
 
-== License
+## License
 
 The modern portions of retro-fuse are licensed under the xref:LICENSE.txt[Apache 2.0 license].  Code derived from ancient Unix source is licensed under xref:Caldera-license.pdf[Caldera open source license].
