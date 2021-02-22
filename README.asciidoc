@@ -15,6 +15,8 @@ top the basic capabilities of the original code.  This includes support for mode
 
 The current version of *retro-fuse* runs on Linux.  Support for MacOS is in the works (as of 2021/02).
 
+
+
 ## Building
 
 *retro-fuse* requires the libfuse-dev package, which can be installed on Ubuntu/debian-based systems as follows:
@@ -32,6 +34,8 @@ $ make
 ----
 
 This produces an executable called ``v6fs``.  This program can be run directly, or it can be installed into ``/usr/local/sbin``, which will allow v6 filesystems to be mounted using the standard mount(8) command (via the ``-t fuse.v6fs`` option).
+
+
 
 ## Usage
 
@@ -177,6 +181,8 @@ __NOTE -- When using the ``initfs`` option with an image file, the file must **n
 $ v6fs -o initfs=200,fssize=4872 scratch.dsk /mnt/tmp
 ----
 
+
+
 ## Code Structure and Operation
 
 The *retro-fuse* code has the following structure:
@@ -185,15 +191,15 @@ image::doc/v6fs-architecture.png[align="center"]
 
 ### _Source Modules_
 
-*v6* (ancient-src/v6/+*.[ch]+) -- Modernized ancient Unix source code.  Modifications to the ancient kernel code are purposefully minimal, and consist mostly of syntatical and type compatibility changes. Additionally, a series of #defines and selective hand editing is used to prefix functions and global variables with "v6_", so as to avoid conflicts with similarly named modern constructs.
+*v6 kernel* (ancient-src/v6/+*.[ch]+) -- Modernized ancient Unix source code.  Modifications to the ancient kernel code are purposefully minimal, and consist mostly of syntatical and type compatibility changes. Additionally, a series of #defines and selective hand editing is used to prefix functions and global variables with "v6_", so as to avoid conflicts with similarly named modern constructs.
 
-*v6adapt* (src/v6adapt.[ch]) -- Code supporting the modernized kernel code.  This includes replacements for various Unix v6 functions that either require significantly different behavior in the *retro-fuse* context, or were originally written in PDP-11 assembly.
+*v6adapt* (src/v6adapt.[ch]) -- Code supporting the modernized kernel code. This includes replacements for various Unix functions that either require significantly different behavior in the *retro-fuse* context, or were originally written in PDP-11 assembly.
 
-*v6fs* (src/v6fs.[ch]) -- Provides a modern API for accessing v6 filesystems.  The v6fs API closely mimics the modern Unix filesystem API, with the notible exception that errors are returned as return values rather than via errno.  This API is designed such that it could be outside of the context of a FUSE filesystem.
+*v6fs* (src/v6fs.[ch]) -- Provides a modern API for accessing v6 filesystems. The v6fs API closely mimics the modern Unix filesystem API, with the notible exception that errors are returned as return values rather than via errno. This API is designed such that it could be reused outside of the context of a FUSE filesystem.
 
-*v6fuse* (src/v6fuse.c) -- Main program implementing the mountable FUSE filesystem.  Includes a variety of command-line options to make it easier to work with ancient filesystems.
+*v6fuse* (src/v6fuse.c) -- Main program implementing a mountable FUSE filesystem. The primary purpose of the v6fuse module is to handle filesystem I/O requests from the host kernel via the libfuse library. Implements a variety of command-line options to make it easier to work with ancient filesystems.
 
-*dsk* (src/dsk.[ch]) -- Provides a simple abstraction of a virtual block-oriented disk device.  Supports filesystems contained in image files as well as actual block devices (e.g. a MicroSD card).
+*dsk* (src/dsk.[ch]) -- Provides a simple abstraction of a virtual block-oriented disk device. Supports filesystems contained in image files as well as host block devices (e.g. a MicroSD card).
 
 
 
