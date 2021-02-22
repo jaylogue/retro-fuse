@@ -1,4 +1,5 @@
-# retro-fuse
+retro-fuse
+==========
 
 A user-space filesystem (FUSE) for accessing ancient Unix filesystems.
 
@@ -6,8 +7,8 @@ A user-space filesystem (FUSE) for accessing ancient Unix filesystems.
 It can also initialize such filesystems.
 Support for additional ancient filesystems, such as seventh-edition and early BSD filesystems, is planned for the future.
 
-The design of *retro-fuse* is novel in that it incorprates source code from the original v6 Unix kernel.  The ancient code has been "lightly" modernized to be palatable to current compilers, and adapted to run in userspace.  This approach, made possible by Caldera's generous open source license
-for ancient Unix, allows *retro-fuse* to support both reading and writing of ancient filesystems, while ensuring the historical
+The design of *retro-fuse* is novel in that it incorprates source code from the original v6 Unix kernel.  The ancient code has been "lightly" modernized to be palatable to current compilers, and adapted to run in userspace.  This approach (made possible by Caldera's generous open source license
+for ancient Unix) allows *retro-fuse* to support both reading and writing of ancient filesystems, while ensuring the historical
 fidelity of the on-disk structures.
 
 *retro-fuse* provides support for a broad array of modern filesystem operations on
@@ -15,7 +16,7 @@ top the basic capabilities of the original code.  This includes support for mode
 
 The current version of *retro-fuse* runs on Linux.  Support for MacOS is in the works (as of 2021/02).
 
-## Building
+== Building
 
 *retro-fuse* requires the libfuse-dev package, which can be installed on Ubuntu/debian-based systems as follows:
 
@@ -31,9 +32,9 @@ After the preresuisites have been installed, building is as simple as running ma
 $ make
 ----
 
-This produces a program called ``v6fs``.  This program can be run directly, or it can be installed into ``/usr/local/sbin``, which will allow v6 filesystems to be mounted using the standard mount(8) command (using the option ``-t fuse.v6fs``).
+This produces an executable called ``v6fs``.  This program can be run directly, or it can be installed into ``/usr/local/sbin``, which will allow v6 filesystems to be mounted using the standard mount(8) command (via the ``-t fuse.v6fs`` option).
 
-## Usage
+== Usage
 
 To mount a v6 filesystem, run the v6fs command as follows:
 
@@ -48,31 +49,31 @@ When executed directly, the v6fs program can be run by a non-root user. This is 
 The first argument to v6fs is the storage location of the filesystem.  This can be a regular file containing an image of the filesystem, or a standard Unix block device.  In the case of a block device, it may be useful to specify an offset to the start of the filesystem using the ``-o fsoffset`` option.
 
 
-### Options
+=== _Options_
 
 v6fs accepts the standard set of options supported by the mount(8) command, as well as the FUSE mount options described in mount.fuse(8).  Additionally, it provides its own set of options useful for dealing with ancient filesystems.
 
 Here is a summary of some of the more useful options:
 
-``**-o ro**`` ::
+`**-o ro**`;;
 
 Mount the filesystem in read-only mode.
 
-``**-o rw**`` ::
+`**-o rw**`;;
 
 Mount the filesystem in read-write mode.  This is the default.
 
-``**-o allow_root**`` ::
+``**-o allow_root**``;;
 
 Allow the root user to access the filesystem, in addition to the
 mounting user.  Mutually exclusive with the ``allow_other`` option.
 
-``**-o allow_other**`` ::
+``**-o allow_other**``;;
 
 Allow any user to access the filesystem, including root and the mounting user.  Mutually exclusive with the ``allow_root`` option.
 
-``**-o mapuid=_<host-uid>_:__<fs-uid>__ **`` ::
-``**-o mapgid=_<host-gid>_:__<fs-gid>__ **`` ::
+`**-o mapuid=__<host-uid>__:__<fs-uid>__ **`;;
+`**-o mapgid=__<host-gid>__:__<fs-gid>__ **`;;
 
 Map a particular user or group id on the host system to different
 id on the mounted filesystem. This is useful when accessing a filesystem
@@ -83,18 +84,18 @@ host id whenever a file is stat()ed or a directory is read.
 +
 Multiple mapping options may be given, up to a limit of 100.
 
-``**-o fssize=_<blocks>_**`` ::
+`**-o fssize=__<blocks>__**`;;
 
 The size of the filesystem, in 512-byte blocks. This is used to
 limit I/O on the underlying device/image file, e.g. to protect against the case where the filesystem contains malformed block pointers.  Defaults to the size given in the filesystem superblock.
 
-``**-o fsoffset=_<blocks>_**`` ::
+``**-o fsoffset=_<blocks>_**``;;
 
 Offset into the device/image at which the filesystem starts, in 512-byte blocks.  Defaults to 0.
 
-``**-o initfs**`` ::
-``**-o initfs=__<isize>__**`` ::
-``**-o initfs=__<isize>__:__<n>__:__<m>__**`` ::
+``**-o initfs**``;;
+``**-o initfs=__<isize>__**``;;
+``**-o initfs=__<isize>__:__<n>__:__<m>__**``;;
 
 Create an empty filesystem on the underlying device/image file before
 mounting.  When using the initfs option on an image file, the size of
@@ -110,32 +111,72 @@ Traditionally, the v6 mkfs command used n=10,m=4 for rp devices, 24,3
 for rk devices, and 1,1 (i.e. no interleave) for all other devices.
 If not specified, no interleave is used.
 
-``**-f**`` ::
-``**--foreground**`` ::
+``**-f**``;;
+``**--foreground**``;;
 
 Run in foreground (useful for debugging).
 
-``**-d**`` ::
-``**--debug**`` ::
+``**-d**``;;
+``**--debug**``;;
 
 Enable debug output to stderr (implies -f)
 
-``**-V**`` ::
-``**--version**`` ::
+``**-V**``;;
+``**--version**``;;
 
 Print version information
 
-``**-h**`` ::
-``**--help**`` ::
+``**-h**``;;
+``**--help**``;;
 
 Print usage information.
 
+=== _Examples_
 
-## Code Structure and Operation
+**Mount an image file containing v6 filesystem**
+
+```
+$ v6fs root.dsk /mnt/tmp
+```
+
+**Mount a v6 filesystem occupying a particular offset and size on a block device**
+
+```
+$ v6fs -o fssize=4872,fsoffset=4194304 /dev/sdc /mnt/tmp
+```
+
+**Mount a v6 filesystem, mapping the host's user id 1000 to uid 3 on the filesystem**
+
+```
+$ v6fs -o mapuid=1000:33 root.dsk /mnt/tmp
+```
+
+**Mount a v6 filesystem as root, allowing other users to access it**
+
+```
+$ sudo v6fs -oallow_other root.dsk /mnt/tmp
+```
+
+**Initialize and mount a new filesystem having the same size as a DEC RK05 disk**
+
+```
+$ v6fs -o initfs,fssize=4872 scratch.dsk /mnt/tmp
+```
+NOTE: When using the ``initfs`` option with an image file, the file must _**not**_ exist when the command is invoked.
+
+**Initialize and mount a new filesystem with a specific number of inode blocks**
+
+```
+$ v6fs -o initfs=200,fssize=4872 scratch.dsk /mnt/tmp
+```
+
+== Code Structure and Operation
 
 The *retro-fuse* code has the following structure:
 
 image::doc/v6fs-architecture.png[align="center"]
+
+=== _Source Modules_
 
 *v6* (ancient-src/v6/+*.[ch]+) -- Modernized ancient Unix source code.  Modifications to the ancient kernel code are purposefully minimal, and consist mostly of syntatical and type compatibility changes. Additionally, a series of #defines and selective hand editing is used to prefix functions and global variables with "v6_", so as to avoid conflicts with similarly named modern constructs.
 
@@ -147,6 +188,8 @@ image::doc/v6fs-architecture.png[align="center"]
 
 *dsk* (src/dsk.[ch]) -- Provides a simple abstraction of a virtual block-oriented disk device.  Supports filesystems contained in image files as well as actual block devices (e.g. a MicroSD card).
 
-## License
+
+
+== License
 
 The modern portions of retro-fuse are licensed under the xref:LICENSE.txt[Apache 2.0 license].  Code derived from ancient Unix source is licensed under xref:Caldera-license.pdf[Caldera open source license].
