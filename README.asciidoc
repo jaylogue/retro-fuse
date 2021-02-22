@@ -24,7 +24,7 @@ The current version of *retro-fuse* runs on Linux.  Support for MacOS is in the 
 $ sudo apt install libfuse-dev
 ----
 
-After the preresuisites have been installed, building is as simple as running make:
+After the prerequisites have been installed, building is as simple as running make:
 
 [source,bash]
 ----
@@ -45,14 +45,16 @@ Alternatively, if the v6fs program has been installed in ``/sbin`` or ``/usr/loc
 
 When executed directly, the v6fs program can be run by a non-root user. This is often more convenient than using the mount command, which must always be run as root.
 
-The first argument to v6fs is the storage location of the filesystem.  This can be a regular file containing an image of the filesystem, or a standard Unix block device.  In the case of a block device, it may be useful to specify an offset to the start of the filesystem using the ``-o fsoffset`` option.
+### _Filesystem Location_
+
+The first non-option argument to the v6fs command is the storage location of the filesystem.  This can be a regular file containing an image of the filesystem, or a standard Unix block device.  In the case of a block device, it may be useful to specify an offset to the start of the filesystem using the ``-o fsoffset`` option.
 
 
 ### _Options_
 
 v6fs accepts the standard set of options supported by the mount(8) command, as well as the FUSE mount options described in mount.fuse(8).  Additionally, it provides its own set of options useful for dealing with ancient filesystems.
 
-Here is a summary of some of the more useful options:
+The following is a summary of some of the more useful options:
 
 `**-o ro**`;;
 
@@ -88,7 +90,7 @@ Multiple mapping options may be given, up to a limit of 100.
 The size of the filesystem, in 512-byte blocks. This is used to
 limit I/O on the underlying device/image file, e.g. to protect against the case where the filesystem contains malformed block pointers.  Defaults to the size given in the filesystem superblock.
 
-``**-o fsoffset=_<blocks>_**``;;
+``**-o fsoffset=__<blocks>__**``;;
 
 Offset into the device/image at which the filesystem starts, in 512-byte blocks.  Defaults to 0.
 
@@ -101,7 +103,7 @@ mounting.  When using the initfs option on an image file, the size of
 the filesystem must be specified via the ``fssize`` option.
 +
 __isize__ gives the size of the filesystem's inode table in 512-byte
-blocks (32 inodes per block).  If not specified, or if 0 is given,
+blocks (16 inodes per block).  If not specified, or if 0 is given,
 the size of the inode table is computed automatically from the size
 of the filesystem, using the formula from the v6 mkfs(8) command.
 +
