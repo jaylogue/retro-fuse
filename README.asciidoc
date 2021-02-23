@@ -181,6 +181,20 @@ __NOTE -- When using the ``initfs`` option with an image file, the file must **n
 $ v6fs -o initfs=200,fssize=4872 scratch.dsk /mnt/tmp
 ----
 
+**Unmount a filesystem that has been mounted by the active (non-root) user**
+
+[source,bash]
+----
+$ fusermount -u /mnt/tmp
+----
+
+**Unmount a filesystem that has been mounted by root or another user**
+
+[source,bash]
+----
+$ sudo umount /mnt/tmp
+----
+
 
 
 ## Code Structure and Operation
