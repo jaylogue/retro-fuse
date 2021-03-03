@@ -485,8 +485,8 @@ static const struct fuse_operations v6fuse_ops =
 
 int main(int argc, char *argv[])
 {
-	int res = 0;
-	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+    int res = EXIT_FAILURE;
+    struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
     struct v6fuse_config cfg;
     struct fuse_chan *chan = NULL;
     struct fuse *fuse = NULL;
@@ -538,11 +538,12 @@ int main(int argc, char *argv[])
         res = dsk_open(cfg.dskfilename, cfg.fssize, cfg.fsoffset, 1, 0);
         if (res != 0) {
             if (res == -EEXIST)
-                fprintf(stderr, "%s: ERROR: Filesystem image file exists: %s\nTo prevent accidents, the filesystem image file must NOT exist when using -oinitfs.\n", v6fuse_cmdname, cfg.dskfilename);
+                fprintf(stderr, "%s: ERROR: Filesystem image file exists. To prevent accidents, the filesystem image file must NOT exist when using -oinitfs.\n", v6fuse_cmdname);
             else if (res == -EINVAL)
-                fprintf(stderr, "%s: ERROR: Missing -o fssize option\nThe size of the filesystem must be specified when using -oinitfs\n", v6fuse_cmdname);
+                fprintf(stderr, "%s: ERROR: Missing -o fssize option. The size of the filesystem must be specified when using -oinitfs\n", v6fuse_cmdname);
             else
                 fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", v6fuse_cmdname, strerror(-res));
+            res = EXIT_FAILURE;
             goto exit;
         }
 
@@ -552,17 +553,17 @@ int main(int argc, char *argv[])
 
         /* verify the filesystem size is sane and does not exceed the capabilities of the v6 code. */
         if (fssize < 5) {
-            fprintf(stderr, "%s: ERROR: Filesystem size is too small.  Use -o fssize option to specify a size >= 5 blocks.\n", v6fuse_cmdname);
+            fprintf(stderr, "%s: ERROR: Filesystem size is too small. Use -o fssize option to specify a size >= 5 blocks.\n", v6fuse_cmdname);
             goto exit;
         }
         if (fssize > INT16_MAX) {
-            fprintf(stderr, "%s: ERROR: Filesystem size is too big.  Use -o fssize option to specify a size <= 32767 blocks.\n", v6fuse_cmdname);
+            fprintf(stderr, "%s: ERROR: Filesystem size is too big. Use -o fssize option to specify a size <= 32767 blocks.\n", v6fuse_cmdname);
             goto exit;
         }
 
         /* verify the request number of inode blocks is sane. */
         if (cfg.isize > (fssize - 4)) {
-            fprintf(stderr, "%s: ERROR: Specified inode table size too big.  Must be <= filesystem size - 4 blocks.\n", v6fuse_cmdname);
+            fprintf(stderr, "%s: ERROR: Specified inode table size too big. Must be <= filesystem size - 4 blocks.\n", v6fuse_cmdname);
             goto exit;
         }
 
@@ -570,6 +571,7 @@ int main(int argc, char *argv[])
         res = v6fs_mkfs((uint16_t)fssize, (uint16_t)cfg.isize, &cfg.flparams);
         if (res != 0) {
             fprintf(stderr, "%s: ERROR: Failed to initialize filesystem: %s\n", v6fuse_cmdname, strerror(-res));
+            res = EXIT_FAILURE;
             goto exit;
         }
 
@@ -579,7 +581,7 @@ int main(int argc, char *argv[])
 
     /* verify access to the underlying block device/image file. */
     if (access(cfg.dskfilename, cfg.readonly ? R_OK : R_OK|W_OK) != 0) {
-        fprintf(stderr, "%s: ERROR: Unable to access disk/image file: %s\n%s\n", v6fuse_cmdname, cfg.dskfilename, strerror(errno));
+        fprintf(stderr, "%s: ERROR: Unable to access disk/image file: %s\n", v6fuse_cmdname, strerror(errno));
         goto exit;
     }
 
@@ -601,6 +603,7 @@ int main(int argc, char *argv[])
     res = dsk_open(cfg.dskfilename, cfg.fssize, cfg.fsoffset, 0, cfg.readonly);
     if (res != 0) {
         fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", v6fuse_cmdname, strerror(-res));
+        res = EXIT_FAILURE;
         goto exit;
     }
 
@@ -608,6 +611,7 @@ int main(int argc, char *argv[])
     res = v6fs_init(cfg.readonly);
     if (res != 0) {
         fprintf(stderr, "%s: ERROR: Failed to mount v6 filesystem: %s\n", v6fuse_cmdname, strerror(-res));
+        res = EXIT_FAILURE;
         goto exit;
     }
 
@@ -631,7 +635,7 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
-    res = 0;
+    res = EXIT_SUCCESS;
 
 exit:
     if (sighandlersset)
