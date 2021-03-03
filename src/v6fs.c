@@ -742,7 +742,7 @@ int v6fs_chown(const char *pathname, uid_t owner, gid_t group)
             ip->i_uid = v6uid;
         if (group != -1)
             ip->i_gid = v6gid;
-        ip->i_flag |= IUPD;
+        ip->i_flag |= IACC;
     }
 
 exit:

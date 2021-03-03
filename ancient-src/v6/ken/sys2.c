@@ -249,7 +249,7 @@ link()
 	}
 	wdir(ip);
 	ip->i_nlink++;
-	ip->i_flag |= IUPD;
+	ip->i_flag |= IACC; /* modernized so that link changes atime, not mtime */
 
 out:
 	iput(ip);

@@ -143,7 +143,7 @@ unlink()
 	u.u_dent.u_ino = 0;
 	writei(pp);
 	ip->i_nlink--;
-	ip->i_flag |= IUPD;
+	ip->i_flag |= IACC; /* modernized so that unlink changes atime, not mtime */
 
 out:
 	iput(pp);
@@ -184,22 +184,23 @@ chmod()
 	if (u.u_uid)
 		u.u_arg[1] &= ~ISVTX;
 	ip->i_mode |= u.u_arg[1]&07777;
-	ip->i_flag |= IUPD;
+	ip->i_flag |= IACC; /* modernized so that chmod changes atime, not mtime */
 	iput(ip);
 }
 
-void
+#if UNUSED
 chown()
 {
-	register struct inode *ip;
+	register *ip;
 
 	if (!suser() || (ip = owner()) == NULL)
 		return;
-	ip->i_uid = (char)(u.u_arg[1] & 0xFF);
-	ip->i_gid = (char)((u.u_arg[1] >> 8) & 0xFF);
-	ip->i_flag |= IUPD;
+	ip->i_uid = u.u_arg[1].lobyte;
+	ip->i_gid = u.u_arg[1].hibyte;
+	ip->i_flag =| IUPD;
 	iput(ip);
 }
+#endif /* UNUSED */
 
 /*
  * Change modified date of file:
