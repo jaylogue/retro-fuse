@@ -220,3 +220,13 @@ image::doc/v6fs-architecture.png[align="center"]
 ## License
 
 The modern portions of retro-fuse are licensed under the xref:LICENSE.txt[Apache 2.0 license].  Code derived from ancient Unix source is licensed under xref:Caldera-license.pdf[Caldera open source license].
+
+
+
+## Release Notes
+
+**Version 2 / 2021/03/02** -- Fixed bug in link(), unlink(), chmod() and chown() that caused the files modified time to be updated (this fixes problems
+with rsync).  Minor modifications to error handling.
+
+**Version 1 / 2021/02/23** -- Initial release.
+
