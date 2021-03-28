@@ -50,7 +50,7 @@ $(V6OBJS) : CFLAGS += -DANCIENT_SRC
 all : $(PROG)
 
 $(PROG) : $(OBJS)
-	$(CC) -o $@ -Xlinker -Map=$@.map $^ $(LIBS)
+	$(CC) -o $@ -Xlinker $^ $(LIBS)
 
 clean :
 	rm -f $(PROG) $(PROG).map $(OBJS)

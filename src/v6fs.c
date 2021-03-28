@@ -27,6 +27,7 @@
 
 #define _XOPEN_SOURCE 700
 #define _ATFILE_SOURCE 
+#define _DARWIN_C_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,7 +37,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
+#if defined(__APPLE__)
+#include <sys/types.h>
+#endif
+#if defined(__linux__)
 #include <sys/sysmacros.h>
+#endif
 #include <libgen.h>
 #include <sys/statvfs.h>
 
@@ -224,7 +230,7 @@ int v6fs_mkfs(int16_t fssize, int16_t isize, const struct flparams *flparams)
         v6_clrbuf(bp);
         if (i == 0) {
             struct v6_inode_dsk * ip = (struct v6_inode_dsk *)bp->b_addr;
-            ip->i_mode = IALLOC|IFDIR|0777;
+            ip->i_mode = (int16_t)(IALLOC|IFDIR|0777);
             ip->i_nlink = 2;
             ip->i_uid = u.u_uid;
             ip->i_gid = u.u_gid;

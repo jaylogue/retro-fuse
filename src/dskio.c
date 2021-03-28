@@ -18,7 +18,8 @@
  * @file  Functions for accessing the underlying device/image file.
  */
 
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 700
+#define _DARWIN_C_SOURCE
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -30,9 +31,12 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 
-#ifdef __linux__
+#if defined(__linux__)
 #include <linux/fs.h>
-#endif // __linux__
+#endif
+#if defined(__APPLE__)
+#include <sys/disk.h>
+#endif
 
 #include "dskio.h"
 
@@ -100,9 +104,9 @@ int dsk_open(const char *filename, off_t size, off_t offset, int create, int ro)
 #elif defined(__APPLE__)
 		uint32_t blocksize;
         uint64_t blockcount;
-		if (ioctl(dev, DKIOCGETBLOCKSIZE, &blocksize) >= 0 &&
-            ioctl(dev, DKIOCGETBLOCKCOUNT, &blockcount) >= 0) {
-            size = ((blockcount * blockSize) / BLKSIZE) - offset;
+		if (ioctl(dsk_fd, DKIOCGETBLOCKSIZE, &blocksize) >= 0 &&
+            ioctl(dsk_fd, DKIOCGETBLOCKCOUNT, &blockcount) >= 0) {
+            size = ((blockcount * blocksize) / BLKSIZE) - offset;
 		}
 #endif
     }

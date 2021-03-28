@@ -26,7 +26,12 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#if defined(__APPLE__)
+#include <sys/types.h>
+#endif
+#if defined(__linux__)
 #include <sys/sysmacros.h>
+#endif
 #include <stdarg.h>
 
 #include "v6adapt.h"

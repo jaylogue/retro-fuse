@@ -301,7 +301,13 @@ union v6_devu {
 extern struct v6_integ v6_PS;
 #define PS (&v6_PS)
 
-/* Allow v6 code to redefine NULL without warning */
+/* Allow v6 code to redefine certain names without warning */
 #undef NULL
+#undef NSIG
+#undef SIGIOT
+#undef SIGABRT
+#undef EAGAIN
+#undef FREAD
+#undef FWRITE
 
 #endif /* __V6ADAPT_H__ */
