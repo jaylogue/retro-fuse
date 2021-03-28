@@ -13,18 +13,21 @@ fidelity of the on-disk structures.
 *retro-fuse* provides support for a broad array of modern filesystem operations on
 top the basic capabilities of the original code.  This includes support for modern rename(2) semantics and filesystem statistics gathering (e.g. via df(1)).  Additionally, the code provides a modern C API, making it possible to incorporate ancient filesystem access into other projects.
 
-The current version of *retro-fuse* runs on Linux.  Support for MacOS is in the works (as of 2021/02).
+The current version of *retro-fuse* runs on Linux and MacOS.
 
 
 
-## Building
+## Building and Running
 
-*retro-fuse* requires the libfuse-dev package, which can be installed on Ubuntu/debian-based systems as follows:
+On Linux, *retro-fuse* requires the libfuse-dev package, which can be installed on Ubuntu/debian-based systems as follows:
 
 [source,bash]
 ----
 $ sudo apt install libfuse-dev
 ----
+
+On MacOS, *retro-fuse* requires the macFUSE sofware package, an installer for which can be downloaded from the https://osxfuse.github.io[macFUSE] website.
+
 
 After the prerequisites have been installed, building is as simple as running make:
 
@@ -224,6 +227,8 @@ The modern portions of retro-fuse are licensed under the xref:LICENSE.txt[Apache
 
 
 ## Release Notes
+
+**Version 3 / 2020/03/27** -- Added support for MacOS.
 
 **Version 2 / 2021/03/02** -- Fixed bug in link(), unlink(), chmod() and chown() that caused the files modified time to be updated (this fixes problems
 with rsync).  Minor modifications to error handling.

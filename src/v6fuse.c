@@ -24,7 +24,7 @@
 #define FUSE_USE_VERSION 26
 #define _FILE_OFFSET_BITS 64
 
-#define V6FS_VERSION 2
+#define V6FS_VERSION 3
 
 #include <fcntl.h>
 #include <string.h>
