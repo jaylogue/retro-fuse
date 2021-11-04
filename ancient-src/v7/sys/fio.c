@@ -1,3 +1,5 @@
+#include "v7adapt.h"
+
 #include "../h/param.h"
 #include "../h/systm.h"
 #include "../h/dir.h"
@@ -17,8 +19,7 @@
  * of the descriptor.
  */
 struct file *
-getf(f)
-register int f;
+getf(int16_t f)
 {
 	register struct file *fp;
 
@@ -42,13 +43,14 @@ register int f;
  * removal to the referencing file structure.
  * Call device handler on last close.
  */
-closef(fp)
-register struct file *fp;
+void
+closef(struct file *fp)
 {
 	register struct inode *ip;
-	int flag, mode;
+	int16_t flag;
+	uint16_t mode;
 	dev_t dev;
-	register int (*cfunc)();
+	register int16_t (*cfunc)();
 	struct chan *cp;
 
 	if(fp == NULL)
@@ -81,7 +83,7 @@ register struct file *fp;
 
 	case IFBLK:
 	case IFMPB:
-		cfunc = bdevsw[major(dev)].d_close;
+		cfunc = (int16_t (*)())bdevsw[major(dev)].d_close;
 		break;
 	default:
 		return;
@@ -99,8 +101,8 @@ register struct file *fp;
  * of special files to initialize and
  * validate before actual IO.
  */
-openi(ip, rw)
-register struct inode *ip;
+void
+openi(struct inode *ip, int16_t rw)
 {
 	dev_t dev;
 	register unsigned int maj;
@@ -141,10 +143,10 @@ bad:
  * The super user is granted all
  * permissions.
  */
-access(ip, mode)
-register struct inode *ip;
+int16_t
+access(struct inode *ip, int16_t mode)
 {
-	register m;
+	register int16_t m;
 
 	m = mode;
 	if(m == IWRITE) {
@@ -201,6 +203,7 @@ owner()
  * Test if the current user is the
  * super user.
  */
+int16_t
 suser()
 {
 
@@ -215,9 +218,10 @@ suser()
 /*
  * Allocate a user file descriptor.
  */
+int16_t
 ufalloc()
 {
-	register i;
+	register int16_t i;
 
 	for(i=0; i<NOFILE; i++)
 		if(u.u_ofile[i] == NULL) {
@@ -242,7 +246,7 @@ struct file *
 falloc()
 {
 	register struct file *fp;
-	register i;
+	register int16_t i;
 
 	i = ufalloc();
 	if(i < 0)

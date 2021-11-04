@@ -1,3 +1,5 @@
+#include "v7adapt.h"
+
 #include "../h/param.h"
 #include "../h/systm.h"
 #include "../h/dir.h"
@@ -11,6 +13,7 @@
 #include "../h/conf.h"
 #include "../h/buf.h"
 
+#if UNUSED
 /*
  * Initialization code.
  * Called from cold start routine as
@@ -76,6 +79,7 @@ main()
 	}
 	sched();
 }
+#endif /* UNUSED */
 
 /*
  * iinit is called once (from main)
@@ -87,6 +91,7 @@ main()
  * panic: iinit -- cannot read the super
  * block. Usually because of an IO error.
  */
+void
 iinit()
 {
 	register struct buf *cp, *bp;
@@ -105,7 +110,7 @@ iinit()
 	fp->s_flock = 0;
 	fp->s_ilock = 0;
 	fp->s_ronly = 0;
-	time = fp->s_time;
+	time = wswap_int32(fp->s_time);
 }
 
 /*
@@ -116,12 +121,13 @@ iinit()
  * I/O to be done-- e.g. swbuf for
  * swapping.
  */
-char	buffers[NBUF][BSIZE+BSLOP];
+char	buffers[NBUF][BSIZE+BSLOP] __attribute__((aligned(4)));
 
 /*
  * Initialize the buffer I/O system by freeing
  * all buffers and setting all device buffer lists to empty.
  */
+void
 binit()
 {
 	register struct buf *bp;

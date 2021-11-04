@@ -1,3 +1,5 @@
+#include "v7adapt.h"
+
 #include "../h/param.h"
 #include "../h/systm.h"
 #include "../h/dir.h"
@@ -6,6 +8,7 @@
 #include "../h/file.h"
 #include "../h/inode.h"
 
+#if UNUSED
 /*
  * read system call
  */
@@ -13,7 +16,9 @@ read()
 {
 	rdwr(FREAD);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * write system call
  */
@@ -21,21 +26,22 @@ write()
 {
 	rdwr(FWRITE);
 }
+#endif /* UNUSED */
 
 /*
  * common code for read and write calls:
  * check permissions, set base, count, and offset,
  * and switch out to readi, writei, or pipe code.
  */
-rdwr(mode)
-register mode;
+void
+rdwr(int16_t mode)
 {
 	register struct file *fp;
 	register struct inode *ip;
 	register struct a {
-		int	fdes;
+		int16_t	fdes;
 		char	*cbuf;
-		unsigned count;
+		uint16_t count;
 	} *uap;
 
 	uap = (struct a *)u.u_ap;
@@ -74,6 +80,7 @@ register mode;
 	u.u_r.r_val1 = uap->count-u.u_count;
 }
 
+#if UNUSED
 /*
  * open system call
  */
@@ -91,7 +98,9 @@ open()
 		return;
 	open1(ip, ++uap->rwmode, 0);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * creat system call
  */
@@ -115,18 +124,18 @@ creat()
 	} else
 		open1(ip, FWRITE, 1);
 }
+#endif /* UNUSED */
 
 /*
  * common code for open and creat.
  * Check permissions, allocate an open file structure,
  * and call the device open routine if any.
  */
-open1(ip, mode, trf)
-register struct inode *ip;
-register mode;
+void
+open1(struct inode *ip, int16_t mode, int16_t trf)
 {
 	register struct file *fp;
-	int i;
+	int16_t i;
 
 	if(trf != 2) {
 		if(mode&FREAD)
@@ -160,11 +169,12 @@ out:
 /*
  * close system call
  */
+void
 close()
 {
 	register struct file *fp;
 	register struct a {
-		int	fdes;
+		int16_t	fdes;
 	} *uap;
 
 	uap = (struct a *)u.u_ap;
@@ -175,6 +185,7 @@ close()
 	closef(fp);
 }
 
+#if UNUSED
 /*
  * seek system call
  */
@@ -202,10 +213,12 @@ seek()
 	fp->f_un.f_offset = uap->off;
 	u.u_r.r_off = uap->off;
 }
+#endif /* UNUSED */
 
 /*
  * link system call
  */
+void
 link()
 {
 	register struct inode *ip, *xp;
@@ -256,13 +269,14 @@ out:
 /*
  * mknod system call
  */
+void
 mknod()
 {
 	register struct inode *ip;
 	register struct a {
 		char	*fname;
-		int	fmode;
-		int	dev;
+		int16_t	fmode;
+		int16_t	dev;
 	} *uap;
 
 	uap = (struct a *)u.u_ap;
@@ -284,6 +298,7 @@ out:
 	iput(ip);
 }
 
+#if UNUSED
 /*
  * access system call
  */
@@ -314,3 +329,4 @@ saccess()
 	u.u_uid = svuid;
 	u.u_gid = svgid;
 }
+#endif /* UNUSED */

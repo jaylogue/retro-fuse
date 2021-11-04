@@ -1,3 +1,5 @@
+#include "v7adapt.h"
+
 #include "../h/param.h"
 #include "../h/systm.h"
 #include "../h/dir.h"
@@ -11,12 +13,12 @@
 
 #ifdef	DISKMON
 struct {
-	int	nbuf;
-	long	nread;
-	long	nreada;
-	long	ncache;
-	long	nwrite;
-	long	bufcount[NBUF];
+	int16_t	nbuf;
+	int32_t	nread;
+	int32_t	nreada;
+	int32_t	ncache;
+	int32_t	nwrite;
+	int32_t	bufcount[NBUF];
 } io_info;
 #endif
 
@@ -53,9 +55,7 @@ struct	buf	swbuf2;
  * Read in (if necessary) the block and return a buffer pointer.
  */
 struct buf *
-bread(dev, blkno)
-dev_t dev;
-daddr_t blkno;
+bread(dev_t dev, daddr_t blkno)
 {
 	register struct buf *bp;
 
@@ -81,9 +81,7 @@ daddr_t blkno;
  * read-ahead block (which is not allocated to the caller)
  */
 struct buf *
-breada(dev, blkno, rablkno)
-dev_t dev;
-daddr_t blkno, rablkno;
+breada(dev_t dev, daddr_t blkno, daddr_t rablkno)
 {
 	register struct buf *bp, *rabp;
 
@@ -122,10 +120,10 @@ daddr_t blkno, rablkno;
  * Write the buffer, waiting for completion.
  * Then release the buffer.
  */
-bwrite(bp)
-register struct buf *bp;
+void
+bwrite(register struct buf *bp)
 {
-	register flag;
+	register int16_t flag;
 
 	flag = bp->b_flags;
 	bp->b_flags &= ~(B_READ | B_DONE | B_ERROR | B_DELWRI | B_AGE);
@@ -151,8 +149,8 @@ register struct buf *bp;
  * This can't be done for magtape, since writes must be done
  * in the same order as requested.
  */
-bdwrite(bp)
-register struct buf *bp;
+void
+bdwrite(register struct buf *bp)
 {
 	register struct buf *dp;
 
@@ -168,8 +166,8 @@ register struct buf *bp;
 /*
  * Release the buffer, start I/O on it, but don't wait for completion.
  */
-bawrite(bp)
-register struct buf *bp;
+void
+bawrite(register struct buf *bp)
 {
 
 	bp->b_flags |= B_ASYNC;
@@ -179,11 +177,11 @@ register struct buf *bp;
 /*
  * release the buffer, with no I/O implied.
  */
-brelse(bp)
-register struct buf *bp;
+void
+brelse(register struct buf *bp)
 {
 	register struct buf **backp;
-	register s;
+	register int16_t s;
 
 	if (bp->b_flags&B_WANTED)
 		wakeup((caddr_t)bp);
@@ -215,9 +213,8 @@ register struct buf *bp;
  * See if the block is associated with some buffer
  * (mainly to avoid getting hung up on a wait in breada)
  */
-incore(dev, blkno)
-dev_t dev;
-daddr_t blkno;
+int16_t
+incore(dev_t dev, daddr_t blkno)
 {
 	register struct buf *bp;
 	register struct buf *dp;
@@ -235,14 +232,12 @@ daddr_t blkno;
  * for the oldest non-busy buffer and reassign it.
  */
 struct buf *
-getblk(dev, blkno)
-dev_t dev;
-daddr_t blkno;
+getblk(dev_t dev, daddr_t blkno)
 {
 	register struct buf *bp;
 	register struct buf *dp;
 #ifdef	DISKMON
-	register i;
+	register int16_t i;
 #endif
 
 	if(major(dev) >= nblkdev)
@@ -340,8 +335,8 @@ loop:
  * Wait for I/O completion on the buffer; return errors
  * to the user.
  */
-iowait(bp)
-register struct buf *bp;
+void
+iowait(register struct buf *bp)
 {
 
 	spl6();
@@ -355,10 +350,10 @@ register struct buf *bp;
  * Unlink a buffer from the available list and mark it busy.
  * (internal interface)
  */
-notavail(bp)
-register struct buf *bp;
+void
+notavail(register struct buf *bp)
 {
-	register s;
+	register int16_t s;
 
 	s = spl6();
 	bp->av_back->av_forw = bp->av_forw;
@@ -371,8 +366,8 @@ register struct buf *bp;
  * Mark I/O complete on a buffer, release it if I/O is asynchronous,
  * and wake up anyone waiting for it.
  */
-iodone(bp)
-register struct buf *bp;
+void
+iodone(register struct buf *bp)
 {
 
 	if(bp->b_flags&B_MAP)
@@ -389,20 +384,21 @@ register struct buf *bp;
 /*
  * Zero the core associated with a buffer.
  */
-clrbuf(bp)
-struct buf *bp;
+void
+clrbuf(struct buf *bp)
 {
-	register *p;
-	register c;
+	register int16_t *p;
+	register int16_t c;
 
 	p = bp->b_un.b_words;
-	c = BSIZE/sizeof(int);
+	c = BSIZE/sizeof(int16_t);
 	do
 		*p++ = 0;
 	while (--c);
 	bp->b_resid = 0;
 }
 
+#if UNUSED
 /*
  * swap I/O
  */
@@ -446,6 +442,7 @@ register count;
 	if (bp->b_flags & B_ERROR)
 		panic("IO err in swap");
 }
+#endif /* UNUSED */
 
 /*
  * make sure all write-behind blocks
@@ -453,8 +450,8 @@ register count;
  * are flushed out.
  * (from umount and update)
  */
-bflush(dev)
-dev_t dev;
+void
+bflush(dev_t dev)
 {
 	register struct buf *bp;
 
@@ -471,6 +468,7 @@ loop:
 	spl0();
 }
 
+#if UNUSED
 /*
  * Raw I/O. The arguments are
  *	The strategy routine for the device
@@ -547,6 +545,7 @@ int (*strat)();
     bad:
 	u.u_error = EFAULT;
 }
+#endif /* UNUSED */
 
 /*
  * Pick up the device's error number and pass it to the user;
@@ -554,8 +553,8 @@ int (*strat)();
  * code.  Actually the latter is always true because devices
  * don't yet return specific errors.
  */
-geterror(bp)
-register struct buf *bp;
+void
+geterror(register struct buf *bp)
 {
 
 	if (bp->b_flags&B_ERROR)

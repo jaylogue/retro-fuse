@@ -9,9 +9,9 @@
  */
 extern struct bdevsw
 {
-	int	(*d_open)();
-	int	(*d_close)();
-	int	(*d_strategy)();
+	int16_t	(*d_open)(dev_t dev, int16_t flag);
+	int16_t	(*d_close)(dev_t dev, int16_t flag);
+	int16_t	(*d_strategy)(struct buf *bp);
 	struct buf *d_tab;
 } bdevsw[];
 
@@ -20,12 +20,12 @@ extern struct bdevsw
  */
 extern struct cdevsw
 {
-	int	(*d_open)();
-	int	(*d_close)();
-	int	(*d_read)();
-	int	(*d_write)();
-	int	(*d_ioctl)();
-	int	(*d_stop)();
+	int16_t	(*d_open)();
+	int16_t	(*d_close)();
+	int16_t	(*d_read)();
+	int16_t	(*d_write)();
+	int16_t	(*d_ioctl)();
+	int16_t	(*d_stop)();
 	struct tty *d_ttys;
 } cdevsw[];
 
@@ -34,14 +34,14 @@ extern struct cdevsw
  */
 extern struct linesw
 {
-	int	(*l_open)();
-	int	(*l_close)();
-	int	(*l_read)();
+	int16_t	(*l_open)();
+	int16_t	(*l_close)();
+	int16_t	(*l_read)();
 	char	*(*l_write)();
-	int	(*l_ioctl)();
-	int	(*l_rint)();
-	int	(*l_rend)();
-	int	(*l_meta)();
-	int	(*l_start)();
-	int	(*l_modem)();
+	int16_t	(*l_ioctl)();
+	int16_t	(*l_rint)();
+	int16_t	(*l_rend)();
+	int16_t	(*l_meta)();
+	int16_t	(*l_start)();
+	int16_t	(*l_modem)();
 } linesw[];

@@ -1,3 +1,5 @@
+#include "v7adapt.h"
+
 #include "../h/param.h"
 #include "../h/systm.h"
 #include "../h/conf.h"
@@ -15,13 +17,11 @@
  * for use in read-ahead.
  */
 daddr_t
-bmap(ip, bn, rwflg)
-register struct inode *ip;
-daddr_t bn;
+bmap(struct inode *ip, daddr_t bn, int16_t rwflg)
 {
-	register i;
+	register int16_t i;
 	struct buf *bp, *nbp;
-	int j, sh;
+	int16_t j, sh;
 	daddr_t nb, *bap;
 	dev_t dev;
 
@@ -97,7 +97,7 @@ daddr_t bn;
 		bap = bp->b_un.b_daddr;
 		sh -= NSHIFT;
 		i = (bn>>sh) & NMASK;
-		nb = bap[i];
+		nb = wswap_int32(bap[i]);
 		if(nb == 0) {
 			if(rwflg==B_READ || (nbp = alloc(dev))==NULL) {
 				brelse(bp);
@@ -105,7 +105,7 @@ daddr_t bn;
 			}
 			nb = nbp->b_blkno;
 			bdwrite(nbp);
-			bap[i] = nb;
+			bap[i] = wswap_int32(nb);
 			bdwrite(bp);
 		} else
 			brelse(bp);
@@ -115,10 +115,11 @@ daddr_t bn;
 	 * calculate read-ahead.
 	 */
 	if(i < NINDIR-1)
-		rablock = bap[i+1];
+		rablock = wswap_int32(bap[i+1]);
 	return(nb);
 }
 
+#if UNUSED
 /*
  * Pass back  c  to the user at his location u_base;
  * update u_base, u_count, and u_offset.  Return -1
@@ -142,7 +143,9 @@ register c;
 	u.u_base++;
 	return(u.u_count == 0? -1: 0);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Pick up and return the next character from the user's
  * write call at location u_base;
@@ -168,7 +171,9 @@ cpass()
 	u.u_base++;
 	return(c&0377);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Routine which sets a user error; placed in
  * illegal entries in the bdevsw and cdevsw tables.
@@ -178,7 +183,9 @@ nodev()
 
 	u.u_error = ENODEV;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Null routine; placed in insignificant entries
  * in the bdevsw and cdevsw tables.
@@ -186,7 +193,9 @@ nodev()
 nulldev()
 {
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * copy count bytes from from to to.
  */
@@ -202,3 +211,4 @@ register count;
 		*t++ = *f++;
 	while(--count);
 }
+#endif /* UNUSED */

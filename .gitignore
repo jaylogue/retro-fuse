@@ -1,5 +1,5 @@
 *.o
-v6fs
+v[67]fs
 *.map
 *.dsk
 .vscode/

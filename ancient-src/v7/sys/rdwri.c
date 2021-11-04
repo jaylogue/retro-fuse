@@ -1,3 +1,5 @@
+#include "v7adapt.h"
+
 #include "../h/param.h"
 #include "../h/systm.h"
 #include "../h/inode.h"
@@ -16,15 +18,15 @@
  *	u_count		number of bytes to read
  *	u_segflg	read to kernel/user/user I
  */
-readi(ip)
-register struct inode *ip;
+void
+readi(struct inode *ip)
 {
 	struct buf *bp;
 	dev_t dev;
 	daddr_t lbn, bn;
 	off_t diff;
-	register on, n;
-	register type;
+	register int16_t on, n;
+	register int16_t type;
 
 	if(u.u_count == 0)
 		return;
@@ -36,7 +38,7 @@ register struct inode *ip;
 	dev = (dev_t)ip->i_un.i_rdev;
 	type = ip->i_mode&IFMT;
 	if (type==IFCHR || type==IFMPC) {
-		return((*cdevsw[major(dev)].d_read)(dev));
+		return; /* UNUSED ((*cdevsw[major(dev)].d_read)(dev)); */
 	}
 
 	do {
@@ -80,14 +82,14 @@ register struct inode *ip;
  *	u_count		number of bytes to write
  *	u_segflg	write to kernel/user/user I
  */
-writei(ip)
-register struct inode *ip;
+void
+writei(struct inode *ip)
 {
 	struct buf *bp;
 	dev_t dev;
 	daddr_t bn;
-	register n, on;
-	register type;
+	register int16_t n, on;
+	register uint16_t type;
 
 	if(u.u_offset < 0) {
 		u.u_error = EINVAL;
@@ -133,28 +135,29 @@ register struct inode *ip;
  * Return the logical maximum
  * of the 2 arguments.
  */
-max(a, b)
-unsigned a, b;
+int16_t
+max(uint16_t a, uint16_t b)
 {
 
 	if(a > b)
-		return(a);
-	return(b);
+		return((int16_t)a);
+	return((int16_t)b);
 }
 
 /*
  * Return the logical minimum
  * of the 2 arguments.
  */
-min(a, b)
-unsigned a, b;
+int16_t
+min(uint16_t a, uint16_t b)
 {
 
 	if(a < b)
-		return(a);
-	return(b);
+		return((int16_t)a);
+	return((int16_t)b);
 }
 
+#if UNUSED
 /*
  * Move n bytes at byte location
  * &bp->b_un.b_addr[o] to/from (flag) the
@@ -213,3 +216,4 @@ register n;
 				return;
 		} while (--n);
 }
+#endif /* UNUSED */

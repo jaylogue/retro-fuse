@@ -29,7 +29,7 @@ struct buf
 	unsigned b_bcount;		/* transfer count */
 	union {
 	    caddr_t b_addr;		/* low order core address */
-	    int	*b_words;		/* words for clearing */
+	    int16_t	*b_words;		/* words for clearing */
 	    struct filsys *b_filsys;	/* superblocks */
 	    struct dinode *b_dino;	/* ilist */
 	    daddr_t *b_daddr;		/* indirect block */

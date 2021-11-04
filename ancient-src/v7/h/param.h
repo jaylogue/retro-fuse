@@ -71,11 +71,11 @@
  * cannot be changed easily
  */
 
-#define	NBPW	sizeof(int)	/* number of bytes in an integer */
+#define	NBPW	sizeof(int16_t)	/* number of bytes in an integer */
 #define	BSIZE	512		/* size of secondary block (bytes) */
 /* BSLOP can be 0 unless you have a TIU/Spider */
 #define	BSLOP	2		/* In case some device needs bigger buffers */
-#define	NINDIR	(BSIZE/sizeof(daddr_t))
+#define	NINDIR	(BSIZE/sizeof(v7_daddr_t))
 #define	BMASK	0777		/* BSIZE-1 */
 #define	BSHIFT	9		/* LOG2(BSIZE) */
 #define	NMASK	0177		/* NINDIR-1 */
@@ -84,9 +84,9 @@
 #define	UBASE	0140000		/* abs. addr of user block */
 #define	NULL	0
 #define	CMASK	0		/* default mask for file creation */
-#define	NODEV	(dev_t)(-1)
-#define	ROOTINO	((ino_t)2)	/* i number of all roots */
-#define	SUPERB	((daddr_t)1)	/* block number of the super block */
+#define	NODEV	((v7_dev_t)(-1))
+#define	ROOTINO	((v7_ino_t)2)	/* i number of all roots */
+#define	SUPERB	((v7_daddr_t)1)	/* block number of the super block */
 #define	DIRSIZ	14		/* max characters per directory */
 #define	NICINOD	100		/* number of superblock inodes */
 #define	NICFREE	50		/* number of superblock free blocks */
@@ -105,34 +105,34 @@
 #define	ctod(x)	((x+7)>>3)
 
 /* inumber to disk address */
-#define	itod(x)	(daddr_t)((((unsigned)x+15)>>3))
+#define	itod(x)	(daddr_t)(((((uint16_t)x)+15)>>3))
 
 /* inumber to disk offset */
-#define	itoo(x)	(int)((x+15)&07)
+#define	itoo(x)	(int16_t)((x+15)&07)
 
 /* clicks to bytes */
 #define	ctob(x)	(x<<6)
 
 /* bytes to clicks */
-#define	btoc(x)	((((unsigned)x+63)>>6))
+#define	btoc(x)	((((uint16_t)x+63)>>6))
 
 /* major part of a device */
-#define	major(x)	(int)(((unsigned)x>>8))
+#define	major(x)	(int16_t)((((uint16_t)x)>>8))
 
 /* minor part of a device */
-#define	minor(x)	(int)(x&0377)
+#define	minor(x)	(int16_t)(x&0377)
 
 /* make a device number */
 #define	makedev(x,y)	(dev_t)((x)<<8 | (y))
 
-typedef	struct { int r[1]; } *	physadr;
-typedef	long		daddr_t;
+typedef	struct { int16_t r[1]; } *	physadr;
+typedef	int32_t		daddr_t;
 typedef char *		caddr_t;
-typedef	unsigned int	ino_t;
-typedef	long		time_t;
-typedef	int		label_t[6];	/* regs 2-7 */
-typedef	int		dev_t;
-typedef	long		off_t;
+typedef	uint16_t	ino_t;
+typedef	int32_t		time_t;
+typedef	int16_t		label_t[6];	/* regs 2-7 */
+typedef	int16_t		dev_t;
+typedef	int32_t		off_t;
 
 /*
  * Machine-dependent bits and macros

@@ -1,3 +1,5 @@
+#include "v7adapt.h"
+
 #include "../h/param.h"
 #include "../h/systm.h"
 #include "../h/mount.h"
@@ -12,6 +14,7 @@
 #include "../h/conf.h"
 #include "../h/stat.h"
 
+#if UNUSED
 /*
  * the fstat system call.
  */
@@ -29,7 +32,9 @@ fstat()
 		return;
 	stat1(fp->f_inode, uap->sb, fp->f_flag&FPIPE? fp->f_un.f_offset: 0);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * the stat system call.
  */
@@ -48,15 +53,14 @@ stat()
 	stat1(ip, uap->sb, (off_t)0);
 	iput(ip);
 }
+#endif /* UNUSED */
 
 /*
  * The basic routine for fstat and stat:
  * get the inode and pass appropriate parts back.
  */
-stat1(ip, ub, pipeadj)
-register struct inode *ip;
-struct stat *ub;
-off_t pipeadj;
+void
+stat1(struct inode *ip, struct stat *ub, off_t pipeadj)
 {
 	register struct dinode *dp;
 	register struct buf *bp;
@@ -80,14 +84,15 @@ off_t pipeadj;
 	bp = bread(ip->i_dev, itod(ip->i_number));
 	dp = bp->b_un.b_dino;
 	dp += itoo(ip->i_number);
-	ds.st_atime = dp->di_atime;
-	ds.st_mtime = dp->di_mtime;
-	ds.st_ctime = dp->di_ctime;
+	ds.st_atime = wswap_int32(dp->di_atime);
+	ds.st_mtime = wswap_int32(dp->di_mtime);
+	ds.st_ctime = wswap_int32(dp->di_ctime);
 	brelse(bp);
 	if (copyout((caddr_t)&ds, (caddr_t)ub, sizeof(ds)) < 0)
 		u.u_error = EFAULT;
 }
 
+#if UNUSED
 /*
  * the dup system call.
  */
@@ -124,7 +129,9 @@ dup()
 		fp->f_count++;
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * the mount system call.
  */
@@ -190,7 +197,9 @@ out:
 out1:
 	iput(ip);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * the umount system call.
  */
@@ -230,7 +239,9 @@ found:
 	mp->m_bufp = NULL;
 	brelse(bp);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Common code for mount and umount.
  * Check that the user's argument is a reasonable
@@ -253,3 +264,4 @@ getmdev()
 	iput(ip);
 	return(dev);
 }
+#endif /* UNUSED */

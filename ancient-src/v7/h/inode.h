@@ -29,10 +29,10 @@ struct	inode
 	char	i_count;	/* reference count */
 	dev_t	i_dev;		/* device where inode resides */
 	ino_t	i_number;	/* i number, 1-to-1 with device address */
-	unsigned short	i_mode;
-	short	i_nlink;	/* directory entries */
-	short	i_uid;		/* owner */
-	short	i_gid;		/* group of owner */
+	uint16_t	i_mode;
+	int16_t	i_nlink;	/* directory entries */
+	int16_t	i_uid;		/* owner */
+	int16_t	i_gid;		/* group of owner */
 	off_t	i_size;		/* size of file */
 	union {
 		struct {

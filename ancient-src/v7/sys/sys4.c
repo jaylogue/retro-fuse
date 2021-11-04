@@ -1,3 +1,5 @@
+#include "v7adapt.h"
+
 #include "../h/param.h"
 #include "../h/systm.h"
 #include "../h/dir.h"
@@ -11,6 +13,7 @@
  * Everything in this file is a routine implementing a system call.
  */
 
+#if UNUSED
 /*
  * return the current time (old-style entry)
  */
@@ -18,7 +21,9 @@ gtime()
 {
 	u.u_r.r_time = time;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * New time entry-- return TOD with milliseconds, timezone,
  * DST flag
@@ -46,7 +51,9 @@ ftime()
 	if (copyout((caddr_t)&t, (caddr_t)uap->tp, sizeof(t)) < 0)
 		u.u_error = EFAULT;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Set the time
  */
@@ -60,7 +67,9 @@ stime()
 	if(suser())
 		time = uap->time;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 setuid()
 {
 	register uid;
@@ -76,14 +85,18 @@ setuid()
 		u.u_ruid = uid;
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 getuid()
 {
 
 	u.u_r.r_val1 = u.u_ruid;
 	u.u_r.r_val2 = u.u_uid;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 setgid()
 {
 	register gid;
@@ -98,26 +111,34 @@ setgid()
 		u.u_rgid = gid;
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 getgid()
 {
 
 	u.u_r.r_val1 = u.u_rgid;
 	u.u_r.r_val2 = u.u_gid;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 getpid()
 {
 	u.u_r.r_val1 = u.u_procp->p_pid;
 	u.u_r.r_val2 = u.u_procp->p_ppid;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 sync()
 {
 
 	update();
 }
+#endif /* UNUSED */
 
+#if UNUSED
 nice()
 {
 	register n;
@@ -136,12 +157,14 @@ nice()
 		n = 0;
 	u.u_procp->p_nice = n;
 }
+#endif /* UNUSED */
 
 /*
  * Unlink system call.
  * Hard to avoid races here, especially
  * in unlinking directories.
  */
+void
 unlink()
 {
 	register struct inode *ip, *pp;
@@ -191,17 +214,22 @@ out:
 out1:
 	iput(pp);
 }
+#if UNUSED
 chdir()
 {
 	chdirec(&u.u_cdir);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 chroot()
 {
 	if (suser())
 		chdirec(&u.u_rdir);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 chdirec(ipp)
 register struct inode **ipp;
 {
@@ -230,7 +258,9 @@ register struct inode **ipp;
 bad:
 	iput(ip);
 }
+#endif /* UNUSED */
 
+void
 chmod()
 {
 	register struct inode *ip;
@@ -252,6 +282,7 @@ chmod()
 	iput(ip);
 }
 
+#if UNUSED
 chown()
 {
 	register struct inode *ip;
@@ -269,7 +300,9 @@ chown()
 	ip->i_flag |= ICHG;
 	iput(ip);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 ssig()
 {
 	register a;
@@ -288,7 +321,9 @@ ssig()
 	u.u_signal[a] = uap->fun;
 	u.u_procp->p_sig &= ~(1<<(a-1));
 }
+#endif /* UNUSED */
 
+#if UNUSED
 kill()
 {
 	register struct proc *p, *q;
@@ -323,7 +358,9 @@ kill()
 	if(f == 0)
 		u.u_error = ESRCH;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 times()
 {
 	register struct a {
@@ -334,7 +371,9 @@ times()
 	if (copyout((caddr_t)&u.u_utime, (caddr_t)uap->times, sizeof(*uap->times)) < 0)
 		u.u_error = EFAULT;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 profil()
 {
 	register struct a {
@@ -350,7 +389,9 @@ profil()
 	u.u_prof.pr_off = uap->pcoffset;
 	u.u_prof.pr_scale = uap->pcscale;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * alarm clock signal
  */
@@ -368,7 +409,9 @@ alarm()
 	p->p_clktim = uap->deltat;
 	u.u_r.r_val1 = c;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * indefinite wait.
  * no one should wakeup(&u)
@@ -379,7 +422,9 @@ pause()
 	for(;;)
 		sleep((caddr_t)&u, PSLEP);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * mode mask for creation of files
  */
@@ -395,7 +440,9 @@ umask()
 	u.u_cmask = uap->mask & 0777;
 	u.u_r.r_val1 = t;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Set IUPD and IACC times on file.
  * Can't set ICHG.
@@ -420,3 +467,4 @@ utime()
 	iupdat(ip, &tv[0], &tv[1]);
 	iput(ip);
 }
+#endif /* UNUSED */

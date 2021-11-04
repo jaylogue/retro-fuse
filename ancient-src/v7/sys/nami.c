@@ -1,3 +1,5 @@
+#include "v7adapt.h"
+
 #include "../h/param.h"
 #include "../h/systm.h"
 #include "../h/inode.h"
@@ -18,14 +20,13 @@
  *	2 if name is to be deleted
  */
 struct inode *
-namei(func, flag)
-int (*func)();
+namei(int16_t (*func)(), int16_t flag)
 {
 	register struct inode *dp;
-	register c;
+	register uint16_t c;
 	register char *cp;
 	struct buf *bp;
-	int i;
+	uint16_t i;
 	dev_t d;
 	off_t eo;
 
@@ -199,6 +200,7 @@ out:
 	return(NULL);
 }
 
+#if UNUSED
 /*
  * Return the next character from the
  * kernel string pointed at by dirp.
@@ -208,7 +210,9 @@ schar()
 
 	return(*u.u_dirp++ & 0377);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Return the next character from the
  * user string pointed at by dirp.
@@ -222,3 +226,4 @@ uchar()
 		u.u_error = EFAULT;
 	return(c);
 }
+#endif /* UNUSED */

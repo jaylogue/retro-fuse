@@ -17,30 +17,30 @@
 struct	user
 {
 	label_t	u_rsav;			/* save info when exchanging stacks */
-	int	u_fper;			/* FP error register */
-	int	u_fpsaved;		/* FP regs saved for this proc */
+	int16_t	u_fper;			/* FP error register */
+	int16_t	u_fpsaved;		/* FP regs saved for this proc */
 	struct {
-		int	u_fpsr;		/* FP status register */
+		int16_t	u_fpsr;		/* FP status register */
 		double	u_fpregs[6];	/* FP registers */
 	} u_fps;
 	char	u_segflg;		/* IO flag: 0:user D; 1:system; 2:user I */
 	char	u_error;		/* return error code */
-	short	u_uid;			/* effective user id */
-	short	u_gid;			/* effective group id */
-	short	u_ruid;			/* real user id */
-	short	u_rgid;			/* real group id */
+	int16_t	u_uid;			/* effective user id */
+	int16_t	u_gid;			/* effective group id */
+	int16_t	u_ruid;			/* real user id */
+	int16_t	u_rgid;			/* real group id */
 	struct proc *u_procp;		/* pointer to proc structure */
-	int	*u_ap;			/* pointer to arglist */
+	void	*u_ap;			/* pointer to arglist */
 	union {				/* syscall return values */
 		struct	{
-			int	r_val1;
-			int	r_val2;
+			int16_t	r_val1;
+			int16_t	r_val2;
 		};
 		off_t	r_off;
 		time_t	r_time;
 	} u_r;
 	caddr_t	u_base;			/* base address for IO */
-	unsigned int u_count;		/* bytes remaining for IO */
+	uint16_t u_count;		/* bytes remaining for IO */
 	off_t	u_offset;		/* offset in file for IO */
 	struct inode *u_cdir;		/* pointer to inode of current directory */
 	struct inode *u_rdir;		/* root directory of current process */
@@ -48,48 +48,48 @@ struct	user
 	caddr_t	u_dirp;			/* pathname pointer */
 	struct direct u_dent;		/* current directory entry */
 	struct inode *u_pdir;		/* inode of parent directory of dirp */
-	int	u_uisa[16];		/* prototype of segmentation addresses */
-	int	u_uisd[16];		/* prototype of segmentation descriptors */
+	int16_t	u_uisa[16];		/* prototype of segmentation addresses */
+	int16_t	u_uisd[16];		/* prototype of segmentation descriptors */
 	struct file *u_ofile[NOFILE];	/* pointers to file structures of open files */
 	char	u_pofile[NOFILE];	/* per-process flags of open files */
-	int	u_arg[5];		/* arguments to current system call */
-	unsigned u_tsize;		/* text size (clicks) */
-	unsigned u_dsize;		/* data size (clicks) */
-	unsigned u_ssize;		/* stack size (clicks) */
+	intptr_t	u_arg[5];		/* arguments to current system call */
+	uint16_t u_tsize;		/* text size (clicks) */
+	uint16_t u_dsize;		/* data size (clicks) */
+	uint16_t u_ssize;		/* stack size (clicks) */
 	label_t	u_qsav;			/* label variable for quits and interrupts */
 	label_t	u_ssav;			/* label variable for swapping */
-	int	u_signal[NSIG];		/* disposition of signals */
+	int16_t	u_signal[NSIG];		/* disposition of signals */
 	time_t	u_utime;		/* this process user time */
 	time_t	u_stime;		/* this process system time */
 	time_t	u_cutime;		/* sum of childs' utimes */
 	time_t	u_cstime;		/* sum of childs' stimes */
-	int	*u_ar0;			/* address of users saved R0 */
+	int16_t	*u_ar0;			/* address of users saved R0 */
 	struct {			/* profile arguments */
-		short	*pr_base;	/* buffer base */
-		unsigned pr_size;	/* buffer size */
-		unsigned pr_off;	/* pc offset */
-		unsigned pr_scale;	/* pc scaling */
+		int16_t	*pr_base;	/* buffer base */
+		uint16_t pr_size;	/* buffer size */
+		uint16_t pr_off;	/* pc offset */
+		uint16_t pr_scale;	/* pc scaling */
 	} u_prof;
 	char	u_intflg;		/* catch intr from sys */
 	char	u_sep;			/* flag for I and D separation */
 	struct tty *u_ttyp;		/* controlling tty pointer */
 	dev_t	u_ttyd;			/* controlling tty dev */
 	struct {			/* header of executable file */
-		int	ux_mag;		/* magic number */
-		unsigned ux_tsize;	/* text size */
-		unsigned ux_dsize;	/* data size */
-		unsigned ux_bsize;	/* bss size */
-		unsigned ux_ssize;	/* symbol table size */
-		unsigned ux_entloc;	/* entry location */
-		unsigned ux_unused;
-		unsigned ux_relflg;
+		int16_t	ux_mag;		/* magic number */
+		uint16_t ux_tsize;	/* text size */
+		uint16_t ux_dsize;	/* data size */
+		uint16_t ux_bsize;	/* bss size */
+		uint16_t ux_ssize;	/* symbol table size */
+		uint16_t ux_entloc;	/* entry location */
+		uint16_t ux_unused;
+		uint16_t ux_relflg;
 	} u_exdata;
 	char	u_comm[DIRSIZ];
 	time_t	u_start;
 	char	u_acflag;
-	short	u_fpflag;		/* unused now, will be later */
-	short	u_cmask;		/* mask for file creation */
-	int	u_stack[1];
+	int16_t	u_fpflag;		/* unused now, will be later */
+	int16_t	u_cmask;		/* mask for file creation */
+	int16_t	u_stack[1];
 					/* kernel stack per user
 					 * extends from u + USIZE*64
 					 * backward not to reach here

@@ -1,3 +1,5 @@
+#include "v7adapt.h"
+
 #include "../h/param.h"
 #include "../h/systm.h"
 #include "../h/dir.h"
@@ -16,6 +18,7 @@
  */
 #define	PIPSIZ	4096
 
+#if UNUSED
 /*
  * The sys-pipe entry.
  * Allocate an inode on the root device.
@@ -54,7 +57,9 @@ pipe()
 	ip->i_mode = IFREG;
 	ip->i_flag = IACC|IUPD|ICHG;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Read call directed to a pipe.
  */
@@ -109,7 +114,9 @@ loop:
 	}
 	prele(ip);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Write call directed to a pipe.
  */
@@ -180,7 +187,9 @@ loop:
 	}
 	goto loop;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Lock a pipe.
  * If its already locked,
@@ -196,6 +205,7 @@ register struct inode *ip;
 	}
 	ip->i_flag |= ILOCK;
 }
+#endif /* UNUSED */
 
 /*
  * Unlock a pipe.
@@ -204,8 +214,8 @@ register struct inode *ip;
  * This routine is also used
  * to unlock inodes in general.
  */
-prele(ip)
-register struct inode *ip;
+void
+prele(struct v7_inode *ip)
 {
 
 	ip->i_flag &= ~ILOCK;

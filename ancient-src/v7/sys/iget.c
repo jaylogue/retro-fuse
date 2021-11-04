@@ -1,3 +1,5 @@
+#include "v7adapt.h"
+
 #include "../h/param.h"
 #include "../h/systm.h"
 #include "../h/mount.h"
@@ -27,9 +29,7 @@
  *	"cannot happen"
  */
 struct inode *
-iget(dev, ino)
-dev_t dev;
-ino_t ino;
+iget(dev_t dev, ino_t ino)
 {
 	register struct inode *ip;
 	register struct mount *mp;
@@ -89,26 +89,24 @@ loop:
 	return(ip);
 }
 
-iexpand(ip, dp)
-register struct inode *ip;
-register struct dinode *dp;
+void
+iexpand(struct inode *ip, struct dinode *dp)
 {
-	register char *p1;
-	char *p2;
-	int i;
+	register daddr_t *p1;
+	uint8_t *p2;
+	int16_t i;
 
 	ip->i_mode = dp->di_mode;
 	ip->i_nlink = dp->di_nlink;
 	ip->i_uid = dp->di_uid;
 	ip->i_gid = dp->di_gid;
-	ip->i_size = dp->di_size;
-	p1 = (char *)ip->i_un.i_addr;
-	p2 = (char *)dp->di_addr;
+	ip->i_size = wswap_int32(dp->di_size);
+	p1 = (daddr_t *)ip->i_un.i_addr;
+	p2 = (uint8_t *)dp->di_addr;
 	for(i=0; i<NADDR; i++) {
-		*p1++ = *p2++;
-		*p1++ = 0;
-		*p1++ = *p2++;
-		*p1++ = *p2++;
+		*p1    = ((daddr_t)*p2++) << 16;
+		*p1   |= ((daddr_t)*p2++);
+		*p1++ |= ((daddr_t)*p2++) << 8;
 	}
 }
 
@@ -119,8 +117,8 @@ register struct dinode *dp;
  * write the inode out and if necessary,
  * truncate and deallocate the file.
  */
-iput(ip)
-register struct inode *ip;
+void
+iput(struct inode *ip)
 {
 
 	if(ip->i_count == 1) {
@@ -146,15 +144,14 @@ register struct inode *ip;
  * If any are on, update the inode
  * with the current time.
  */
-iupdat(ip, ta, tm)
-register struct inode *ip;
-time_t *ta, *tm;
+void
+iupdat(struct inode *ip, time_t *ta, time_t *tm)
 {
 	register struct buf *bp;
 	struct dinode *dp;
-	register char *p1;
-	char *p2;
-	int i;
+	register uint8_t *p1;
+	daddr_t *p2;
+	int16_t i;
 
 	if((ip->i_flag&(IUPD|IACC|ICHG)) != 0) {
 		if(getfs(ip->i_dev)->s_ronly)
@@ -170,23 +167,23 @@ time_t *ta, *tm;
 		dp->di_nlink = ip->i_nlink;
 		dp->di_uid = ip->i_uid;
 		dp->di_gid = ip->i_gid;
-		dp->di_size = ip->i_size;
-		p1 = (char *)dp->di_addr;
-		p2 = (char *)ip->i_un.i_addr;
+		dp->di_size = wswap_int32(ip->i_size);
+		p1 = (uint8_t *)dp->di_addr;
+		p2 = (daddr_t *)ip->i_un.i_addr;
 		for(i=0; i<NADDR; i++) {
-			*p1++ = *p2++;
-			if(*p2++ != 0 && (ip->i_mode&IFMT)!=IFMPC
+			*p1++ = (uint8_t)(*p2 >> 16);
+			if((*p2 >> 24) != 0 && (ip->i_mode&IFMT)!=IFMPC
 			   && (ip->i_mode&IFMT)!=IFMPB)
 				printf("iaddress > 2^24\n");
-			*p1++ = *p2++;
-			*p1++ = *p2++;
+			*p1++ = (uint8_t)(*p2);
+			*p1++ = (uint8_t)(*p2++ >> 8);
 		}
 		if(ip->i_flag&IACC)
-			dp->di_atime = *ta;
+			dp->di_atime = wswap_int32(*ta);
 		if(ip->i_flag&IUPD)
-			dp->di_mtime = *tm;
+			dp->di_mtime = wswap_int32(*tm);
 		if(ip->i_flag&ICHG)
-			dp->di_ctime = time;
+			dp->di_ctime = wswap_int32(time);
 		ip->i_flag &= ~(IUPD|IACC|ICHG);
 		bdwrite(bp);
 	}
@@ -201,15 +198,16 @@ time_t *ta, *tm;
  * a contiguous free list much longer
  * than FIFO.
  */
-itrunc(ip)
-register struct inode *ip;
+void
+itrunc(struct inode *ip)
 {
-	register i;
+	register int16_t i;
+	uint16_t ui;
 	dev_t dev;
 	daddr_t bn;
 
-	i = ip->i_mode & IFMT;
-	if (i!=IFREG && i!=IFDIR)
+	ui = ip->i_mode & IFMT;
+	if (ui!=IFREG && ui!=IFDIR)
 		return;
 	dev = ip->i_dev;
 	for(i=NADDR-1; i>=0; i--) {
@@ -239,11 +237,10 @@ register struct inode *ip;
 	ip->i_flag |= ICHG|IUPD;
 }
 
-tloop(dev, bn, f1, f2)
-dev_t dev;
-daddr_t bn;
+void
+tloop(dev_t dev, daddr_t bn, int16_t f1, int16_t f2)
 {
-	register i;
+	register int16_t i;
 	register struct buf *bp;
 	register daddr_t *bap;
 	daddr_t nb;
@@ -258,7 +255,7 @@ daddr_t bn;
 			}
 			bap = bp->b_un.b_daddr;
 		}
-		nb = bap[i];
+		nb = wswap_int32(bap[i]);
 		if(nb == (daddr_t)0)
 			continue;
 		if(f1) {
@@ -277,7 +274,7 @@ daddr_t bn;
  * Make a new file.
  */
 struct inode *
-maknode(mode)
+maknode(int16_t mode)
 {
 	register struct inode *ip;
 
@@ -302,8 +299,8 @@ maknode(mode)
  * parameters left as side effects
  * to a call to namei.
  */
-wdir(ip)
-struct inode *ip;
+void
+wdir(struct inode *ip)
 {
 
 	if (u.u_pdir->i_nlink <= 0) {

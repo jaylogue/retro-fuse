@@ -1,3 +1,5 @@
+#include "v7adapt.h"
+
 #include "../h/param.h"
 #include "../h/systm.h"
 #include "../h/mount.h"
@@ -23,8 +25,7 @@ typedef	struct fblk *FBLKP;
  * the free list is exhausted.
  */
 struct buf *
-alloc(dev)
-dev_t dev;
+alloc(dev_t dev)
 {
 	daddr_t bno;
 	register struct filsys *fp;
@@ -40,7 +41,7 @@ dev_t dev;
 			prdev("Bad free count", dev);
 			goto nospace;
 		}
-		bno = fp->s_free[--fp->s_nfree];
+		bno = wswap_int32(fp->s_free[--fp->s_nfree]);
 		if(bno == 0)
 			goto nospace;
 	} while (badblock(fp, bno, dev));
@@ -75,9 +76,8 @@ nospace:
  * back on the free list of the
  * specified device.
  */
-free(dev, bno)
-dev_t dev;
-daddr_t bno;
+void
+free(dev_t dev, daddr_t bno)
 {
 	register struct filsys *fp;
 	register struct buf *bp;
@@ -104,7 +104,7 @@ daddr_t bno;
 		fp->s_flock = 0;
 		wakeup((caddr_t)&fp->s_flock);
 	}
-	fp->s_free[fp->s_nfree++] = bno;
+	fp->s_free[fp->s_nfree++] = wswap_int32(bno);
 	fp->s_fmod = 1;
 }
 
@@ -117,13 +117,11 @@ daddr_t bno;
  *
  * bad block on dev x/y -- not in range
  */
-badblock(fp, bn, dev)
-register struct filsys *fp;
-daddr_t bn;
-dev_t dev;
+int16_t
+badblock(struct filsys *fp, daddr_t bn, dev_t dev)
 {
 
-	if (bn < fp->s_isize || bn >= fp->s_fsize) {
+	if (bn < fp->s_isize || bn >= wswap_int32(fp->s_fsize)) {
 		prdev("bad block", dev);
 		return(1);
 	}
@@ -142,13 +140,12 @@ dev_t dev;
  * up NICINOD more.
  */
 struct inode *
-ialloc(dev)
-dev_t dev;
+ialloc(dev_t dev)
 {
 	register struct filsys *fp;
 	register struct buf *bp;
 	register struct inode *ip;
-	int i;
+	int16_t i;
 	struct dinode *dp;
 	ino_t ino;
 	daddr_t adr;
@@ -220,9 +217,8 @@ loop:
  * to NICINOD I nodes in the super
  * block and throws away any more.
  */
-ifree(dev, ino)
-dev_t dev;
-ino_t ino;
+void
+ifree(dev_t dev, ino_t ino)
 {
 	register struct filsys *fp;
 
@@ -254,8 +250,7 @@ ino_t ino;
  *	this "cannot happen"
  */
 struct filsys *
-getfs(dev)
-dev_t dev;
+getfs(dev_t dev)
 {
 	register struct mount *mp;
 	register struct filsys *fp;
@@ -283,6 +278,7 @@ dev_t dev;
  * the mount table to initiate modified
  * super blocks.
  */
+void
 update()
 {
 	register struct inode *ip;
@@ -303,7 +299,7 @@ update()
 			if (bp->b_flags & B_ERROR)
 				continue;
 			fp->s_fmod = 0;
-			fp->s_time = time;
+			fp->s_time = wswap_int32(time);
 			bcopy((caddr_t)fp, bp->b_un.b_addr, BSIZE);
 			bwrite(bp);
 		}

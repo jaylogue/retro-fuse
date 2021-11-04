@@ -3,12 +3,12 @@
  * used by more than one
  * routine.
  */
-char	canonb[CANBSIZ];	/* buffer for erase and kill (#@) */
-struct inode *rootdir;		/* pointer to inode of root directory */
-struct proc *runq;		/* head of linked list of running processes */
-int	cputype;		/* type of cpu =40, 45, or 70 */
-int	lbolt;			/* time of day in 60th not in time */
-time_t	time;			/* time in sec from 1970 */
+extern char	canonb[CANBSIZ];	/* buffer for erase and kill (#@) */
+extern struct inode *rootdir;		/* pointer to inode of root directory */
+extern struct proc *runq;		/* head of linked list of running processes */
+extern int16_t	cputype;		/* type of cpu =40, 45, or 70 */
+extern int16_t	lbolt;			/* time of day in 60th not in time */
+extern time_t	time;			/* time in sec from 1970 */
 
 /*
  * Nblkdev is the number of entries
@@ -18,58 +18,58 @@ time_t	time;			/* time in sec from 1970 */
  * Used in bounds checking on major
  * device numbers.
  */
-int	nblkdev;
+extern int16_t	nblkdev;
 
 /*
  * Number of character switch entries.
  * Set by cinit/tty.c
  */
-int	nchrdev;
+extern int16_t	nchrdev;
 
-int	mpid;			/* generic for unique process id's */
-char	runin;			/* scheduling flag */
-char	runout;			/* scheduling flag */
-char	runrun;			/* scheduling flag */
-char	curpri;			/* more scheduling */
-int	maxmem;			/* actual max memory per process */
-physadr	lks;			/* pointer to clock device */
-daddr_t	swplo;			/* block number of swap space */
-int	nswap;			/* size of swap space */
-int	updlock;		/* lock for sync */
-daddr_t	rablock;		/* block to be read ahead */
-extern	char	regloc[];	/* locs. of saved user registers (trap.c) */
-char	msgbuf[MSGBUFS];	/* saved "printf" characters */
-dev_t	rootdev;		/* device of the root */
-dev_t	swapdev;		/* swapping device */
-dev_t	pipedev;		/* pipe device */
-extern	int	icode[];	/* user init code */
-extern	int	szicode;	/* its size */
+extern int16_t	mpid;			/* generic for unique process id's */
+extern char	runin;			/* scheduling flag */
+extern char	runout;			/* scheduling flag */
+extern char	runrun;			/* scheduling flag */
+extern char	curpri;			/* more scheduling */
+extern int16_t	maxmem;			/* actual max memory per process */
+extern physadr	lks;			/* pointer to clock device */
+extern daddr_t	swplo;			/* block number of swap space */
+extern int16_t	nswap;			/* size of swap space */
+extern int16_t	updlock;		/* lock for sync */
+extern daddr_t	rablock;		/* block to be read ahead */
+extern char	regloc[];	/* locs. of saved user registers (trap.c) */
+extern char	msgbuf[MSGBUFS];	/* saved "printf" characters */
+extern dev_t	rootdev;		/* device of the root */
+extern dev_t	swapdev;		/* swapping device */
+extern dev_t	pipedev;		/* pipe device */
+extern int16_t	icode[];	/* user init code */
+extern int16_t	szicode;	/* its size */
 
-dev_t getmdev();
-daddr_t	bmap();
-struct inode *ialloc();
-struct inode *iget();
-struct inode *owner();
-struct inode *maknode();
-struct inode *namei();
-struct buf *alloc();
-struct buf *getblk();
-struct buf *geteblk();
-struct buf *bread();
-struct buf *breada();
-struct filsys *getfs();
-struct file *getf();
-struct file *falloc();
-int	uchar();
+extern dev_t getmdev();
+extern daddr_t	bmap(struct inode *ip, daddr_t bn, int16_t rwflg);
+extern struct inode *ialloc(dev_t dev);
+extern struct inode *iget(dev_t dev, ino_t ino);
+extern struct inode *owner();
+extern struct inode *maknode(int16_t mode);
+extern struct inode *namei(int16_t (*func)(), int16_t flag);
+extern struct buf *alloc(dev_t dev);
+extern struct buf *getblk(dev_t dev, daddr_t blkno);
+extern struct buf *geteblk();
+extern struct buf *bread(dev_t dev, daddr_t blkno);
+extern struct buf *breada(dev_t dev, daddr_t blkno, daddr_t rablkno);
+extern struct filsys *getfs(dev_t dev);
+extern struct file *getf(int16_t f);
+extern struct file *falloc();
+extern int16_t	uchar();
 /*
  * Instrumentation
  */
-int	dk_busy;
-long	dk_time[32];
-long	dk_numb[3];
-long	dk_wds[3];
-long	tk_nin;
-long	tk_nout;
+extern int16_t	dk_busy;
+extern int32_t	dk_time[32];
+extern int32_t	dk_numb[3];
+extern int32_t	dk_wds[3];
+extern int32_t	tk_nin;
+extern int32_t	tk_nout;
 
 /*
  * Structure of the system-entry table
@@ -77,5 +77,5 @@ long	tk_nout;
 extern struct sysent {
 	char	sy_narg;		/* total number of arguments */
 	char	sy_nrarg;		/* number of args in registers */
-	int	(*sy_call)();		/* handler */
+	int16_t	(*sy_call)();		/* handler */
 } sysent[];
