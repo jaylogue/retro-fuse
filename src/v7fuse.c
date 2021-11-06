@@ -142,8 +142,8 @@ static int v7fuse_parseinitopt(struct v7fuse_config *cfg, const char *arg)
 {
     cfg->initfs = 1;
     cfg->isize = 0;
-    cfg->flparams.n = 0;
-    cfg->flparams.m = 0;
+    cfg->flparams.n = 1;
+    cfg->flparams.m = 1;
 
     int matchend = -1;
     int scanres = sscanf(arg, " initfs %n= %" SCNu32 " %n: %" SCNu16 " : %" SCNu16 " %n",
