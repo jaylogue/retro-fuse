@@ -171,6 +171,64 @@ extern void v7_chown();
 /* text.c */
 extern void v7_xrele(struct v7_inode *ip);
 
+/* Allow v7 code to use certain names that collide with modern
+ * preprocessor definitions, while still allowing the modern
+ * definitions to be recovered if need be.
+ */
+#pragma push_macro("NULL")
+#undef NULL
+#pragma push_macro("NSIG")
+#undef NSIG
+#pragma push_macro("SIGIOT")
+#undef SIGIOT
+#pragma push_macro("SIGABRT")
+#undef SIGABRT
+#pragma push_macro("EAGAIN")
+#undef EAGAIN
+#pragma push_macro("FREAD")
+#undef FREAD
+#pragma push_macro("FWRITE")
+#undef FWRITE
+#pragma push_macro("major")
+#undef major
+#pragma push_macro("minor")
+#undef minor
+#pragma push_macro("makedev")
+#undef makedev
+#pragma push_macro("st_atime")
+#undef st_atime
+#define st_atime v7_st_atime
+#pragma push_macro("st_mtime")
+#undef st_mtime
+#define st_mtime v7_st_mtime
+#pragma push_macro("st_ctime")
+#undef st_ctime
+#define st_ctime v7_st_ctime
+#pragma push_macro("S_IFMT")
+#undef S_IFMT
+#pragma push_macro("S_IFDIR")
+#undef S_IFDIR
+#pragma push_macro("S_IFCHR")
+#undef S_IFCHR
+#pragma push_macro("S_IFBLK")
+#undef S_IFBLK
+#pragma push_macro("S_IFREG")
+#undef S_IFREG
+#pragma push_macro("S_ISUID")
+#undef S_ISUID
+#pragma push_macro("S_ISGID")
+#undef S_ISGID
+#pragma push_macro("S_ISVTX")
+#undef S_ISVTX
+#pragma push_macro("S_IREAD")
+#undef S_IREAD
+#pragma push_macro("S_IWRITE")
+#undef S_IWRITE
+#pragma push_macro("S_IEXEC")
+#undef S_IEXEC
+#pragma push_macro("bcopy")
+#undef bcopy
+
 /* Map various names used by v7 code to avoid any conflicts with modern code
 */
 #define access    v7_access
@@ -283,55 +341,5 @@ extern void v7_xrele(struct v7_inode *ip);
 #define writei    v7_writei
 #define writep    v7_writep
 #define xrele     v7_xrele
-
-/* Allow v7 code to use certain names that collide with modern
- * preprocessor definitions, while still allowing the modern
- * definitions to be recovered if need be.
- */
-#pragma push_macro("NULL")
-#undef NULL
-#pragma push_macro("NSIG")
-#undef NSIG
-#pragma push_macro("SIGIOT")
-#undef SIGIOT
-#pragma push_macro("SIGABRT")
-#undef SIGABRT
-#pragma push_macro("EAGAIN")
-#undef EAGAIN
-#pragma push_macro("FREAD")
-#undef FREAD
-#pragma push_macro("FWRITE")
-#undef FWRITE
-#pragma push_macro("major")
-#undef major
-#pragma push_macro("minor")
-#undef minor
-#pragma push_macro("makedev")
-#undef makedev
-#pragma push_macro("st_atime")
-#undef st_atime
-#define st_atime v7_st_atime
-#pragma push_macro("st_mtime")
-#undef st_mtime
-#define st_mtime v7_st_mtime
-#pragma push_macro("st_ctime")
-#undef st_ctime
-#define st_ctime v7_st_ctime
-#pragma push_macro("S_IFMT")
-#undef S_IFMT
-#pragma push_macro("S_IFDIR")
-#undef S_IFDIR
-#pragma push_macro("S_IFCHR")
-#undef S_IFCHR
-#pragma push_macro("S_IFBLK")
-#undef S_IFBLK
-#pragma push_macro("S_IFREG")
-#undef S_IFREG
-#pragma push_macro("S_ISUID")
-#undef S_ISUID
-#pragma push_macro("S_ISGID")
-#undef S_ISGID
-#pragma push_macro("S_ISVTX")
-#undef S_ISVTX
 
 #endif /* __V7ADAPT_H__ */

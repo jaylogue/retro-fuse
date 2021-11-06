@@ -202,5 +202,9 @@ enum {
 #pragma pop_macro("S_ISUID")
 #pragma pop_macro("S_ISGID")
 #pragma pop_macro("S_ISVTX")
+#pragma pop_macro("S_IREAD")
+#pragma pop_macro("S_IWRITE")
+#pragma pop_macro("S_IEXEC")
+#pragma pop_macro("bcopy")
 
 #endif /* __V7UNADAPT_H__ */
