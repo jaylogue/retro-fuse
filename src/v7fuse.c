@@ -514,6 +514,10 @@ int main(int argc, char *argv[])
         goto exit;
     }
 
+    if (cfg.debug) {
+        cfg.foreground = 1;
+    }
+
     if (cfg.dskfilename == NULL) {
         fprintf(stderr, "%s: Please supply the name of the device or disk image to be mounted\n", v7fuse_cmdname);
         goto exit;

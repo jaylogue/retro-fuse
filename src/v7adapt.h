@@ -23,8 +23,11 @@
 #define __V7ADAPT_H__
 
 #include "stdint.h"
-#include <arpa/inet.h>
 
+/* Don't even think about trying to use this code on a big-endian machine. */
+#if !defined(__LITTLE_ENDIAN__) && (!defined(__BYTE_ORDER__) || __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
+#error Unsupported platform
+#endif
 
 /* Forward declarations of v7 types, suitably name-mangled */
 struct v7_buf;
@@ -42,11 +45,6 @@ typedef char * v7_caddr_t;
 typedef uint16_t v7_ino_t;
 typedef int32_t v7_time_t;
 typedef int32_t v7_off_t;
-
-/* Don't event think about trying to use this code on a big-endian machine. */
-#if !defined(__LITTLE_ENDIAN__) && (!defined(__BYTE_ORDER__) || __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
-#error Unsupported platform
-#endif
 
 /* Utility functions */
 extern void v7_zerocore();
@@ -230,7 +228,7 @@ extern void v7_xrele(struct v7_inode *ip);
 #undef bcopy
 
 /* Map various names used by v7 code to avoid any conflicts with modern code
-*/
+ */
 #define access    v7_access
 #define alloc     v7_alloc
 #define badblock  v7_badblock

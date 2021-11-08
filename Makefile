@@ -43,9 +43,8 @@ V6FS_SRC = \
 	src/dskio.c
 V6FS_OBJS = $(V6FS_SRC:.c=.o)
 
-$(V6_OBJS) : CFLAGS += -DANCIENT_SRC -I./ancient-src/v6
-src/v6fs.o src/v6adapt.o : CFLAGS += -I./ancient-src/v6
-
+$(V6_OBJS) src/v6fs.o src/v6adapt.o : CFLAGS += -I./ancient-src/v6
+ 
 V7FS_PROG = v7fs
 
 V7_SRC = \
@@ -70,8 +69,7 @@ V7FS_SRC = \
 	src/dskio.c
 V7FS_OBJS = $(V7FS_SRC:.c=.o)
 
-$(V7_OBJS) : CFLAGS += -DANCIENT_SRC -I./ancient-src/v7
-src/v7fs.o src/v7adapt.o : CFLAGS += -I./ancient-src/v7
+$(V7_OBJS) src/v7fs.o src/v7adapt.o : CFLAGS += -I./ancient-src/v7
 
 all : $(V6FS_PROG) $(V7FS_PROG)
 

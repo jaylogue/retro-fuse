@@ -24,6 +24,7 @@
 
 #include "stdint.h"
 
+/* Don't even think about trying to use this code on a big-endian machine. */
 #if !defined(__LITTLE_ENDIAN__) && (!defined(__BYTE_ORDER__) || __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
 #error Unsupported platform
 #endif
@@ -67,6 +68,21 @@ struct v6_inode_dsk {
 	int16_t	i_atime[2];
 	int16_t	i_mtime[2];
 };
+
+/* Alias a 16-bit device id integer to a struct containing device major and minor numbers.
+   This is used to replace the archaic 'int dev; ...  dev.d_major' idiom. */
+union v6_devu {
+   uint16_t dev;
+   struct {
+      int8_t d_minor;
+      int8_t d_major;
+   } devst;
+};
+#define todevst(DEV) (((union v6_devu *)&(DEV))->devst)
+
+/* Replacement for v6 PS (processor status word) define. */
+extern struct v6_integ v6_PS;
+#define PS (&v6_PS)
 
 
 /* Utility functions */
@@ -177,74 +193,74 @@ extern void v6_unlink();
 extern void v6_chmod();
 extern void v6_chown();
 
+/* Allow v6 code to use certain names that collide with modern
+ * preprocessor definitions, while still allowing the modern
+ * definitions to be recovered if need be.
+ */
+#pragma push_macro("NULL")
+#undef NULL
+#pragma push_macro("NSIG")
+#undef NSIG
+#pragma push_macro("SIGIOT")
+#undef SIGIOT
+#pragma push_macro("SIGABRT")
+#undef SIGABRT
+#pragma push_macro("EAGAIN")
+#undef EAGAIN
+#pragma push_macro("FREAD")
+#undef FREAD
+#pragma push_macro("FWRITE")
+#undef FWRITE
 
-/* Map struct and global variable names to avoid conflicts with modern code */
-#define bdevsw    v6_bdevsw
-#define bfreelist v6_bfreelist
-#define buf       v6_buf
-#define buffers   v6_buffers
-#define callo     v6_callo
-#define callout   v6_callout
-#define cdevsw    v6_cdevsw
-#define devtab    v6_devtab
-#define file      v6_file
-#define file      v6_file
-#define filsys    v6_filsys
-#define hilo      v6_hilo
-#define httab     v6_httab
-#define inode     v6_inode
-#define integ     v6_integ
-#define mount     v6_mount
-#define nblkdev   v6_nblkdev
-#define nchrdev   v6_nchrdev
-#define rablock   v6_rablock
-#define rootdev   v6_rootdev
-#define rootdir   v6_rootdir
-#define swbuf     v6_swbuf
-#define time      v6_time
-#define tmtab     v6_tmtab
-#define u         v6_u
-#define updlock   v6_updlock
-#define user      v6_user
-
-
-/* Map function names to avoid conflicts with modern code, 
-   but only when compiling v6 source. */
-
-#ifdef ANCIENT_SRC
-
+/* Map various names used by v7 code to avoid any conflicts with modern code
+ */
 #define access    v6_access
 #define alloc     v6_alloc
 #define badblock  v6_badblock
 #define bawrite   v6_bawrite
 #define bcopy     v6_bcopy
+#define bdevsw    v6_bdevsw
 #define bdwrite   v6_bdwrite
 #define bflush    v6_bflush
+#define bfreelist v6_bfreelist
 #define binit     v6_binit
 #define bmap      v6_bmap
 #define bread     v6_bread
 #define breada    v6_breada
 #define brelse    v6_brelse
+#define buf       v6_buf
+#define buffers   v6_buffers
 #define bwrite    v6_bwrite
+#define callo     v6_callo
+#define callout   v6_callout
+#define cdevsw    v6_cdevsw
 #define chmod     v6_chmod
 #define chown     v6_chown
 #define close     v6_close
 #define closef    v6_closef
 #define closei    v6_closei
 #define clrbuf    v6_clrbuf
+#define devtab    v6_devtab
 #define dpadd     v6_dpadd
 #define dpcmp     v6_dpcmp
 #define falloc    v6_falloc
+#define file      v6_file
+#define file      v6_file
+#define filsys    v6_filsys
 #define free      v6_free
 #define getblk    v6_getblk
 #define geterror  v6_geterror
 #define getf      v6_getf
 #define getfs     v6_getfs
+#define hilo      v6_hilo
+#define httab     v6_httab
 #define ialloc    v6_ialloc
 #define ifree     v6_ifree
 #define iget      v6_iget
 #define iinit     v6_iinit
 #define incore    v6_incore
+#define inode     v6_inode
+#define integ     v6_integ
 #define iodone    v6_iodone
 #define iomove    v6_iomove
 #define iowait    v6_iowait
@@ -260,7 +276,10 @@ extern void v6_chown();
 #define max       v6_max
 #define min       v6_min
 #define mknod     v6_mknod
+#define mount     v6_mount
 #define namei     v6_namei
+#define nblkdev   v6_nblkdev
+#define nchrdev   v6_nchrdev
 #define notavail  v6_notavail
 #define open1     v6_open1
 #define openi     v6_openi
@@ -269,9 +288,12 @@ extern void v6_chown();
 #define prdev     v6_prdev
 #define prele     v6_prele
 #define printf    v6_printf
+#define rablock   v6_rablock
 #define rdwr      v6_rdwr
 #define readi     v6_readi
 #define readp     v6_readp
+#define rootdev   v6_rootdev
+#define rootdir   v6_rootdir
 #define schar     v6_schar
 #define sleep     v6_sleep
 #define spl0      v6_spl0
@@ -279,39 +301,19 @@ extern void v6_chown();
 #define stat1     v6_stat1
 #define suser     v6_suser
 #define suword    v6_suword
+#define swbuf     v6_swbuf
+#define time      v6_time
+#define tmtab     v6_tmtab
+#define u         v6_u
 #define uchar     v6_uchar
 #define ufalloc   v6_ufalloc
 #define unlink    v6_unlink
 #define update    v6_update
+#define updlock   v6_updlock
+#define user      v6_user
 #define wakeup    v6_wakeup
 #define wdir      v6_wdir
 #define writei    v6_writei
 #define writep    v6_writep
-
-#endif /* ANCIENT_SRC */
-
-/* Alias a 16-bit device id integer to a struct containing device major and minor numbers.
-   This is used to replace the archaic 'int dev; ...  dev.d_major' idiom. */
-union v6_devu {
-   uint16_t dev;
-   struct {
-      int8_t d_minor;
-      int8_t d_major;
-   } devst;
-};
-#define todevst(DEV) (((union v6_devu *)&(DEV))->devst)
-
-/* Replacement for v6 PS (processor status word) define. */
-extern struct v6_integ v6_PS;
-#define PS (&v6_PS)
-
-/* Allow v6 code to redefine certain names without warning */
-#undef NULL
-#undef NSIG
-#undef SIGIOT
-#undef SIGABRT
-#undef EAGAIN
-#undef FREAD
-#undef FWRITE
 
 #endif /* __V6ADAPT_H__ */
