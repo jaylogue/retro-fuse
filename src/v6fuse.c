@@ -63,8 +63,8 @@ struct v6fuse_config {
 #define V6FUSE_OPT_KEY_INITFS 101
 
 static const struct fuse_opt v6fuse_options[] = {
-    V6FUSE_OPT("fssize=%u", fssize, 0),
-    V6FUSE_OPT("fsoffset=%llu", fsoffset, 0),
+    V6FUSE_OPT("fssize=%" SCNu32, fssize, 0),
+    V6FUSE_OPT("fsoffset=%" SCNu32, fsoffset, 0),
     FUSE_OPT_KEY("mapuid", V6FUSE_OPT_KEY_MAPID),
     FUSE_OPT_KEY("mapuid=", V6FUSE_OPT_KEY_MAPID),
     FUSE_OPT_KEY("mapgid", V6FUSE_OPT_KEY_MAPID),
@@ -84,7 +84,7 @@ static const struct fuse_opt v6fuse_options[] = {
     V6FUSE_OPT("--version", showversion, 1),
 
     /* retain these in the fuse_args list to that they
-      can be parsed by the FUSE code. */
+     * can be parsed by the FUSE code. */
     FUSE_OPT_KEY("-r", FUSE_OPT_KEY_KEEP),
     FUSE_OPT_KEY("ro", FUSE_OPT_KEY_KEEP),
     FUSE_OPT_KEY("rw", FUSE_OPT_KEY_KEEP),
@@ -514,6 +514,10 @@ int main(int argc, char *argv[])
     if (cfg.showversion) {
         v6fuse_showversion();
         goto exit;
+    }
+
+    if (cfg.debug) {
+        cfg.foreground = 1;
     }
 
     if (cfg.dskfilename == NULL) {

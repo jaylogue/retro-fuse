@@ -212,14 +212,26 @@ maknode(int16_t mode)
 	register struct inode *ip;
 
 	ip = ialloc(u.u_pdir->i_dev);
-	if (ip==NULL)
+	if (ip==NULL) {
+		/* Fix for an ancient bug that results in the inode for the parent directory
+		 * being left in a locked state whenever the system runs out of inodes while
+		 * attempting to create a new file. This fix exists in v7. */
+		iput(u.u_pdir);
 		return(NULL);
+	}
 	ip->i_flag |= IACC|IUPD;
 	ip->i_mode = mode|IALLOC;
 	ip->i_nlink = 1;
 	ip->i_uid = u.u_uid;
 	ip->i_gid = u.u_gid;
 	wdir(ip);
+	/* Fix for an ancient bug that results in a leaked inode when there's no
+	 * room to create the directory entry for a new file. */
+	if (u.u_error != 0) {
+		ip->i_nlink--;
+		iput(ip);
+		return(NULL);
+	}
 	return(ip);
 }
 

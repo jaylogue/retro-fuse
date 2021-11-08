@@ -303,7 +303,7 @@ void
 notavail(struct buf *bp)
 {
 	register struct buf *rbp;
-	register int sps;
+	register int16_t sps;
 
 	rbp = bp;
 	sps = PS->integ;

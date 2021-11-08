@@ -59,7 +59,7 @@ iinit()
 struct buf *
 alloc(int16_t dev)
 {
-	int bno;
+	int16_t bno;
 	register struct filsys * fp;
 	register struct buf *bp;
 	register int16_t *ip;

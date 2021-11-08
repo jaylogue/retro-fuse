@@ -24,6 +24,10 @@
 
 #include "stdint.h"
 
+#if !defined(__LITTLE_ENDIAN__) && (!defined(__BYTE_ORDER__) || __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
+#error Unsupported platform
+#endif
+
 /* Forward declarations of v6 struct types, suitably name-mangled */
 struct v6_buf;
 struct v6_filsys;
@@ -51,7 +55,7 @@ struct v6_direntry {
    char d_name[14];
 };
 
-/* Structure of inoode on disk */
+/* Structure of inode on disk */
 struct v6_inode_dsk {
 	int16_t	i_mode;
 	char	i_nlink;
