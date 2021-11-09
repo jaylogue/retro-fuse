@@ -89,7 +89,7 @@ extern int v7fs_sync();
 extern int v7fs_statfs(const char *pathname, struct statvfs *buf);
 extern int v7fs_setreuid(uid_t ruid, uid_t euid);
 extern int v7fs_setregid(gid_t rgid, gid_t egid);
-extern int v7fs_adduidmap(uid_t hostuid, int16_t fsuid);
-extern int v7fs_addgidmap(uid_t hostgid, int16_t fsgid);
+extern int v7fs_adduidmap(uid_t hostuid, uint16_t fsuid);
+extern int v7fs_addgidmap(uid_t hostgid, uint16_t fsgid);
 
 #endif /* __V7FS_H__ */

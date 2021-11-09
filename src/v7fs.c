@@ -48,6 +48,7 @@
 
 #include "v7fs.h"
 #include "dskio.h"
+#include "idmap.h"
 
 #include "v7adapt.h"
 #include "h/param.h"
@@ -65,11 +66,6 @@
 #include "h/conf.h"
 #include "v7unadapt.h"
 
-struct IDMapEntry {
-    uint32_t hostid;
-    int16_t v7id;
-};
-
 enum {
     NIPB = (BSIZE/sizeof(struct v7_dinode)), /* from mkfs.c, same as INOPB */
     NDIRECT = (BSIZE/sizeof(struct v7_direct))
@@ -77,23 +73,31 @@ enum {
 
 static int v7fs_initialized = 0;
 
-#define V7FS_MAX_ID_MAP_ENTRIES 100
-static size_t v7fs_uidmapcount = 0;
-static struct IDMapEntry v7fs_uidmap[V7FS_MAX_ID_MAP_ENTRIES];
-static size_t v7fs_gidmapcount = 0;
-static struct IDMapEntry v7fs_gidmap[V7FS_MAX_ID_MAP_ENTRIES];
+static struct idmap v7fs_uidmap = {
+    .entrycount = 0,
+    .entries = NULL,
+    .maxfsid = V7FS_MAX_UID_GID,
+    .defaulthostid = 65534, // nobody
+    .defaultfsid = V7FS_MAX_UID_GID
+};
+
+static struct idmap v7fs_gidmap = {
+    .entrycount = 0,
+    .entries = NULL,
+    .maxfsid = V7FS_MAX_UID_GID,
+    .defaulthostid = 65534, // nogroup
+    .defaultfsid = V7FS_MAX_UID_GID
+};
 
 static void v7fs_initfreelist(struct v7_filsys *fp, uint16_t n, uint16_t m);
 static void v7fs_convertstat(const struct v7_stat *v7statbuf, struct stat *statbuf);
 static int v7fs_isindir(const char *pathname, int16_t dirnum);
 static int v7fs_failnonemptydir(const char *entryname, const struct stat *statbuf, void *context);
 static int v7fs_isdirlinkpath(const char *pathname);
-static int16_t v7fs_maphostid(uint32_t hostid, const struct IDMapEntry *table, size_t count);
-static uint32_t v7fs_mapv7id(int16_t v7id, const struct IDMapEntry *table, size_t count);
-static inline int16_t v7fs_maphostuid(uid_t hostuid) { return v7fs_maphostid((uint32_t)hostuid, v7fs_uidmap, v7fs_uidmapcount); }
-static inline int16_t v7fs_maphostgid(gid_t hostgid) { return v7fs_maphostid((uint32_t)hostgid, v7fs_gidmap, v7fs_gidmapcount); }
-static inline uid_t v7fs_mapv7uid(int16_t v7uid) { return (uid_t)v7fs_mapv7id(v7uid, v7fs_uidmap, v7fs_uidmapcount); }
-static inline gid_t v7fs_mapv7gid(int16_t v7gid) { return (gid_t)v7fs_mapv7id(v7gid, v7fs_gidmap, v7fs_gidmapcount); }
+static inline int16_t v7fs_maphostuid(uid_t hostuid) { return (int16_t)idmap_tofsid(&v7fs_uidmap, (uint32_t)hostuid); }
+static inline int16_t v7fs_maphostgid(gid_t hostgid) { return (int16_t)idmap_tofsid(&v7fs_gidmap, (uint32_t)hostgid); }
+static inline uid_t v7fs_mapv7uid(int16_t v7uid) { return (uid_t)idmap_tohostid(&v7fs_uidmap, (uint32_t)v7uid); }
+static inline gid_t v7fs_mapv7gid(int16_t v7gid) { return (gid_t)idmap_tohostid(&v7fs_gidmap, (uint32_t)v7gid); }
 
 /** Initialize the Unix v7 filesystem.
  * 
@@ -1276,24 +1280,16 @@ int v7fs_setregid(gid_t rgid, gid_t egid)
 
 /** Add an entry to the uid mapping table.
  */
-int v7fs_adduidmap(uid_t hostuid, int16_t fsuid)
+int v7fs_adduidmap(uid_t hostuid, uint16_t fsuid)
 {
-    if (v7fs_uidmapcount >= V7FS_MAX_ID_MAP_ENTRIES)
-        return -EOVERFLOW;
-    v7fs_uidmap[v7fs_uidmapcount].hostid = (uint32_t)hostuid;
-    v7fs_uidmap[v7fs_uidmapcount++].v7id = fsuid;
-    return 0;
+    return idmap_addidmap(&v7fs_uidmap, (uint32_t)hostuid, fsuid);
 }
 
 /** Add an entry to the gid mapping table.
  */
-int v7fs_addgidmap(uid_t hostgid, int16_t fsgid)
+int v7fs_addgidmap(uid_t hostgid, uint16_t fsgid)
 {
-    if (v7fs_gidmapcount >= V7FS_MAX_ID_MAP_ENTRIES)
-        return -EOVERFLOW;
-    v7fs_gidmap[v7fs_gidmapcount].hostid = (uint32_t)hostgid;
-    v7fs_gidmap[v7fs_gidmapcount++].v7id = fsgid;
-    return 0;
+    return idmap_addidmap(&v7fs_gidmap, (uint32_t)hostgid, fsgid);
 }
 
 /** Construct the initial free block list for a new filesystem.
@@ -1411,26 +1407,4 @@ static int v7fs_isdirlinkpath(const char *pathname)
     else
         p++;
     return (strcmp(p, ".") == 0 || strcmp(p, "..") == 0);
-}
-
-static int16_t v7fs_maphostid(uint32_t hostid, const struct IDMapEntry *table, size_t count)
-{
-    for (size_t i = 0; i < count; i++)
-        if (table[i].hostid == hostid)
-            return table[i].v7id;
-    /* map any ids larger than what will fit in a v7 id to INT16_MAX */
-    if (hostid > INT16_MAX)
-        return INT16_MAX;
-    return (int16_t)hostid;
-}
-
-static uint32_t v7fs_mapv7id(int16_t v7id, const struct IDMapEntry *table, size_t count)
-{
-    for (size_t i = 0; i < count; i++)
-        if (table[i].v7id == v7id)
-            return table[i].hostid;
-    /* map the v7 id INT16_MAX to the standard nobody/nogroup host ids */
-    if (v7id == INT16_MAX)
-        return (uint32_t)65534;
-    return (uint32_t)v7id;
 }

@@ -99,43 +99,42 @@ static const char *v6fuse_cmdname;
 static int v6fuse_parsemapopt(const char *arg)
 {
     long hostid, v6id;
-    char idtype;
+    char idtype, *idname;
     int res;
     int matchend = -1;
 
     res = sscanf(arg, " map%cid = %ld : %ld %n", &idtype, &hostid, &v6id, &matchend);
     if (res != 3 || arg[matchend] != 0) {
-        fprintf(stderr, "%s: ERROR: invalid user/group mapping option: -o %s\nExpected -o map%cid=<host-id>:<fs-id>\n", 
+        fprintf(stderr, "%s: ERROR: invalid user/group id mapping option: -o %s\nExpected -o map%cid=<host-id>:<fs-id>\n", 
                 v6fuse_cmdname, arg, idtype);
         return -1;
     }
 
-    if (hostid < 0) {
-        fprintf(stderr, "%s: ERROR: invalid user/group mapping option: -o %s\nHost id value out of range (expected >= 0)\n", v6fuse_cmdname, arg);
+    idname = (idtype == 'u') ? "user" : "group";
+
+    if (hostid < 0 || hostid > INT32_MAX) {
+        fprintf(stderr, "%s: ERROR: invalid %s id mapping option: -o %s\nHost %cid value out of range\n", 
+                v6fuse_cmdname, idname, arg, idtype);
         return -1;
     }
 
     if (v6id < 0 || v6id > 255) {
-        fprintf(stderr, "%s: ERROR: invalid user/group mapping option: -o %s\nFilesystem id value out of range (expected 0-255)\n", v6fuse_cmdname, arg);
+        fprintf(stderr, "%s: ERROR: invalid %s id mapping option: -o %s\nFilesystem %cid value out of range (expected 0-%d)\n", 
+                v6fuse_cmdname, idname, arg, idtype, 255);
         return -1;
     }
 
-    idtype = tolower(idtype);
     if (idtype == 'u')
         res = v6fs_adduidmap((uid_t)hostid, (char)v6id);
     else
         res = v6fs_addgidmap((uid_t)hostid, (char)v6id);
-    switch (res)
-    {
-    case 0:
-        return 0;
-    case -EOVERFLOW:
-        fprintf(stderr, "%s: ERROR: too many %s mapping entries\n", v6fuse_cmdname, (idtype == 'u') ? "user" : "group");
-        return -1;
-    default:
-        fprintf(stderr, "%s: ERROR: failed to add %s mapping: %s\n", v6fuse_cmdname, (idtype == 'u') ? "user" : "group", strerror(-res));
+    if (res != 0) {
+        fprintf(stderr, "%s: ERROR: failed to add %s id mapping: %s\n", 
+                v6fuse_cmdname, idname, strerror(-res));
         return -1;
     }
+
+    return 0;
 }
 
 static int v6fuse_parseinitopt(struct v6fuse_config *cfg, const char *arg)

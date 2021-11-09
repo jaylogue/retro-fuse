@@ -63,7 +63,7 @@ extern int v6fs_sync();
 extern int v6fs_statfs(const char *pathname, struct statvfs *buf);
 extern int v6fs_setreuid(uid_t ruid, uid_t euid);
 extern int v6fs_setregid(gid_t rgid, gid_t egid);
-extern int v6fs_adduidmap(uid_t hostuid, char fsuid);
-extern int v6fs_addgidmap(uid_t hostgid, char fsgid);
+extern int v6fs_adduidmap(uid_t hostuid, uint8_t fsuid);
+extern int v6fs_addgidmap(uid_t hostgid, uint8_t fsgid);
 
 #endif /* __V6FS_H__ */

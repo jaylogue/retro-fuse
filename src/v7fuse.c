@@ -99,43 +99,42 @@ static const char *v7fuse_cmdname;
 static int v7fuse_parsemapopt(const char *arg)
 {
     long hostid, v7id;
-    char idtype;
+    char idtype, *idname;
     int res;
     int matchend = -1;
 
     res = sscanf(arg, " map%cid = %ld : %ld %n", &idtype, &hostid, &v7id, &matchend);
     if (res != 3 || arg[matchend] != 0) {
-        fprintf(stderr, "%s: ERROR: invalid user/group mapping option: -o %s\nExpected -o map%cid=<host-id>:<fs-id>\n", 
+        fprintf(stderr, "%s: ERROR: invalid user/group id mapping option: -o %s\nExpected -o map%cid=<host-id>:<fs-id>\n", 
                 v7fuse_cmdname, arg, idtype);
         return -1;
     }
 
-    if (hostid < 0) {
-        fprintf(stderr, "%s: ERROR: invalid user/group mapping option: -o %s\nHost id value out of range (expected >= 0)\n", v7fuse_cmdname, arg);
+    idname = (idtype == 'u') ? "user" : "group";
+
+    if (hostid < 0 || hostid > INT32_MAX) {
+        fprintf(stderr, "%s: ERROR: invalid %s id mapping option: -o %s\nHost %cid value out of range\n", 
+                v7fuse_cmdname, idname, arg, idtype);
         return -1;
     }
 
     if (v7id < 0 || v7id > V7FS_MAX_UID_GID) {
-        fprintf(stderr, "%s: ERROR: invalid user/group mapping option: -o %s\nFilesystem id value out of range (expected 0-%d)\n", v7fuse_cmdname, arg, V7FS_MAX_UID_GID);
+        fprintf(stderr, "%s: ERROR: invalid %s id mapping option: -o %s\nFilesystem %cid value out of range (expected 0-%d)\n", 
+                v7fuse_cmdname, idname, arg, idtype, V7FS_MAX_UID_GID);
         return -1;
     }
 
-    idtype = tolower(idtype);
     if (idtype == 'u')
-        res = v7fs_adduidmap((uid_t)hostid, (int16_t)v7id);
+        res = v7fs_adduidmap((uid_t)hostid, (uint32_t)v7id);
     else
-        res = v7fs_addgidmap((uid_t)hostid, (int16_t)v7id);
-    switch (res)
-    {
-    case 0:
-        return 0;
-    case -EOVERFLOW:
-        fprintf(stderr, "%s: ERROR: too many %s mapping entries\n", v7fuse_cmdname, (idtype == 'u') ? "user" : "group");
-        return -1;
-    default:
-        fprintf(stderr, "%s: ERROR: failed to add %s mapping: %s\n", v7fuse_cmdname, (idtype == 'u') ? "user" : "group", strerror(-res));
+        res = v7fs_addgidmap((uid_t)hostid, (uint32_t)v7id);
+    if (res != 0) {
+        fprintf(stderr, "%s: ERROR: failed to add %s id mapping: %s\n", 
+                v7fuse_cmdname, idname, strerror(-res));
         return -1;
     }
+
+    return 0;
 }
 
 static int v7fuse_parseinitopt(struct v7fuse_config *cfg, const char *arg)
@@ -166,7 +165,7 @@ static int v7fuse_parseinitopt(struct v7fuse_config *cfg, const char *arg)
         }
         return 0;
     }
-    fprintf(stderr, "%s: ERROR: invalid initfs option: expected -o initfs=<isize>[:<n>:<m>]\n", v7fuse_cmdname);
+    fprintf(stderr, "%s: ERROR: invalid initfs option: -o %s\nExpected -o initfs=<isize>[:<n>:<m>]\n", v7fuse_cmdname, arg);
     return -1;
 }
 

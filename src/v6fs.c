@@ -48,6 +48,7 @@
 
 #include "v6fs.h"
 #include "dskio.h"
+#include "idmap.h"
 
 #include "v6adapt.h"
 #include "param.h"
@@ -60,30 +61,33 @@
 #include "conf.h"
 #include "v6unadapt.h"
 
-struct IDMapEntry {
-    uint32_t hostid;
-    char v6id;
-};
-
 int v6fs_initialized = 0;
 
-#define V6FS_MAX_ID_MAP_ENTRIES 100
-static size_t v6fs_uidmapcount = 0;
-static struct IDMapEntry v6fs_uidmap[V6FS_MAX_ID_MAP_ENTRIES];
-static size_t v6fs_gidmapcount = 0;
-static struct IDMapEntry v6fs_gidmap[V6FS_MAX_ID_MAP_ENTRIES];
+static struct idmap v6fs_uidmap = {
+    .entrycount = 0,
+    .entries = NULL,
+    .maxfsid = UINT8_MAX,
+    .defaulthostid = 65534, // nobody
+    .defaultfsid = UINT8_MAX
+};
+
+static struct idmap v6fs_gidmap = {
+    .entrycount = 0,
+    .entries = NULL,
+    .maxfsid = UINT8_MAX,
+    .defaulthostid = 65534, // nogroup
+    .defaultfsid = UINT8_MAX
+};
 
 static void v6fs_initfreelist(struct v6_filsys *fp, uint16_t n, uint16_t m);
 static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statbuf);
 static int v6fs_isindir(const char *pathname, int16_t dirnum);
 static int v6fs_failnonemptydir(const char *entryname, const struct stat *statbuf, void *context);
 static int v6fs_isdirlinkpath(const char *pathname);
-static char v6fs_maphostid(uint32_t hostid, const struct IDMapEntry *table, size_t count);
-static uint32_t v6fs_mapv6id(char v6id, const struct IDMapEntry *table, size_t count);
-static inline char v6fs_maphostuid(uid_t hostuid) { return v6fs_maphostid((uint32_t)hostuid, v6fs_uidmap, v6fs_uidmapcount); }
-static inline char v6fs_maphostgid(gid_t hostgid) { return v6fs_maphostid((uint32_t)hostgid, v6fs_gidmap, v6fs_gidmapcount); }
-static inline uid_t v6fs_mapv6uid(char v6uid) { return (uid_t)v6fs_mapv6id(v6uid, v6fs_uidmap, v6fs_uidmapcount); }
-static inline gid_t v6fs_mapv6gid(char v6gid) { return (gid_t)v6fs_mapv6id(v6gid, v6fs_gidmap, v6fs_gidmapcount); }
+static inline char v6fs_maphostuid(uid_t hostuid) { return (char)idmap_tofsid(&v6fs_uidmap, (uint32_t)hostuid); }
+static inline char v6fs_maphostgid(gid_t hostgid) { return (char)idmap_tofsid(&v6fs_gidmap, (uint32_t)hostgid); }
+static inline uid_t v6fs_mapv6uid(char v6uid) { return (uid_t)idmap_tohostid(&v6fs_uidmap, (uint32_t)v6uid); }
+static inline gid_t v6fs_mapv6gid(char v6gid) { return (gid_t)idmap_tohostid(&v6fs_gidmap, (uint32_t)v6gid); }
 
 /** Initialize the Unix v6 filesystem.
  * 
@@ -1100,36 +1104,36 @@ int v6fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
     statvfsbuf->f_namemax = DIRSIZ;
 
     /* count the number of free blocks.
-     
-       The freelist consist of a table of 100 block numbers located in the
-       filesystem superblock (fp->s_free).  Each entry in this table can
-       contain the block number of a free block.  The number of entries that
-       actually contain free block numbers (starting at index 0 in the table)
-       is denoted by the integer fp->s_nfree.
-       
-       The first block number in the table is special.  If there are more than
-       99 free blocks, fp->s_free[0] is the number of a free block that also
-       contains pointers to other free blocks.  This is referred to as an
-       "index" block.  In cases where there are 99 or fewer free blocks, 
-       fp->s_free[0] will always contain the NULL block number (0), indicating
-       that no index block exists.
+     *
+     * The freelist consist of a table of 100 block numbers located in the
+     * filesystem superblock (fp->s_free).  Each entry in this table can
+     * contain the block number of a free block.  The number of entries that
+     * actually contain free block numbers (starting at index 0 in the table)
+     * is denoted by the integer fp->s_nfree.
+     * 
+     * The first block number in the table is special.  If there are more than
+     * 99 free blocks, fp->s_free[0] is the number of a free block that also
+     * contains pointers to other free blocks.  This is referred to as an
+     * "index" block.  In cases where there are 99 or fewer free blocks, 
+     * fp->s_free[0] will always contain the NULL block number (0), indicating
+     * that no index block exists.
 
-       Like the superblock, an index block also contains a table of 100 block
-       numbers (starting at offset 2) and a count of the number table entries
-       that actually contain free blocks (located at offset 0).  Similarly, the
-       first position in the table is also used to point to a subsequent index
-       block in cases where there are more than 99 additional free blocks. Thus
-       index blocks are strung together to form a chain of groups of 100 free
-       blocks.
+     * Like the superblock, an index block also contains a table of 100 block
+     * numbers (starting at offset 2) and a count of the number table entries
+     * that actually contain free blocks (located at offset 0).  Similarly, the
+     * first position in the table is also used to point to a subsequent index
+     * block in cases where there are more than 99 additional free blocks. Thus
+     * index blocks are strung together to form a chain of groups of 100 free
+     * blocks.
 
-       NOTE that there are *two* distinct states possible when the filesystem
-       reaches the point of being completely full:
-           1) fp->s_nfree == 0
-           2) fp->s_nfree == 1 and fp->s_free[0] == 0
-       The second state is entered when the last free block is allocated by the
-       alloc() function.  The first state is entered when alloc() is called again
-       *after* the last block has been allocated (i.e. when the first allocation
-       failure occurs).
+     * NOTE that there are *two* distinct states possible when the filesystem
+     * reaches the point of being completely full:
+     *     1) fp->s_nfree == 0
+     *     2) fp->s_nfree == 1 and fp->s_free[0] == 0
+     * The second state is entered when the last free block is allocated by the
+     * alloc() function.  The first state is entered when alloc() is called again
+     * *after* the last block has been allocated (i.e. when the first allocation
+     * failure occurs).
      */
     {    
         int16_t *nfree = &fp->s_nfree;
@@ -1205,24 +1209,16 @@ int v6fs_setregid(gid_t rgid, gid_t egid)
 
 /** Add an entry to the uid mapping table.
  */
-int v6fs_adduidmap(uid_t hostuid, char fsuid)
+int v6fs_adduidmap(uid_t hostuid, uint8_t fsuid)
 {
-    if (v6fs_uidmapcount >= V6FS_MAX_ID_MAP_ENTRIES)
-        return -EOVERFLOW;
-    v6fs_uidmap[v6fs_uidmapcount].hostid = (uint32_t)hostuid;
-    v6fs_uidmap[v6fs_uidmapcount++].v6id = fsuid;
-    return 0;
+    return idmap_addidmap(&v6fs_uidmap, (uint32_t)hostuid, (uint32_t)fsuid);
 }
 
 /** Add an entry to the gid mapping table.
  */
-int v6fs_addgidmap(uid_t hostgid, char fsgid)
+int v6fs_addgidmap(uid_t hostgid, uint8_t fsgid)
 {
-    if (v6fs_gidmapcount >= V6FS_MAX_ID_MAP_ENTRIES)
-        return -EOVERFLOW;
-    v6fs_gidmap[v6fs_gidmapcount].hostid = (uint32_t)hostgid;
-    v6fs_gidmap[v6fs_gidmapcount++].v6id = fsgid;
-    return 0;
+    return idmap_addidmap(&v6fs_gidmap, (uint32_t)hostgid, (uint32_t)fsgid);
 }
 
 /** Construct the initial free block list for a new filesystem.
@@ -1347,26 +1343,4 @@ static int v6fs_isdirlinkpath(const char *pathname)
     else
         p++;
     return (strcmp(p, ".") == 0 || strcmp(p, "..") == 0);
-}
-
-static char v6fs_maphostid(uint32_t hostid, const struct IDMapEntry *table, size_t count)
-{
-    for (size_t i = 0; i < count; i++)
-        if (table[i].hostid == hostid)
-            return table[i].v6id;
-    /* map any ids larger than what will fit in a v6 id to 255 */
-    if ((uint32_t)hostid > 0xFF)
-        return (char)255;
-    return (char)hostid;
-}
-
-static uint32_t v6fs_mapv6id(char v6id, const struct IDMapEntry *table, size_t count)
-{
-    for (size_t i = 0; i < count; i++)
-        if (table[i].v6id == v6id)
-            return table[i].hostid;
-    /* map the v6 id 255 to the standard nobody/nogroup host ids */
-    if (v6id == (char)255)
-        return (uint32_t)65534;
-    return (uint32_t)v6id;
 }

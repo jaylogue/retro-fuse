@@ -40,6 +40,7 @@ V6FS_SRC = \
 	src/v6fuse.c \
 	src/v6fs.c \
 	src/v6adapt.c \
+	src/idmap.c \
 	src/dskio.c
 V6FS_OBJS = $(V6FS_SRC:.c=.o)
 
@@ -66,6 +67,7 @@ V7FS_SRC = \
 	src/v7fuse.c \
 	src/v7fs.c \
 	src/v7adapt.c \
+	src/idmap.c \
 	src/dskio.c
 V7FS_OBJS = $(V7FS_SRC:.c=.o)
 
@@ -82,4 +84,3 @@ $(V7FS_PROG) : $(V7FS_OBJS) $(V7_OBJS)
 clean :
 	rm -f $(V6FS_PROG) $(V6FS_PROG).map $(V6FS_OBJS) $(V6_OBJS)
 	rm -f $(V7FS_PROG) $(V7FS_PROG).map $(V7FS_OBJS) $(V7_OBJS)
-
