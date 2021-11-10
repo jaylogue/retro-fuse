@@ -27,7 +27,7 @@
 #include <fuse.h>
 #include <inttypes.h>
 
-#define RETROFUSE_VERSION 4
+#define RETROFUSE_VERSION 5
 
 /** retro-fuse configuration parameters.
  */

@@ -261,6 +261,8 @@ The modern portions of retro-fuse are licensed under the xref:LICENSE.txt[Apache
 
 ## Release Notes
 
+**Version 5 / 2021/11/10** -- Various code restructuring and clean up. Fixed a few minor bugs. Improved Makefile.
+
 **Version 4 / 2021/11/06** -- Added support for seventh-edition Unix filesystems.
 
 **Version 3 / 2021/03/27** -- Added support for MacOS.
