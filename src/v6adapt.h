@@ -211,6 +211,8 @@ extern void v6_chown();
 #undef FREAD
 #pragma push_macro("FWRITE")
 #undef FWRITE
+#pragma push_macro("bcopy")
+#undef bcopy
 
 /* Map various names used by v7 code to avoid any conflicts with modern code
  */
