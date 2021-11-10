@@ -22,11 +22,6 @@
  * filesystems.
  */
 
-#define FUSE_USE_VERSION 26
-#define _FILE_OFFSET_BITS 64
-
-#define RETROFUSE_VERSION 4
-
 #include <fcntl.h>
 #include <string.h>
 #include <strings.h>
@@ -37,7 +32,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <ctype.h>
-#include <fuse.h>
 
 #include "fusecommon.h"
 #include "dskio.h"
