@@ -173,7 +173,7 @@ int v7fs_shutdown()
  * Thus function is effectly a simplified re-implementation of the
  * v7 mkfs command.
  */
-int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct flparams *flparams)
+int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flparams)
 {
     struct v7_buf *bp;
     struct v7_filsys *fp;
@@ -189,8 +189,8 @@ int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct flparams *flparams)
     if (fssize < V7FS_MIN_FS_SIZE || fssize > V7FS_MAX_FS_SIZE)
         return -EINVAL;
 
-    /* compute the number of inode blocks if a specific number was not given. 
-     * (based on logic in v7 mkfs) */
+    /* if not specified, compute the number of inode blocks based on the
+     * filesystem size (based on logic in v7 mkfs) */
     if (isize == 0) {
         isize = fssize / 25;
         if (isize == 0)
@@ -202,7 +202,7 @@ int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct flparams *flparams)
     /* enforce min/max inode table size.  max size is limited by the size of
      * integer used to store inode numbers (uint16_t) and the overall size
      * of the filesystem. */
-    if (isize < 1 || isize > V7FS_MAX_ITABLE_SIZE || isize > (fssize - 4))
+    if (isize < V7FS_MIN_ITABLE_SIZE || isize > V7FS_MAX_ITABLE_SIZE || isize > (fssize - 4))
         return -EINVAL;
 
     /* adjust interleave values as needed (based on logic in v7 mkfs) */
@@ -1280,14 +1280,14 @@ int v7fs_setregid(gid_t rgid, gid_t egid)
 
 /** Add an entry to the uid mapping table.
  */
-int v7fs_adduidmap(uid_t hostuid, uint16_t fsuid)
+int v7fs_adduidmap(uid_t hostuid, uint32_t fsuid)
 {
     return idmap_addidmap(&v7fs_uidmap, (uint32_t)hostuid, fsuid);
 }
 
 /** Add an entry to the gid mapping table.
  */
-int v7fs_addgidmap(uid_t hostgid, uint16_t fsgid)
+int v7fs_addgidmap(uid_t hostgid, uint32_t fsgid)
 {
     return idmap_addidmap(&v7fs_gidmap, (uint32_t)hostgid, fsgid);
 }

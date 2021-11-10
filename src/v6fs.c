@@ -159,7 +159,7 @@ int v6fs_shutdown()
  * Thus function is effectly a simplified re-implementation of the
  * v6 mkfs command.
  */
-int v6fs_mkfs(int16_t fssize, int16_t isize, const struct flparams *flparams)
+int v6fs_mkfs(uint16_t fssize, uint16_t isize, const struct v6fs_flparams *flparams)
 {
     struct v6_buf *bp;
     struct v6_filsys *fp;
@@ -169,16 +169,20 @@ int v6fs_mkfs(int16_t fssize, int16_t isize, const struct flparams *flparams)
     if (v6fs_initialized)
         return -EBUSY;
 
-    if (fssize < 5)
+    /* enforce min/max filesystem size. */
+    if (fssize < V6FS_MIN_FS_SIZE || fssize > V6FS_MAX_FS_SIZE)
         return -EINVAL;
 
-    if (isize < 0 || isize > (fssize - 4))
-        return -EINVAL;
-
-    /* compute the number of inode blocks if not given. 
-       (based on code in v6 mkfs) */
+    /* if not specified, compute the number of inode blocks based on the
+     * filesystem size (based on code in v6 mkfs) */
     if (isize == 0)
         isize = fssize / (43 + (fssize / 1000));
+
+    /* enforce min/max inode table size.  max size is limited by the size of
+     * integer used to store inode numbers (uint16_t) and the overall size
+     * of the filesystem. */
+    if (isize < V6FS_MIN_ITABLE_SIZE || isize > V6FS_MAX_ITABLE_SIZE || isize > (fssize - 4))
+        return -EINVAL;
 
     v6_refreshclock();
 
@@ -197,8 +201,8 @@ int v6fs_mkfs(int16_t fssize, int16_t isize, const struct flparams *flparams)
 	bp = v6_getblk(NODEV, -1);
     v6_clrbuf(bp);
 	fp = (struct v6_filsys *)bp->b_addr;
-    fp->s_isize = isize;
-    fp->s_fsize = fssize;
+    fp->s_isize = (int16_t)isize;
+    fp->s_fsize = (int16_t)fssize;
     fp->s_time[0] = v6_time[0];
     fp->s_time[1] = v6_time[1];
     fp->s_fmod = 1;
@@ -1175,7 +1179,7 @@ int v6fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
         if (v6_u.u_error != 0)
             return -v6_u.u_error;
         int16_t *ip = (int16_t *)bp->b_addr;
-        for (int i = 0; i < 16; i++, ip += 16) {
+        for (int i = 0; i < V6FS_INODES_PER_BLOCK; i++, ip += 16) {
             if ((*ip & IALLOC) == 0)
                 statvfsbuf->f_ffree++;
         }
@@ -1209,16 +1213,16 @@ int v6fs_setregid(gid_t rgid, gid_t egid)
 
 /** Add an entry to the uid mapping table.
  */
-int v6fs_adduidmap(uid_t hostuid, uint8_t fsuid)
+int v6fs_adduidmap(uid_t hostuid, uint32_t fsuid)
 {
-    return idmap_addidmap(&v6fs_uidmap, (uint32_t)hostuid, (uint32_t)fsuid);
+    return idmap_addidmap(&v6fs_uidmap, (uint32_t)hostuid, fsuid);
 }
 
 /** Add an entry to the gid mapping table.
  */
-int v6fs_addgidmap(uid_t hostgid, uint8_t fsgid)
+int v6fs_addgidmap(uid_t hostgid, uint32_t fsgid)
 {
-    return idmap_addidmap(&v6fs_gidmap, (uint32_t)hostgid, (uint32_t)fsgid);
+    return idmap_addidmap(&v6fs_gidmap, (uint32_t)hostgid, fsgid);
 }
 
 /** Construct the initial free block list for a new filesystem.

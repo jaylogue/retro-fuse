@@ -39,10 +39,18 @@ enum {
      */
     V7FS_MIN_FS_SIZE        = 5,
 
+    /** Number of inodes per block.
+     */
+    V7FS_INODES_PER_BLOCK   = 8,
+
     /** Maximum size of the inode table, in blocks.
      *  Limited to 8192 due to 2-byte inode number used in on-disk directory structure.
      */
-    V7FS_MAX_ITABLE_SIZE    = 65536/8,
+    V7FS_MAX_ITABLE_SIZE    = 65536/V7FS_INODES_PER_BLOCK,
+
+    /** Minimum size of the inode table, in blocks.
+     */
+    V7FS_MIN_ITABLE_SIZE    = 1,
 
     /** Maximum value for uid/gid.
      */
@@ -54,7 +62,7 @@ enum {
 };
 
 /** Free list interleave parameters */
-struct flparams
+struct v7fs_flparams
 {
     uint16_t m;
     uint16_t n;
@@ -64,7 +72,7 @@ typedef int (*v7fs_enum_dir_funct)(const char *entryname, const struct stat *sta
 
 extern int v7fs_init(int readonly);
 extern int v7fs_shutdown();
-extern int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct flparams *flparams);
+extern int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flparams);
 extern int v7fs_open(const char * name, int flags, mode_t mode);
 extern int v7fs_close(int fd);
 extern off_t v7fs_seek(int fd, off_t offset, int whence);
@@ -89,7 +97,7 @@ extern int v7fs_sync();
 extern int v7fs_statfs(const char *pathname, struct statvfs *buf);
 extern int v7fs_setreuid(uid_t ruid, uid_t euid);
 extern int v7fs_setregid(gid_t rgid, gid_t egid);
-extern int v7fs_adduidmap(uid_t hostuid, uint16_t fsuid);
-extern int v7fs_addgidmap(uid_t hostgid, uint16_t fsgid);
+extern int v7fs_adduidmap(uid_t hostuid, uint32_t fsuid);
+extern int v7fs_addgidmap(uid_t hostgid, uint32_t fsgid);
 
 #endif /* __V7FS_H__ */

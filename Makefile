@@ -37,6 +37,7 @@ V6_SRC = \
 V6_OBJS = $(V6_SRC:.c=.o)
 
 V6FS_SRC = \
+	src/fusecommon.c \
 	src/v6fuse.c \
 	src/v6fs.c \
 	src/v6adapt.c \
@@ -64,6 +65,7 @@ V7_SRC = \
 V7_OBJS = $(V7_SRC:.c=.o)
 
 V7FS_SRC = \
+	src/fusecommon.c \
 	src/v7fuse.c \
 	src/v7fs.c \
 	src/v7adapt.c \
