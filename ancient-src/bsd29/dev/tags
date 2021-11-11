@@ -1,0 +1,271 @@
+BUFHASH	bio.c	/^#define	BUFHASH(blkno)	(blkno & (BUFHSZ-1))$/
+DHLINE	dh.c	/^#define	DHLINE(dev)	(minor(dev) & 0177)$/
+DZLINE	dz.c	/^#define DZLINE(dev)	(minor(dev) & 0177)$/
+LPUNIT	lp.c	/^#define LPUNIT(dev) (minor(dev) >> 3)$/
+TEUNIT	tm.c	/^#define	TEUNIT(dev)	(minor(dev) & 077)$/
+TSUNIT	ts.c	/^#define	TSUNIT(dev)	(minor(dev) & 03)$/
+bawrite	bio.c	/^bawrite(bp)$/
+bdwrite	bio.c	/^bdwrite(bp)$/
+bflush	bio.c	/^bflush(dev)$/
+bphysio	bio.c	/^bphysio(strat, bp, dev, rw)$/
+bread	bio.c	/^bread(dev, blkno)$/
+breada	bio.c	/^breada(dev, blkno, rablkno)$/
+brelse	bio.c	/^brelse(bp)$/
+bunhash	bio.c	/^bunhash(bp)$/
+bwrite	bio.c	/^bwrite(bp)$/
+canon	ttyold.c	/^canon(tp)$/
+caryattach	cary.c	/^caryattach(addr, unit)$/
+caryclose	cary.c	/^caryclose()$/
+carydataint	cary.c	/^carydataint()$/
+caryioctl	cary.c	/^caryioctl(dev,cmd,addr,flag)$/
+caryopen	cary.c	/^caryopen()$/
+caryread	cary.c	/^caryread()$/
+caryswint	cary.c	/^caryswint()$/
+catintr	cat.c	/^catintr()$/
+chkphys	bio.c	/^chkphys(flag)$/
+clrbuf	bio.c	/^clrbuf(bp)$/
+cpaddr	dh.c	/^#define	cpaddr(x)	(clstaddr + (ubadr_t)((x) - cfre/
+ctclose	cat.c	/^ctclose()$/
+ctopen	cat.c	/^ctopen(dev)$/
+ctwrite	cat.c	/^ctwrite(dev)$/
+dhattach	dh.c	/^dhattach(addr, unit)$/
+dhclose	dh.c	/^dhclose(dev, flag)$/
+dhioctl	dh.c	/^dhioctl(dev, cmd, addr, flag)$/
+dhopen	dh.c	/^dhopen(dev, flag)$/
+dhparam	dh.c	/^dhparam(unit)$/
+dhread	dh.c	/^dhread(dev)$/
+dhrint	dh.c	/^dhrint(dh)$/
+dhstart	dh.c	/^dhstart(tp)$/
+dhstop	dh.c	/^dhstop(tp, flag)$/
+dhtimer	dh.c	/^dhtimer(dev)$/
+dhwrite	dh.c	/^dhwrite(dev)$/
+dhxint	dh.c	/^dhxint(dh)$/
+disksort	dsort.c	/^disksort(dp, bp)$/
+dkblock	dkleave.c	/^dkblock(bp)$/
+dkunit	dkleave.c	/^dkunit(bp)$/
+dmattach	dh.c	/^dmattach(addr, unit)$/
+dmctl	dh.c	/^dmctl(unit, bits, how)$/
+dmintr	dh.c	/^dmintr(dm)$/
+dmopen	dh.c	/^dmopen(dev)$/
+dnattach	dn.c	/^dnattach(addr, unit)$/
+dnclose	dn.c	/^dnclose(dev)$/
+dnint	dn.c	/^dnint(dn11)$/
+dnopen	dn.c	/^dnopen(dev, flag)$/
+dnwrite	dn.c	/^dnwrite(dev)$/
+dvhpattach	dvhp.c	/^dvhpattach(addr, unit)$/
+dvhpecc	dvhp.c	/^dvhpecc(bp)$/
+dvhpintr	dvhp.c	/^dvhpintr()$/
+dvhpread	dvhp.c	/^dvhpread(dev)$/
+dvhproot	dvhp.c	/^dvhproot()$/
+dvhpstart	dvhp.c	/^dvhpstart()$/
+dvhpstrategy	dvhp.c	/^dvhpstrategy(bp)$/
+dvhpustart	dvhp.c	/^dvhpustart(unit)$/
+dvhpwrite	dvhp.c	/^dvhpwrite(dev)$/
+dzattach	dz.c	/^dzattach(addr, unit)$/
+dzclose	dz.c	/^dzclose(dev, flag)$/
+dzioctl	dz.c	/^dzioctl(dev, cmd, addr, flag)$/
+dzmodem	dz.c	/^dzmodem(unit, flag)$/
+dzopen	dz.c	/^dzopen(dev, flag)$/
+dzparam	dz.c	/^dzparam(unit)$/
+dzread	dz.c	/^dzread(dev)$/
+dzrint	dz.c	/^dzrint(dz)$/
+dzrscan	dz.c	/^dzrscan()$/
+dzscan	dz.c	/^dzscan()$/
+dzstart	dz.c	/^dzstart(tp)$/
+dzstop	dz.c	/^dzstop(tp, flag)$/
+dzwrite	dz.c	/^dzwrite(dev)$/
+dzxint	dz.c	/^dzxint(tp)$/
+exadr	dvhp.c	/^#define	exadr(x,y)	(((long)(x) << 16) | (unsigned)/
+flushtty	tty.c	/^flushtty(tp, rw)$/
+getblk	bio.c	/^getblk(dev, blkno)$/
+geteblk	bio.c	/^geteblk()$/
+geterror	bio.c	/^geterror(bp)$/
+getmemc	mem.c	/^getmemc(addr)$/
+hkattach	hk.c	/^hkattach(addr, unit)$/
+hkdsel	hk.c	/^hkdsel(unit)$/
+hkdump	hk.c	/^hkdump(dev)$/
+hkecc	hk.c	/^hkecc(bp, flag)$/
+hkintr	hk.c	/^hkintr()$/
+hkncyl	hk.c	/^#define	hkncyl(unit)		(hk_type[unit] ? NHK7CYL : N/
+hkread	hk.c	/^hkread(dev)$/
+hkstart	hk.c	/^hkstart()$/
+hkstrategy	hk.c	/^hkstrategy(bp)$/
+hkustart	hk.c	/^hkustart(unit)$/
+hkwait	hk.c	/^#define	hkwait(hkaddr)		while ((hkaddr->hkcs1 & HK/
+hkwrite	hk.c	/^hkwrite(dev)$/
+hpattach	hp.c	/^hpattach(addr, unit)$/
+hpdump	hp.c	/^hpdump(dev)$/
+hpecc	hp.c	/^hpecc(bp)$/
+hpintr	hp.c	/^hpintr()$/
+hpread	hp.c	/^hpread(dev)$/
+hproot	hp.c	/^hproot()$/
+hpstart	hp.c	/^hpstart()$/
+hpstrategy	hp.c	/^hpstrategy(bp)$/
+hpustart	hp.c	/^hpustart(unit)$/
+hpwrite	hp.c	/^hpwrite(dev)$/
+hsattach	hs.c	/^hsattach(addr, unit)$/
+hsintr	hs.c	/^hsintr()$/
+hsread	hs.c	/^hsread(dev)$/
+hsroot	hs.c	/^hsroot()$/
+hsstart	hs.c	/^hsstart()$/
+hsstrategy	hs.c	/^hsstrategy(bp)$/
+hswrite	hs.c	/^hswrite(dev)$/
+htattach	ht.c	/^htattach(addr, unit)$/
+htclose	ht.c	/^htclose(dev, flag)$/
+htcommand	ht.c	/^htcommand(dev, com, cnt)$/
+htinit	ht.c	/^htinit()$/
+htintr	ht.c	/^htintr()$/
+htioctl	ht.c	/^htioctl(dev, cmd, addr, flag)$/
+htopen	ht.c	/^htopen(dev, flag)$/
+htphys	ht.c	/^htphys(dev)$/
+htread	ht.c	/^htread(dev)$/
+htstart	ht.c	/^htstart()$/
+htstrategy	ht.c	/^htstrategy(bp)$/
+htwrite	ht.c	/^htwrite(dev)$/
+if	bio.c	/^        if (chkphys(BYTE))$/
+incore	bio.c	/^incore(dev, blkno)$/
+iodone	bio.c	/^iodone(bp)$/
+iowait	bio.c	/^iowait(bp)$/
+isbad	dkbad.c	/^isbad(bt, cyl, trk, sec)$/
+klattach	kl.c	/^klattach(addr, unit)$/
+klclose	kl.c	/^klclose(dev, flag)$/
+klioctl	kl.c	/^klioctl(dev, cmd, addr, flag)$/
+klopen	kl.c	/^klopen(dev, flag)$/
+klread	kl.c	/^klread(dev)$/
+klrint	kl.c	/^klrint(dev)$/
+klstart	kl.c	/^klstart(tp)$/
+klwrite	kl.c	/^klwrite(dev)$/
+klxint	kl.c	/^klxint(dev)$/
+lpattach	lp.c	/^lpattach(addr, unit)$/
+lpcanon	lp.c	/^lpcanon(dev, c)$/
+lpclose	lp.c	/^lpclose(dev, flag)$/
+lpintr	lp.c	/^lpintr(lp11)$/
+lpopen	lp.c	/^lpopen(dev, flag)$/
+lpoutput	lp.c	/^lpoutput(dev, c)$/
+lptout	lp.c	/^lptout(dev)$/
+lpwrite	lp.c	/^lpwrite(dev)$/
+mmread	mem.c	/^mmread(dev)$/
+mmwrite	mem.c	/^mmwrite(dev)$/
+notavail	bio.c	/^notavail(bp)$/
+ntbreakc	ttynew.c	/^ntbreakc(c, tp)$/
+ntread	ttynew.c	/^ntread(tp)$/
+ntwrite	ttynew.c	/^ntwrite(tp)$/
+ntyclose	ttynew.c	/^ntyclose(tp)$/
+ntyecho	ttynew.c	/^ntyecho(c, tp)$/
+ntyinput	ttynew.c	/^ntyinput(c, tp)$/
+ntyopen	ttynew.c	/^ntyopen(tp)$/
+ntyout	ttynew.c	/^ntyout(cp, tp)$/
+ntyoutput	ttynew.c	/^ntyoutput(c, tp)$/
+ntyretype	ttynew.c	/^ntyretype(tp)$/
+ntyrub	ttynew.c	/^ntyrub(c, tp)$/
+ntyrubo	ttynew.c	/^ntyrubo(tp, cnt)$/
+physbuf	bio.c	/^physbuf(bp,dev,rw)$/
+physio	bio.c	/^physio(strat, bp, dev, rw)$/
+physio1	bio.c	/^physio1(strat, bp, dev, rw, kind)$/
+putchar	kl.c	/^putchar(c, touser)$/
+putmemc	mem.c	/^putmemc(addr,contents)$/
+rfattach	rf.c	/^rfattach(addr, unit)$/
+rfintr	rf.c	/^rfintr()$/
+rfread	rf.c	/^rfread(dev)$/
+rfstart	rf.c	/^rfstart()$/
+rfstrategy	rf.c	/^rfstrategy(bp)$/
+rfwrite	rf.c	/^rfwrite(dev)$/
+rkattach	rk.c	/^rkattach(addr, unit)$/
+rkintr	rk.c	/^rkintr()$/
+rkread	rk.c	/^rkread(dev)$/
+rkstart	rk.c	/^rkstart()$/
+rkstrategy	rk.c	/^rkstrategy(bp)$/
+rkwrite	rk.c	/^rkwrite(dev)$/
+rlattach	rl.c	/^rlattach(addr, unit)$/
+rlintr	rl.c	/^rlintr()$/
+rlio	rl.c	/^rlio()$/
+rlread	rl.c	/^rlread(dev)$/
+rlstart	rl.c	/^rlstart()$/
+rlstrategy	rl.c	/^rlstrategy(bp)$/
+rlwait	rl.c	/^#define	rlwait(r)	while (((r)->rlcs & RL_CRDY) == /
+rlwrite	rl.c	/^rlwrite(dev)$/
+rmattach	rm.c	/^rmattach(addr, unit)$/
+rmdump	rm.c	/^rmdump(dev)$/
+rmecc	rm.c	/^rmecc(bp)$/
+rmintr	rm.c	/^rmintr()$/
+rmread	rm.c	/^rmread(dev)$/
+rmroot	rm.c	/^rmroot()$/
+rmstart	rm.c	/^rmstart()$/
+rmstrategy	rm.c	/^rmstrategy(bp)$/
+rmustart	rm.c	/^rmustart(unit)$/
+rmwrite	rm.c	/^rmwrite(dev)$/
+rpattach	rp.c	/^rpattach(addr, unit)$/
+rpintr	rp.c	/^rpintr()$/
+rpread	rp.c	/^rpread(dev)$/
+rpstart	rp.c	/^rpstart()$/
+rpstrategy	rp.c	/^rpstrategy(bp)$/
+rpwrite	rp.c	/^rpwrite(dev)$/
+swap	bio.c	/^swap(blkno, coreaddr, count, rdflg)$/
+syopen	sys.c	/^syopen(dev, flag)$/
+syread	sys.c	/^syread(dev)$/
+sysioctl	sys.c	/^sysioctl(dev, cmd, addr, flag)$/
+sywrite	sys.c	/^sywrite(dev)$/
+tmattach	tm.c	/^tmattach(addr, unit)$/
+tmclose	tm.c	/^tmclose(dev, flag)$/
+tmcommand	tm.c	/^tmcommand(dev, com, count)$/
+tmintr	tm.c	/^tmintr()$/
+tmioctl	tm.c	/^tmioctl(dev, cmd, addr, flag)$/
+tmopen	tm.c	/^tmopen(dev, flag)$/
+tmphys	tm.c	/^tmphys(dev)$/
+tmread	tm.c	/^tmread(dev)$/
+tmseteof	tm.c	/^tmseteof(bp)$/
+tmstart	tm.c	/^tmstart()$/
+tmstrategy	tm.c	/^tmstrategy(bp)$/
+tmtimer	tm.c	/^tmtimer(dev)$/
+tmwrite	tm.c	/^tmwrite(dev)$/
+tsattach	ts.c	/^tsattach(addr, unit)$/
+tsclose	ts.c	/^tsclose(dev, flag)$/
+tscommand	ts.c	/^tscommand(dev, com, count)$/
+tsinit	ts.c	/^tsinit(tsunit)$/
+tsintr	ts.c	/^tsintr()$/
+tsioctl	ts.c	/^tsioctl(dev, cmd, addr, flag)$/
+tsopen	ts.c	/^tsopen(dev, flag)$/
+tsphys	ts.c	/^tsphys(dev)$/
+tsread	ts.c	/^tsread(dev)$/
+tsseteof	ts.c	/^tsseteof(bp)$/
+tsstart	ts.c	/^ tsstart()$/
+tsstrategy	ts.c	/^tsstrategy(bp)$/
+tswait	ts.c	/^#define	tswait(r)	while (((TSADDR->(r)) & TS_SSR) /
+tswrite	ts.c	/^tswrite(dev)$/
+ttioctl	tty.c	/^ttioctl(tp, com, addr, flag)$/
+ttnread	tty.c	/^ttnread(tp)$/
+ttread	ttyold.c	/^ttread(tp)$/
+ttrstrt	tty.c	/^ttrstrt(tp)$/
+ttselect	tty.c	/^ttselect(dev, rw)$/
+ttsignal	ttynew.c	/^#define	ttsignal(tp, c)	gsignal((tp)->t_pgrp, c)$/
+ttstart	tty.c	/^ttstart(tp)$/
+ttwakeup	ttynew.c	/^#define	ttwakeup(tp)	wakeup((caddr_t) &(tp)->t_raw/
+ttwrite	ttyold.c	/^ttwrite(tp)$/
+ttyblock	tty.c	/^ttyblock(tp)$/
+ttychars	tty.c	/^ttychars(tp)$/
+ttyclose	tty.c	/^ttyclose(tp)$/
+ttyinput	ttyold.c	/^ttyinput(c, tp)$/
+ttyopen	tty.c	/^ttyopen(dev, tp)$/
+ttyoutput	ttyold.c	/^ttyoutput(c, tp)$/
+ttypend	ttynew.c	/^ttypend(tp)$/
+vpattach	vp.c	/^vpattach(addr, unit)$/
+vpclose	vp.c	/^vpclose(dev, flag)$/
+vpctl	vp.c	/^vpctl(dev, v)	$/
+vperror	vp.c	/^vperror()$/
+vpintr	vp.c	/^vpintr()$/
+vpioctl	vp.c	/^vpioctl(dev, cmd, addr, flag)	$/
+vpopen	vp.c	/^vpopen(dev, flag)$/
+vpstart	vp.c	/^vpstart(bp)$/
+vpwrite	vp.c	/^vpwrite(dev)$/
+wflushtty	tty.c	/^wflushtty(tp)$/
+xpattach	xp.c	/^xpattach(xpaddr, unit)$/
+xpdump	xp.c	/^xpdump(dev)$/
+xpecc	xp.c	/^xpecc(bp)$/
+xpintr	xp.c	/^xpintr(dev)$/
+xpread	xp.c	/^xpread(dev)$/
+xproot	xp.c	/^xproot()$/
+xpslave	xp.c	/^xpslave(xpaddr, xc)$/
+xpstart	xp.c	/^xpstart(xc)$/
+xpstrategy	xp.c	/^xpstrategy(bp)$/
+xpustart	xp.c	/^xpustart(unit)$/
+xpwrite	xp.c	/^xpwrite(dev)$/
