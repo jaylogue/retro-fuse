@@ -1,11 +1,13 @@
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/dir.h>
-#include <sys/user.h>
-#include <sys/inode.h>
-#include <sys/file.h>
-#include <sys/reg.h>
-#include <sys/inline.h>
+#include "bsd29adapt.h"
+
+#include "bsd29/include/sys/param.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/dir.h>
+#include <bsd29/include/sys/user.h>
+#include <bsd29/include/sys/inode.h>
+#include <bsd29/include/sys/file.h>
+#include <bsd29/include/sys/reg.h>
+#include <bsd29/include/sys/inline.h>
 
 /*
  *	SCCS id	@(#)pipe.c	2.1 (Berkeley)	8/5/83
@@ -22,6 +24,7 @@
  */
 #define	PIPSIZ	4096
 
+#if UNUSED
 /*
  * The sys-pipe entry.
  * Allocate an inode on the root device.
@@ -76,7 +79,9 @@ pipe()
 	ip->i_mode = IFREG;
 	ip->i_flag = IACC|IUPD|ICHG|IPIPE;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Read call directed to a pipe.
  */
@@ -131,7 +136,9 @@ loop:
 	}
 	prele(ip);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Write call directed to a pipe.
  */
@@ -202,20 +209,24 @@ loop:
 	}
 	goto loop;
 }
+#endif /* UNUSED */
 
+#ifdef UNUSED
 #ifdef	plock
 #undef	plock
 #endif
 #ifdef	prele
 #undef	prele
 #endif
+#endif /* UNUSED */
+
 /*
  * Lock a pipe.
  * If its already locked,
  * set the WANT bit and sleep.
  */
-plock(ip)
-register struct inode *ip;
+void
+plock(register struct inode *ip)
 {
 
 	while(ip->i_flag&ILOCK) {
@@ -232,8 +243,8 @@ register struct inode *ip;
  * This routine is also used
  * to unlock inodes in general.
  */
-prele(ip)
-register struct inode *ip;
+void
+prele(register struct inode *ip)
 {
 
 	ip->i_flag &= ~ILOCK;

@@ -1,20 +1,22 @@
+#include "bsd29adapt.h"
+
 /*
  *	SCCS id	@(#)nami.c	2.1 (Berkeley)	8/21/83
  */
 
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/inode.h>
-#include <sys/filsys.h>
-#include <sys/mount.h>
-#include <sys/dir.h>
-#include <sys/user.h>
-#include <sys/buf.h>
-#include <sys/quota.h>
+#include "bsd29/include/sys/param.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/inode.h>
+#include <bsd29/include/sys/filsys.h>
+#include <bsd29/include/sys/mount.h>
+#include <bsd29/include/sys/dir.h>
+#include <bsd29/include/sys/user.h>
+#include <bsd29/include/sys/buf.h>
+/* UNUSED #include <sys/quota.h> */
 
 #ifdef	UCB_SYMLINKS
 #ifndef	saveseg5
-#include <sys/seg.h>
+/* UNUSED #include <sys/seg.h> */
 #endif
 #endif
 
@@ -34,24 +36,23 @@
  */
 struct inode *
 #ifdef	UCB_SYMLINKS
-namei(func, flag, follow)
+namei(int16_t (*func)(), int16_t flag, int16_t follow)
 #else
-namei(func, flag)
+namei(int16_t (*func)(), int16_t flag)
 #endif
-int (*func)();
 {
 	register struct direct *dirp;
 	struct inode *dp;
-	register c;
+	register int16_t c;
 	register char *cp;
 	struct buf *bp;
 #if	defined(UCB_QUOTAS) || defined(UCB_SYMLINKS)
-	struct buf *temp;
+	void *temp;
 #endif
 #ifdef	UCB_SYMLINKS
-	int nlink;
+	int16_t nlink;
 #endif
-	int i;
+	int16_t i;
 	dev_t d;
 	off_t eo;
 
@@ -298,7 +299,8 @@ eloop:
 			}
 #if	defined(UCB_QUOTAS) || defined(UCB_SYMLINKS)
 	prele(dp);
-	temp = cp = iget(d, u.u_dent.d_ino);
+	temp = iget(d, u.u_dent.d_ino);
+	cp = temp;
 	if (cp == NULL) {
 		if (dp->i_flag & ILOCK)
 			dp->i_count--;
@@ -396,7 +398,8 @@ out1:
 #ifdef	UCB_SYMLINKS
 	if (u.u_sbuf) {
 		brelse(u.u_sbuf);
-		u.u_sbuf = u.u_slength = u.u_soffset = 0;
+		u.u_sbuf = NULL;
+		u.u_slength = u.u_soffset = 0;
 	}
 #endif
 	return(NULL);
@@ -422,6 +425,7 @@ register struct inode *dp, *ip;
 }
 #endif
 
+#if UNUSED
 /*
  * Return the next character from the
  * kernel string pointed at by dirp.
@@ -439,7 +443,9 @@ schar()
 #endif	UCB_SYMLINKS
 	return(*u.u_dirp++ & 0377);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Return the next character from the
  * user string pointed at by dirp.
@@ -462,11 +468,13 @@ uchar()
 		u.u_error = EINVAL;
 	return(c);
 }
+#endif /* UNUSED */
 
 #ifdef	UCB_SYMLINKS
 /*
  *	Get a character from the symbolic name buffer
  */
+int16_t
 symchar()
 {
 	segm save5;
@@ -477,7 +485,8 @@ symchar()
 		return(-1);
 	if (u.u_soffset > u.u_slength) {
 		brelse(u.u_sbuf);
-		u.u_soffset = u.u_slength = u.u_sbuf = 0;
+		u.u_soffset = u.u_slength = 0;
+		u.u_sbuf = NULL;
 		return(-1);
 	}
 
@@ -490,7 +499,8 @@ symchar()
 	restorseg5(save5);
 	if (u.u_soffset >= u.u_slength) {
 		brelse(u.u_sbuf);
-		u.u_soffset = u.u_slength = u.u_sbuf = 0;
+		u.u_soffset = u.u_slength = 0;
+		u.u_sbuf = NULL;
 	}
 	return(c);
 };	/* end of symchar */

@@ -8,9 +8,9 @@
  * file conf.c.
  */
 struct bdevsw	{
-	int	(*d_open)();
-	int	(*d_close)();
-	int	(*d_strategy)();
+	int16_t	(*d_open)(dev_t dev, int16_t flag);
+	int16_t	(*d_close)(dev_t dev, int16_t flag);
+	int16_t	(*d_strategy)(struct buf *bp);
 	void	(*d_root)();		/* root attach routine */
 	struct	buf	*d_tab;
 };

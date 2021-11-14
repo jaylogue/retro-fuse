@@ -1,19 +1,21 @@
+#include "bsd29adapt.h"
+
 /*
  *	SCCS id	@(#)main.c	2.1 (Berkeley)	8/29/83
  */
 
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/dir.h>
-#include <sys/user.h>
-#include <sys/filsys.h>
-#include <sys/mount.h>
-#include <sys/map.h>
-#include <sys/proc.h>
-#include <sys/inode.h>
-#include <sys/seg.h>
-#include <sys/conf.h>
-#include <sys/buf.h>
+#include "bsd29/include/sys/param.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/dir.h>
+#include <bsd29/include/sys/user.h>
+#include <bsd29/include/sys/filsys.h>
+#include <bsd29/include/sys/mount.h>
+/* UNUSED #include <sys/map.h> */
+/* UNUSED #include <sys/proc.h> */
+#include <bsd29/include/sys/inode.h>
+/* UNUSED #include <sys/seg.h> */
+#include <bsd29/include/sys/conf.h>
+#include <bsd29/include/sys/buf.h>
 
 
 #ifdef	UCB_FRCSWAP
@@ -26,6 +28,7 @@
 int	idleflg	= 1;
 #endif
 
+#if UNUSED
 /*
  * Initialization code.
  * Called from cold start routine as
@@ -109,6 +112,7 @@ main()
 	else
 		sched();
 }
+#endif /* UNUSED */
 
 /*
  * Iinit is called once (from main)
@@ -120,14 +124,15 @@ main()
  * panic: iinit -- cannot read the super
  * block (usually because of an IO error).
  */
+void
 iinit()
 {
-	register struct buf *cp, *bp;
+	register struct buf /* UNUSED *cp, */ *bp;
 	register struct filsys *fp;
-	register i;
+	register int16_t i;
 
 	(*bdevsw[major(rootdev)].d_open)(rootdev, B_READ);
-	(*bdevsw[major(swapdev)].d_open)(swapdev, B_READ);
+	/* UNUSED (*bdevsw[major(swapdev)].d_open)(swapdev, B_READ); */
 	bp = bread(rootdev, SUPERB);
 	if(u.u_error)
 		panic("iinit");
@@ -148,31 +153,36 @@ iinit()
 	for (i = 1; i < sizeof(fp->s_fsmnt); i++)
 		fp->s_fsmnt[i] = 0;
 	time = fp->s_time;
-	bootime = time;
+	/* UNUSED bootime = time; */
 }
 
+#ifdef UNUSED
 memaddr bpaddr;		/* physical click-address of buffers */
+#endif /* UNUSED */
+
+extern char buffers[];
 
 /*
  * Initialize the buffer I/O system by freeing
  * all buffers and setting all device buffer lists to empty.
  */
+void
 binit()
 {
 	register struct buf *bp;
 	register struct buf *dp;
-	register int i;
+	register int16_t i;
 	struct bdevsw *bdp;
-	long paddr;
+	caddr_t paddr;
 
 	bfreelist.b_forw = bfreelist.b_back =
 	    bfreelist.av_forw = bfreelist.av_back = &bfreelist;
-	paddr = ((long) bpaddr) << 6;
+	paddr = buffers;
 	for (i=0; i<nbuf; i++) {
 		bp = &buf[i];
 		bp->b_dev = NODEV;
-		bp->b_un.b_addr = loint(paddr);
-		bp->b_xmem = hiint(paddr);
+		bp->b_un.b_addr = paddr;
+		bp->b_xmem = 0;
 		paddr += bsize;
 		bp->b_back = &bfreelist;
 		bp->b_forw = bfreelist.b_forw;

@@ -1,19 +1,21 @@
+#include "bsd29adapt.h"
+
 /*
  *	SCCS id	@(#)alloc.c	2.1 (Berkeley)	8/5/83
  */
 
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/filsys.h>
-#include <sys/mount.h>
-#include <sys/fblk.h>
-#include <sys/conf.h>
-#include <sys/buf.h>
-#include <sys/inode.h>
-#include <sys/ino.h>
-#include <sys/dir.h>
-#include <sys/user.h>
-#include <sys/quota.h>
+#include "bsd29/include/sys/param.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/filsys.h>
+#include <bsd29/include/sys/mount.h>
+#include <bsd29/include/sys/fblk.h>
+#include <bsd29/include/sys/conf.h>
+#include <bsd29/include/sys/buf.h>
+#include <bsd29/include/sys/inode.h>
+#include <bsd29/include/sys/ino.h>
+#include <bsd29/include/sys/dir.h>
+#include <bsd29/include/sys/user.h>
+/* UNUSED #include <sys/quota.h> */
 
 typedef	struct fblk *FBLKP;
 
@@ -69,13 +71,12 @@ dev_t d;
  * the free list is exhausted.
  */
 struct buf *
-alloc(dev)
-dev_t dev;
+alloc(dev_t dev)
 {
 	daddr_t bno;
 	register struct filsys *fp;
 	register struct buf *bp;
-	int	i;
+	/* UNUSED int16_t	i; */
 	register struct fblk *fbp;
 	struct filsys *fps;
 
@@ -141,8 +142,10 @@ nospace:
 #ifdef	UCB_UPRINTF
 	uprintf("\n%s: write failed, file system is full\n", fp->s_fsmnt);
 #endif
+#ifdef UNUSED
 	for (i = 0; i < 5; i++)
 		sleep((caddr_t)&lbolt, PRIBIO);
+#endif
 nofs:
 	u.u_error = ENOSPC;
 	return(NULL);
@@ -172,9 +175,8 @@ daddr_t b;
  * back on the free list of the
  * specified device.
  */
-free(dev, bno)
-dev_t dev;
-daddr_t bno;
+void
+free(dev_t dev, daddr_t bno)
 {
 	register struct filsys *fp;
 	register struct buf *bp;
@@ -215,9 +217,8 @@ daddr_t bno;
  *
  * bad block on dev x/y -- not in range
  */
-badblock(fp, bn)
-register struct filsys *fp;
-daddr_t bn;
+int16_t
+badblock(register struct filsys *fp, daddr_t bn)
 {
 
 	if (bn < fp->s_isize || bn >= fp->s_fsize) {
@@ -239,18 +240,17 @@ daddr_t bn;
  * up NICINOD more.
  */
 struct inode *
-ialloc(dev)
-dev_t dev;
+ialloc(dev_t dev)
 {
 	register struct filsys *fp;
 	register struct buf *bp;
 	register struct inode *ip;
-	int i;
+	int16_t i;
 	struct dinode *dp;
 	ino_t ino;
 	daddr_t adr;
 	ino_t inobas;
-	int first;
+	int16_t first;
 
 	if ((fp = getfs(dev)) == NULL)
 		goto nofs;
@@ -350,9 +350,8 @@ nofs:
  * to NICINOD I nodes in the super
  * block and throws away any more.
  */
-ifree(dev, ino)
-dev_t dev;
-ino_t ino;
+void
+ifree(dev_t dev, ino_t ino)
 {
 	register struct filsys *fp;
 
@@ -397,8 +396,7 @@ ino_t ino;
  * detect this.
  */
 struct filsys *
-getfs(dev)
-dev_t dev;
+getfs(dev_t dev)
 {
 	register struct mount *mp;
 	register struct filsys *fp;
@@ -426,6 +424,7 @@ dev_t dev;
  * the mount table to initiate modified
  * super blocks.
  */
+void
 update()
 {
 	register struct inode *ip;

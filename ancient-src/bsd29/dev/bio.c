@@ -1,20 +1,22 @@
+#include "bsd29adapt.h"
+
 /*
  *	SCCS id	@(#)bio.c	2.1 (Berkeley)	8/5/83
  */
 
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/dir.h>
-#include <sys/user.h>
-#include <sys/buf.h>
-#include <sys/conf.h>
-#include <sys/proc.h>
-#include <sys/seg.h>
+#include "bsd29/include/sys/param.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/dir.h>
+#include <bsd29/include/sys/user.h>
+#include <bsd29/include/sys/buf.h>
+#include <bsd29/include/sys/conf.h>
+/* UNUSED #include <bsd29/include/sys/proc.h> */
+/* UNUSED #include <bsd29/include/sys/seg.h> */
 #ifdef UCB_METER
-#include <sys/vm.h>
+/* UNUSED #include <sys/vm.h> */
 #endif
 #ifdef	UNIBUS_MAP
-#include <sys/uba.h>
+/* UNUSED #include <sys/uba.h> */
 #endif
 
 #ifdef	DISKMON
@@ -65,9 +67,7 @@ struct	buf	*bhash[BUFHSZ];
  * Read in (if necessary) the block and return a buffer pointer.
  */
 struct buf *
-bread(dev, blkno)
-register dev_t dev;
-daddr_t blkno;
+bread(dev_t dev, daddr_t blkno)
 {
 	register struct buf *bp;
 
@@ -93,9 +93,7 @@ daddr_t blkno;
  * read-ahead block (which is not allocated to the caller)
  */
 struct buf *
-breada(dev, blkno, rablkno)
-register dev_t dev;
-daddr_t blkno, rablkno;
+breada(dev_t dev, daddr_t blkno, daddr_t rablkno)
 {
 	register struct buf *bp, *rabp;
 
@@ -134,10 +132,10 @@ daddr_t blkno, rablkno;
  * Write the buffer, waiting for completion.
  * Then release the buffer.
  */
-bwrite(bp)
-register struct buf *bp;
+void
+bwrite(struct buf *bp)
 {
-	register flag;
+	register int16_t flag;
 
 	flag = bp->b_flags;
 	bp->b_flags &= ~(B_READ | B_DONE | B_ERROR | B_DELWRI);
@@ -161,8 +159,8 @@ register struct buf *bp;
  * This can't be done for magtape, since writes must be done
  * in the same order as requested.
  */
-bdwrite(bp)
-register struct buf *bp;
+void
+bdwrite(struct buf *bp)
 {
 	register struct buf *dp;
 
@@ -178,8 +176,8 @@ register struct buf *bp;
 /*
  * Release the buffer, start I/O on it, but don't wait for completion.
  */
-bawrite(bp)
-register struct buf *bp;
+void
+bawrite(struct buf *bp)
 {
 
 	bp->b_flags |= B_ASYNC;
@@ -189,11 +187,11 @@ register struct buf *bp;
 /*
  * release the buffer, with no I/O implied.
  */
-brelse(bp)
-register struct buf *bp;
+void
+brelse(struct buf *bp)
 {
 	register struct buf **backp;
-	register s;
+	register int16_t s;
 
 	if (bp->b_flags&B_WANTED)
 		wakeup((caddr_t)bp);
@@ -229,9 +227,8 @@ register struct buf *bp;
  * See if the block is associated with some buffer
  * (mainly to avoid getting hung up on a wait in breada)
  */
-incore(dev, blkno)
-register dev_t dev;
-daddr_t blkno;
+int16_t
+incore(dev_t dev, daddr_t blkno)
 {
 	register struct buf *bp;
 #ifndef	UCB_BHASH
@@ -258,14 +255,12 @@ daddr_t blkno;
  * for the oldest non-busy buffer and reassign it.
  */
 struct buf *
-getblk(dev, blkno)
-dev_t dev;
-daddr_t blkno;
+getblk(dev_t dev, daddr_t blkno)
 {
 	register struct buf *bp;
 	register struct buf *dp;
 #ifdef UCB_BHASH
-	register int j;
+	register int16_t j;
 #endif
 	daddr_t dblkno;
 
@@ -370,11 +365,11 @@ loop:
 }
 
 #ifdef UCB_BHASH
-bunhash(bp)
-register struct buf *bp;
+void
+bunhash(struct buf *bp)
 {
 	register struct buf *ep;
-	register int i;
+	register int16_t i;
 
 	if (bp->b_dev == NODEV)
 		return;
@@ -397,8 +392,8 @@ register struct buf *bp;
  * Wait for I/O completion on the buffer; return errors
  * to the user.
  */
-iowait(bp)
-register struct buf *bp;
+void
+iowait(struct buf *bp)
 {
 
 	(void) _spl6();
@@ -412,10 +407,10 @@ register struct buf *bp;
  * Unlink a buffer from the available list and mark it busy.
  * (internal interface)
  */
-notavail(bp)
-register struct buf *bp;
+void
+notavail(struct buf *bp)
 {
-	register s;
+	register int16_t s;
 
 	s = spl6();
 	bp->av_back->av_forw = bp->av_forw;
@@ -428,8 +423,8 @@ register struct buf *bp;
  * Mark I/O complete on a buffer, release it if I/O is asynchronous,
  * and wake up anyone waiting for it.
  */
-iodone(bp)
-register struct buf *bp;
+void
+iodone(struct buf *bp)
 {
 #ifdef	UNIBUS_MAP
 	if(bp->b_flags & (B_MAP|B_UBAREMAP))
@@ -449,14 +444,14 @@ register struct buf *bp;
  * Since this routine calls mapin,
  * it cannot be called from interrupt routines.
  */
-clrbuf(bp)
-register struct buf *bp;
+void
+clrbuf(struct buf *bp)
 {
-	register *p;
-	register c;
+	register int16_t *p;
+	register int16_t c;
 
-	p = (int *) mapin(bp);
-	c = (BSIZE/sizeof(int)) >> 2;
+	p = (int16_t *) mapin(bp);
+	c = (BSIZE/sizeof(int16_t)) >> 2;
 	do {
 		*p++ = 0;
 		*p++ = 0;
@@ -467,6 +462,7 @@ register struct buf *bp;
 	mapout(bp);
 }
 
+#if UNUSED
 /*
  * swap I/O
  */
@@ -521,6 +517,7 @@ register count;
 		wakeup((caddr_t)bp);
 	bp->b_flags &= ~(B_BUSY|B_WANTED);
 }
+#endif /* UNUSED */
 
 /*
  * make sure all write-behind blocks
@@ -528,8 +525,8 @@ register count;
  * are flushed out.
  * (from umount and update)
  */
-bflush(dev)
-register dev_t dev;
+void
+bflush(dev_t dev)
 {
 	register struct buf *bp;
 
@@ -546,6 +543,7 @@ loop:
 	(void) _spl0();
 }
 
+#if UNUSED
 /*
  * Raw I/O. The arguments are
  *	The strategy routine for the device
@@ -576,7 +574,9 @@ dev_t dev;
 {
 	physio1(strat, bp, dev, rw, WORD);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 bphysio(strat, bp, dev, rw)
 register struct buf *bp;
 int (*strat)();
@@ -584,7 +584,9 @@ dev_t dev;
 {
 	physio1(strat, bp, dev, rw, BYTE);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 physio1(strat, bp, dev, rw, kind)
 register struct buf *bp;
 int (*strat)();
@@ -602,7 +604,9 @@ dev_t dev;
 	bp->b_flags &= ~(B_BUSY|B_WANTED);
 	u.u_count = bp->b_resid;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * check for validity of physical I/O area
  * (modified from physio to use flag for BYTE-oriented transfers)
@@ -648,7 +652,9 @@ chkphys(flag)
 	u.u_error = EFAULT;
 	return(-1);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * wait for buffer header, then fill it in to do physical I/O.
  */
@@ -682,14 +688,15 @@ dev_t dev;
 	bp->b_bcount = u.u_count;
 	bp->b_error = 0;
 }
+#endif /* UNUSED */
 
 /*
  * Pick up the device's error number and pass it to the user;
  * if there is an error but the number is 0 set a generalized
  * code.
  */
-geterror(bp)
-register struct buf *bp;
+void
+geterror(struct buf *bp)
 {
 
 	if (bp->b_flags&B_ERROR)

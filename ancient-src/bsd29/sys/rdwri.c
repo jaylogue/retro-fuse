@@ -1,14 +1,16 @@
+#include "bsd29adapt.h"
+
 /*
  *	SCCS id	@(#)rdwri.c	2.1 (Berkeley)	8/5/83
  */
 
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/inode.h>
-#include <sys/dir.h>
-#include <sys/user.h>
-#include <sys/buf.h>
-#include <sys/conf.h>
+#include "bsd29/include/sys/param.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/inode.h>
+#include <bsd29/include/sys/dir.h>
+#include <bsd29/include/sys/user.h>
+#include <bsd29/include/sys/buf.h>
+#include <bsd29/include/sys/conf.h>
 
 /*
  * Read the file corresponding to
@@ -20,15 +22,15 @@
  *	u_count		number of bytes to read
  *	u_segflg	read to kernel/user/user I
  */
-readi(ip)
-register struct inode *ip;
+void
+readi(register struct inode *ip)
 {
 	struct buf *bp;
 	dev_t dev;
 	daddr_t lbn, bn;
 	off_t diff;
-	register on, n;
-	int type;
+	register int16_t on, n;
+	int16_t type;
 
 	if(u.u_count == 0)
 		return;
@@ -44,7 +46,7 @@ register struct inode *ip;
 #else
 	if (type==IFCHR)
 #endif
-		return((*cdevsw[major(dev)].d_read)(dev));
+		return; /* UNUSED ((*cdevsw[major(dev)].d_read)(dev)); */
 
 	do {
 		lbn = bn = u.u_offset >> BSHIFT;
@@ -99,14 +101,14 @@ register struct inode *ip;
  *	u_count		number of bytes to write
  *	u_segflg	write to kernel/user/user I
  */
-writei(ip)
-register struct inode *ip;
+void
+writei(register struct inode *ip)
 {
 	struct buf *bp;
 	dev_t dev;
 	daddr_t bn;
-	register n, on;
-	register type;
+	register int16_t n, on;
+	register int16_t type;
 #ifdef	UCB_FSFIX
 	struct	direct	*dp;
 #endif
@@ -167,7 +169,7 @@ register struct inode *ip;
 				clrbuf(bp);
 		}
 #ifdef	UCB_FSFIX
-		iomove((dp = (struct direct *)((unsigned)mapin(bp)+on)), n, B_WRITE);
+		iomove((caddr_t)(dp = (struct direct *)((char *)mapin(bp)+on)), n, B_WRITE);
 #else
 		iomove(mapin(bp)+on, n, B_WRITE);
 		mapout(bp);
@@ -218,6 +220,7 @@ register struct inode *ip;
 }
 
 
+#if UNUSED
 /*
  * Move n bytes at byte location cp
  * to/from (flag) the user/kernel (u.segflg)
@@ -273,3 +276,4 @@ register n;
 				return;
 		} while (--n);
 }
+#endif /* UNUSED */

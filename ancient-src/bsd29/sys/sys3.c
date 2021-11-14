@@ -1,23 +1,26 @@
+#include "bsd29adapt.h"
+
 /*
  *	SCCS id	@(#)sys3.c	2.1 (Berkeley)	9/4/83
  */
 
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/ino.h>
-#include <sys/reg.h>
-#include <sys/buf.h>
-#include <sys/filsys.h>
-#include <sys/mount.h>
-#include <sys/dir.h>
-#include <sys/user.h>
-#include <sys/inode.h>
-#include <sys/file.h>
-#include <sys/conf.h>
-#include <sys/stat.h>
-#include <sys/inline.h>
+#include "bsd29/include/sys/param.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/ino.h>
+#include <bsd29/include/sys/reg.h>
+#include <bsd29/include/sys/buf.h>
+#include <bsd29/include/sys/filsys.h>
+#include <bsd29/include/sys/mount.h>
+#include <bsd29/include/sys/dir.h>
+#include <bsd29/include/sys/user.h>
+#include <bsd29/include/sys/inode.h>
+#include <bsd29/include/sys/file.h>
+#include <bsd29/include/sys/conf.h>
+#include <bsd29/include/sys/stat.h>
+#include <bsd29/include/sys/inline.h>
 
 
+#if UNUSED
 /*
  * the fstat system call.
  */
@@ -40,7 +43,9 @@ fstat()
 #endif
 		stat1(fp->f_inode, uap->sb, fp->f_flag & FPIPE?  fp->f_un.f_offset: (off_t) 0);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * the stat system call.
  */
@@ -63,7 +68,9 @@ stat()
 	stat1(ip, uap->sb, (off_t)0);
 	iput(ip);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 #ifdef	UCB_SYMLINKS
 /*
  * Lstat system call; like stat but doesn't follow links.
@@ -84,15 +91,14 @@ lstat()
 	iput(ip);
 }
 #endif
+#endif /* UNUSED */
 
 /*
  * The basic routine for fstat and stat:
  * get the inode and pass appropriate parts back.
  */
-stat1(ip, ub, pipeadj)
-register struct inode *ip;
-struct stat *ub;
-off_t pipeadj;
+void
+stat1(register struct inode *ip, struct stat *ub, off_t pipeadj)
 {
 	register struct dinode *dp;
 	register struct buf *bp;
@@ -129,6 +135,7 @@ off_t pipeadj;
 		u.u_error = EFAULT;
 }
 
+#if UNUSED
 /*
  * the dup system call.
  */
@@ -169,7 +176,9 @@ dup()
 		fp->f_count++;
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * the mount system call.
  */
@@ -249,7 +258,9 @@ out:
 out1:
 	iput(ip);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * the umount system call.
  */
@@ -295,7 +306,9 @@ sumount()
 
 	u.u_error = EINVAL;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Common code for mount and umount.
  * Check that the user's argument is a reasonable
@@ -322,18 +335,20 @@ getmdev()
 	iput(ip);
 	return(dev);
 }
+#endif /* UNUSED */
 
 #ifdef	UCB_SYMLINKS
 /*
  * Return target name of a symbolic link
  */
+void
 readlink()
 {
 	register struct inode *ip;
 	register struct a {
 		char	*name;
 		char	*buf;
-		int	count;
+		int16_t	count;
 	} *uap;
 
 	ip = namei(uchar, 0, 0);
@@ -357,6 +372,7 @@ out:
 /*
  * symlink -- make a symbolic link
  */
+void
 symlink()
 {
 	register struct a {
@@ -365,12 +381,12 @@ symlink()
 	} *uap;
 	register struct inode *ip;
 	register char *tp;
-	register c, nc;
+	register int16_t c, nc;
 
 	uap = (struct a *)u.u_ap;
 	tp = uap->target;
 	nc = 0;
-	while (c = fubyte(tp)) {
+	while ((c = fubyte(tp)) != 0) {
 		if (c < 0) {
 			u.u_error = EFAULT;
 			return;

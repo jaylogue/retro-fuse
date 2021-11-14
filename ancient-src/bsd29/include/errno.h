@@ -47,6 +47,7 @@
 /* symbolic links */
 #define	ELOOP		36		/* Too many levels of symbolic links */
 
+#ifdef UNUSED
 /* non-blocking and interrupt i/o */
 #define	EWOULDBLOCK	37		/* Operation would block */
 
@@ -93,3 +94,4 @@
 /* should be rearranged */
 #define	EHOSTDOWN	65		/* Host is down */
 #define	EHOSTUNREACH	66		/* No route to host */
+#endif /* UNUSED */

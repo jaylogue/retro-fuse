@@ -2,14 +2,14 @@
  *	SCCS id	@(#)prf.c	2.1 (Berkeley)	8/5/83
  */
 
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/filsys.h>
-#include <sys/mount.h>
-#include <sys/seg.h>
-#include <sys/buf.h>
-#include <sys/conf.h>
-#include <sys/inline.h>
+#include "bsd29/include/sys/aram.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/filsys.h>
+#include <bsd29/include/sys/mount.h>
+/* UNUSED #include <sys/seg.h> */
+#include <bsd29/include/sys/buf.h>
+#include <bsd29/include/sys/conf.h>
+#include <bsd29/include/sys/inline.h>
 #ifdef	UCB_AUTOBOOT
 #include <sys/reboot.h>
 #endif

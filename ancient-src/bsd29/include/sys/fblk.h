@@ -1,5 +1,5 @@
 struct fblk
 {
-	short	df_nfree;
+	int16_t	df_nfree;
 	daddr_t	df_free[NICFREE];
 };

@@ -6,7 +6,7 @@
 /* #define	ENABLE34		/* support the ENABLE/34 board */
 
 #ifdef	KERNEL
-#    include "localopts.h"
+#    include "sys/localopts.h"
 #else
 #    include <sys/localopts.h>
 #endif

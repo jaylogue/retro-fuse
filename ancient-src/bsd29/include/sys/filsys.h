@@ -3,11 +3,11 @@
  */
 struct	filsys
 {
-	u_short s_isize;		/* size in blocks of i-list */
+	uint16_t s_isize;		/* size in blocks of i-list */
 	daddr_t	s_fsize;   		/* size in blocks of entire volume */
-	short  	s_nfree;   		/* number of addresses in s_free */
+	int16_t  	s_nfree;   		/* number of addresses in s_free */
 	daddr_t	s_free[NICFREE];	/* free block list */
-	short  	s_ninode;  		/* number of i-nodes in s_inode */
+	int16_t  	s_ninode;  		/* number of i-nodes in s_inode */
 	ino_t  	s_inode[NICINOD];	/* free i-node list */
 	char   	s_flock;   		/* lock during free list manipulation */
 	char   	s_ilock;   		/* lock during i-list manipulation */
@@ -16,14 +16,14 @@ struct	filsys
 	time_t 	s_time;    		/* last super block update */
 	daddr_t	s_tfree;   		/* total free blocks*/
 	ino_t  	s_tinode;  		/* total free inodes */
-	short	s_dinfo[2];		/* interleave stuff */
+	int16_t	s_dinfo[2];		/* interleave stuff */
 #define	s_m	s_dinfo[0]
 #define	s_n	s_dinfo[1]
 	char   	s_fsmnt[12];		/* ordinary file mounted on */
 	ino_t	s_lasti;		/* start place for circular search */
 	ino_t	s_nbehind;		/* est # free inodes before s_lasti */
-};
+} __attribute__((packed));
 
 #ifdef KERNEL
-struct	filsys *getfs();
+extern struct	filsys *getfs(dev_t dev);
 #endif

@@ -4,13 +4,13 @@
  * used by more than one
  * routine.
  */
-struct	inode	*rootdir;	/* pointer to inode of root directory */
-struct	proc	*runq;		/* head of linked list of running processes */
-struct	proc	*maxproc;	/* current high water mark in proc table */
-extern	cputype;		/* type of cpu = 40, 44, 45, 60, or 70 */
-int	lbolt;			/* clock ticks since time was last updated */
-time_t	time;			/* time in sec from 1970 */
-ubadr_t	clstaddr;		/* UNIBUS virtual address of clists */
+extern	struct	inode	*rootdir;	/* pointer to inode of root directory */
+/* UNUSED struct	proc	*runq;		/* head of linked list of running processes */
+/* UNUSED struct	proc	*maxproc;	/* current high water mark in proc table */
+/* UNUSED extern	int16_t cputype;		/* type of cpu = 40, 44, 45, 60, or 70 */
+/* UNUSED int	lbolt;			/* clock ticks since time was last updated */
+extern	time_t	time;			/* time in sec from 1970 */
+/* UNUSED ubadr_t	clstaddr;		/* UNIBUS virtual address of clists */
 
 /*
  * Nblkdev is the number of entries
@@ -18,36 +18,36 @@ ubadr_t	clstaddr;		/* UNIBUS virtual address of clists */
  * Used in bounds checking on major
  * device numbers.
  */
-int	nblkdev;
+extern	int16_t	nblkdev;
 
-int	nchrdev; 		/* Number of character switch entries. */
-int	mpid;			/* generic for unique process id's */
-bool_t	runin;			/* set when sched wants to swap someone in */
-bool_t	runout;			/* set when sched is out of work */
-bool_t	runrun;			/* reschedule at next opportunity */
-char	curpri;			/* p_pri of current process */
-size_t	maxmem;			/* actual max memory per process */
-u_short	*lks;			/* pointer to clock device */
-extern	daddr_t	swplo;		/* block number of swap space */
-extern	int	nswap;		/* size of swap space */
-int	updlock;		/* lock for sync */
-daddr_t	rablock;		/* block to be read ahead */
-extern	char	regloc[];	/* offsets of saved user registers (trap.c) */
-extern	char	msgbuf[];	/* saved "printf" characters */
+extern	int16_t	nchrdev; 		/* Number of character switch entries. */
+/* UNUSED int	mpid;			/* generic for unique process id's */
+/* UNUSED bool_t	runin;			/* set when sched wants to swap someone in */
+/* UNUSED bool_t	runout;			/* set when sched is out of work */
+/* UNUSED bool_t	runrun;			/* reschedule at next opportunity */
+/* UNUSED char	curpri;			/* p_pri of current process */
+/* UNUSED size_t	maxmem;			/* actual max memory per process */
+/* UNUSED u_short	*lks;			/* pointer to clock device */
+/* UNUSED extern	daddr_t	swplo;		/* block number of swap space */
+/* UNUSED extern	int	nswap;		/* size of swap space */
+extern int16_t	updlock;		/* lock for sync */
+extern daddr_t	rablock;		/* block to be read ahead */
+/* UNUSED extern	char	regloc[];	/* offsets of saved user registers (trap.c) */
+/* UNUSED extern	char	msgbuf[];	/* saved "printf" characters */
 extern	dev_t	rootdev;	/* device of the root */
-extern	dev_t	swapdev;	/* swapping device */
-extern	dev_t	pipedev;	/* pipe device */
-extern	int	hz;		/* Ticks/second of the clock */
-extern	int	timezone;	/* Minutes westward from Greenwich */
-extern	bool_t	dstflag;	/* Daylight Saving Time applies here */
-extern	int	nmount;		/* number of mountable file systems */
-extern	int	nfile;		/* number of in core file structures */
-extern	int	ninode;		/* number of in core inodes */
-extern	int	nproc;		/* maximum number of processes */
-extern	int	ntext;		/* maximum number of shared text segments */
-extern	int	nbuf;		/* number of buffers in buffer cache */
-extern	int	bsize;		/* size of buffers */
-extern	int	nclist;		/* number of character lists */
+/* UNUSED extern	dev_t	swapdev;	/* swapping device */
+/* UNUSED extern	dev_t	pipedev;	/* pipe device */
+/* UNUSED extern	int	hz;		/* Ticks/second of the clock */
+/* UNUSED extern	int	timezone;	/* Minutes westward from Greenwich */
+/* UNUSED extern	bool_t	dstflag;	/* Daylight Saving Time applies here */
+extern	int16_t	nmount;		/* number of mountable file systems */
+/* UNUSED extern	int	nfile;		/* number of in core file structures */
+/* UNUSED extern	int	ninode;		/* number of in core inodes */
+/* UNUSED extern	int	nproc;		/* maximum number of processes */
+/* UNUSED extern	int	ntext;		/* maximum number of shared text segments */
+extern	int16_t	nbuf;		/* number of buffers in buffer cache */
+extern	int16_t	bsize;		/* size of buffers */
+/* UNUSED extern	int	nclist;		/* number of character lists */
 
 /*
  *  Pointers to ends of variable-sized tables
@@ -56,48 +56,48 @@ extern	int	nclist;		/* number of character lists */
 extern	struct	mount	*mountNMOUNT;
 extern	struct	file	*fileNFILE;
 extern	struct	inode	*inodeNINODE;
-extern	struct	proc	*procNPROC;
-extern	struct	text	*textNTEXT;
+/* UNUSED extern	struct	proc	*procNPROC; */
+/* UNUSED extern	struct	text	*textNTEXT; */
 
 #ifdef	UCB_AUTOBOOT
-extern	dev_t	dumpdev;	/* device for automatic dump on panic */
-extern	daddr_t	dumplo;		/* starting block on dumpdev */
+/* UNUSED extern	dev_t	dumpdev;	/* device for automatic dump on panic */
+/* UNUSED extern	daddr_t	dumplo;		/* starting block on dumpdev */
 #endif
 
-extern	int	icode[];	/* user init code */
-extern	int	szicode;	/* its size */
+/* UNUSED extern	int	icode[];	/* user init code */
+/* UNUSED extern	int	szicode;	/* its size */
 
 #ifdef	CGL_RTP
-struct	proc	*rtpp;		/* pointer to real time process entry */
-int	wantrtp;		/* real-time proc is ready to run */
+/* UNUSED extern	struct	proc	*rtpp;		/* pointer to real time process entry */
+/* UNUSED extern	int	wantrtp;		/* real-time proc is ready to run */
 #endif
-time_t	bootime;
+extern	time_t	bootime;
 
 #ifdef	UCB_AUTOBOOT
-int	bootflags;
+/* UNUSED extern	int	bootflags; */
 #endif
 
-extern	bool_t	sep_id;		/* Do we have separate I/D? */
+/* UNUSED extern	bool_t	sep_id;		/* Do we have separate I/D? */
 
-dev_t	getmdev();
-daddr_t	bmap();
-memaddr	malloc();
-struct	inode	*ialloc();
-struct	inode	*iget();
-struct	inode	*owner();
-struct	inode	*maknode();
-struct	inode	*namei();
-struct	buf	*alloc();
-struct	buf	*getblk();
-struct	buf	*geteblk();
-struct	buf	*bread();
-struct	buf	*breada();
-struct	filsys	*getfs();
-struct	file	*getf();
-struct	file	*falloc();
-int	uchar();
+/* UNUSED extern dev_t	getmdev(); */
+extern daddr_t	bmap(struct inode *ip, daddr_t bn, int16_t rwflg);
+/* UNUSED extern memaddr	malloc(); */
+extern struct	inode	*ialloc(dev_t dev);
+extern struct	inode	*iget(dev_t dev, ino_t ino);
+extern struct	inode	*owner(int16_t follow);
+extern struct	inode	*maknode(int16_t mode);
+extern struct	inode	*namei(int16_t (*func)(), int16_t flag, int16_t follow);
+extern struct	buf	*alloc(dev_t dev);
+extern struct	buf	*getblk(dev_t dev, daddr_t blkno);
+extern struct	buf	*geteblk();
+extern struct	buf	*bread(dev_t dev, daddr_t blkno);
+extern struct	buf	*breada(bsd29_dev_t dev, bsd29_daddr_t blkno, bsd29_daddr_t rablkno);
+extern struct	filsys	*getfs(dev_t dev);
+extern struct	file	*getf(int16_t f);
+extern struct	file	*falloc();
+extern int16_t	uchar();
 
-caddr_t	mapin();
+extern caddr_t	mapin();
 
 #ifdef	NOKA5
 #define	mapout(bp)	/* unused */
@@ -107,20 +107,20 @@ caddr_t	mapin();
  * Instrumentation
  */
 
-int	dk_busy;
+/* UNUSED extern	int	dk_busy;*/
 	/*
 	 * sy_time contains counters for time in user (0,1), nice (2,3),
 	 * system (4,5) and idle (6,7) with no I/O active (even)
 	 * or some disc active (odd).
 	 */
-long	sy_time[8];
-extern	int	ndisk;			/* number of disks monitored */
-extern	long	dk_time[];
-extern	long	dk_numb[];
-extern	long	dk_wds[];
+/* UNUSED extern	long	sy_time[8]; */
+/* UNUSED extern	int	ndisk;			/* number of disks monitored */
+/* UNUSED extern	long	dk_time[]; */
+/* UNUSED extern	long	dk_numb[]; */
+/* UNUSED extern	long	dk_wds[]; */
 
-long	tk_nin;
-long	tk_nout;
+/* UNUSED extern	long	tk_nin; */
+/* UNUSED extern	long	tk_nout; */
 
 #endif	KERNEL
 
@@ -143,9 +143,9 @@ struct	sysent	{			/* system call entry table */
 };
 
 #ifdef	KERNEL
-extern	struct	sysent	sysent[];	/* local system call entry table */
-extern	struct	sysent	syslocal[];	/* local system call entry table */
-extern	int	nlocalsys;		/* number of local syscalls in table */
+/* UNUSED extern	struct	sysent	sysent[];	/* local system call entry table */
+/* UNUSED extern	struct	sysent	syslocal[];	/* local system call entry table */
+/* UNUSED extern	int	nlocalsys;		/* number of local syscalls in table */
 #endif	KERNEL
 
 #define	SYSINDIR	0		/* ordinal of indirect sys call */

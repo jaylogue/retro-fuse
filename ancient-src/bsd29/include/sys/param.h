@@ -1,12 +1,12 @@
 #ifndef	_WHOAMI
-#include	"whoami.h"
+#include	"bsd29/include/whoami.h"
 #endif
 #ifndef	NSIG
-#include	<signal.h>
+#include	<bsd29/include/signal.h>
 #endif
-#include	<sys/psw.h>
-#include	<sys/types.h>
-#include	<sys/iopage.h>
+/* UNUSED #include	<sys/psw.h> */
+#include	<bsd29/include/sys/types.h>
+/* #include	<sys/iopage.h> */
 
 #ifdef	UNIBUS_MAP
 #define	MAXMEM	(200*16)	/* max core per process - first # is Kb */
@@ -50,7 +50,7 @@
  * cannot be changed easily
  */
 
-#define	NBPW	sizeof(int)	/* number of bytes in an integer */
+#define	NBPW	sizeof(int16_t)	/* number of bytes in an integer */
 
 #define	BSLOP	0		/* BSLOP can be 0 unless you have a TIU/Spider*/
 
@@ -144,13 +144,13 @@
 #define	ctob(x)		((x)<<6)
 
 /* bytes to clicks */
-#define	btoc(x)		((((unsigned)(x)+63)>>6))
+#define	btoc(x)		((((uint16_t)(x)+63)>>6))
 
 /* low int of a long */
-#define	loint(l)	((int) (l) & 0177777)
+#define	loint(l)	((int16_t) (l) & 0177777)
 
 /* high int of a long */
-#define	hiint(l)	((int) ((l) >> 16))
+#define	hiint(l)	((int16_t) ((l) >> 16))
 
 /*
  * Machine-dependent bits and macros
@@ -160,8 +160,8 @@
  * Treat PS as byte, to allow restoring value from mfps/movb
  * (see :splfix.*)
  */
-#define	PS_LOBYTE	((char *) 0177776)
-#define	splx(ops)	(*PS_LOBYTE = ((char) (ops)))
+/* UNUSED #define	PS_LOBYTE	((char *) 0177776) */
+/* UNUSED #define	splx(ops)	(*PS_LOBYTE = ((char) (ops))) */
 
 #ifndef	MIN
 #define	MIN(a,b)	(((a)<(b))? (a):(b))

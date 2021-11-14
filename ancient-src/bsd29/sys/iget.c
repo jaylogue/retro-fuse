@@ -1,21 +1,23 @@
+#include "bsd29adapt.h"
+
 /*
  *	SCCS id	@(#)iget.c	2.1 (Berkeley)	9/1/83
  */
 
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/dir.h>
-#include <sys/user.h>
-#include <sys/inode.h>
-#include <sys/ino.h>
-#include <sys/filsys.h>
-#include <sys/mount.h>
-#include <sys/conf.h>
-#include <sys/buf.h>
+#include "bsd29/include/sys/param.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/dir.h>
+#include <bsd29/include/sys/user.h>
+#include <bsd29/include/sys/inode.h>
+#include <bsd29/include/sys/ino.h>
+#include <bsd29/include/sys/filsys.h>
+#include <bsd29/include/sys/mount.h>
+#include <bsd29/include/sys/conf.h>
+#include <bsd29/include/sys/buf.h>
 #ifdef	UCB_QUOTAS
 #include <sys/quota.h>
 #endif
-#include <sys/inline.h>
+#include <bsd29/include/sys/inline.h>
 
 
 #ifdef	UCB_QUOTAS
@@ -42,6 +44,7 @@ struct	inode	*ifreelist;
  * Initialize hash links for inodes
  * and build inode free list.
  */
+void
 ihinit()
 {
 	register struct inode *ip;
@@ -57,9 +60,7 @@ ihinit()
  * of ``incore'' in bio.c or ``pfind'' in subr.c.
  */
 struct inode *
-ifind(dev, ino)
-dev_t dev;
-ino_t ino;
+ifind(dev_t dev, ino_t ino)
 {
 	register struct inode *ip;
 
@@ -90,9 +91,7 @@ ino_t ino;
  *	"cannot happen"
  */
 struct inode *
-iget(dev, ino)
-dev_t dev;
-ino_t ino;
+iget(dev_t dev, ino_t ino)
 {
 	register struct inode *ip;
 	register struct mount *mp;
@@ -198,9 +197,8 @@ loop:
 	return(ip);
 }
 
-iexpand(ip, dp)
-register struct inode *ip;
-register struct dinode *dp;
+void
+iexpand(register struct inode *ip, register struct dinode *dp)
 {
 	register char *p1;
 	char *p2;
@@ -228,8 +226,8 @@ register struct dinode *dp;
  * write the inode out and if necessary,
  * truncate and deallocate the file.
  */
-iput(ip)
-register struct inode *ip;
+void
+iput(register struct inode *ip)
 {
 #ifdef	UCB_QUOTAS
 	register struct inode *qp;
@@ -308,21 +306,18 @@ done:
  * to complete.
  */
 
-iupdat(ip, ta, tm, waitfor)
+void
+iupdat(register struct inode *ip, time_t *ta, time_t *tm, int16_t waitfor)
 #else
-iupdat(ip, ta, tm)
-#endif
-register struct inode *ip;
-time_t *ta, *tm;
-#ifdef UCB_FSFIX
-int waitfor;
+void
+iupdat(register struct inode *ip, time_t *ta, time_t *tm)
 #endif
 {
 	register struct buf *bp;
 	register struct dinode *dp;
 	struct filsys *fp;
 	char *p1, *p2;
-	int i;
+	int16_t i;
 
 	if((ip->i_flag&(IUPD|IACC|ICHG)) != 0) {
 		if ((fp = getfs(ip->i_dev)) == NULL || fp->s_ronly)
@@ -380,10 +375,10 @@ int waitfor;
  * a contiguous free list much longer
  * than FIFO.
  */
-itrunc(ip)
-register struct inode *ip;
+void
+itrunc(register struct inode *ip)
 {
-	register i;
+	register int16_t i;
 	register dev_t dev;
 	daddr_t bn;
 #ifdef UCB_FSFIX
@@ -453,17 +448,14 @@ register struct inode *ip;
 }
 
 #ifdef	UCB_QUOTAS
-tloop(dev, bn, f1, f2, ip)
+void
+tloop(dev_t dev, daddr_t bn, int16_t f1, int16_t f2, struct inode	*ip)
 #else
-tloop(dev, bn, f1, f2)
-#endif
-dev_t dev;
-daddr_t bn;
-#ifdef	UCB_QUOTAS
-struct inode	*ip;
+void
+tloop(dev_t dev, daddr_t bn, int16_t f1, int16_t f2)
 #endif
 {
-	register i;
+	register int16_t i;
 	register struct buf *bp;
 	register daddr_t *bap;
 	daddr_t nb;
@@ -498,7 +490,7 @@ struct inode	*ip;
  * Make a new file.
  */
 struct inode *
-maknode(mode)
+maknode(int16_t mode)
 {
 	register struct inode *ip;
 
@@ -531,8 +523,8 @@ maknode(mode)
  * parameters left as side effects
  * to a call to namei.
  */
-wdir(ip)
-struct inode *ip;
+void
+wdir(struct inode *ip)
 {
 
 	if (u.u_pdir->i_nlink <= 0) {

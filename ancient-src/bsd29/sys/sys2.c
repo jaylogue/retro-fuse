@@ -1,21 +1,24 @@
+#include "bsd29adapt.h"
+
 /*
  *	SCCS id	@(#)sys2.c	2.1 (Berkeley)	9/4/83
  */
 
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/dir.h>
-#include <sys/user.h>
-#include <sys/reg.h>
-#include <sys/file.h>
-#include <sys/inode.h>
-#include <sys/quota.h>
+#include "bsd29/include/sys/param.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/dir.h>
+#include <bsd29/include/sys/user.h>
+#include <bsd29/include/sys/reg.h>
+#include <bsd29/include/sys/file.h>
+#include <bsd29/include/sys/inode.h>
+/* UNUSED #include <sys/quota.h> */
 #ifdef	MENLO_JCL
 #include <sys/proc.h>
 #endif
-#include <sys/inline.h>
+#include <bsd29/include/sys/inline.h>
 
 
+#if UNUSED
 /*
  * read system call
  */
@@ -23,7 +26,9 @@ read()
 {
 	rdwr(FREAD);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * write system call
  */
@@ -31,21 +36,22 @@ write()
 {
 	rdwr(FWRITE);
 }
+#endif /* UNUSED */
 
 /*
  * common code for read and write calls:
  * check permissions, set base, count, and offset,
  * and switch out to readi, writei, or pipe code.
  */
-rdwr(mode)
-register mode;
+void
+rdwr(register int16_t mode)
 {
 	register struct file *fp;
 	register struct inode *ip;
 	register struct a {
-		int	fdes;
+		int16_t	fdes;
 		char	*cbuf;
-		unsigned count;
+		uint16_t count;
 	} *uap;
 
 	uap = (struct a *)u.u_ap;
@@ -108,6 +114,7 @@ register mode;
 	u.u_r.r_val1 = uap->count-u.u_count;
 }
 
+#if UNUSED
 /*
  * open system call
  */
@@ -129,7 +136,9 @@ open()
 		return;
 	open1(ip, ++uap->rwmode, 0);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * creat system call
  */
@@ -157,15 +166,15 @@ creat()
 	} else
 		open1(ip, FWRITE, 1);
 }
+#endif /* UNUSED */
 
 /*
  * common code for open and creat.
  * Check permissions, allocate an open file structure,
  * and call the device open routine if any.
  */
-open1(ip, mode, trf)
-register struct inode *ip;
-register mode;
+void
+open1(register struct inode *ip, register int16_t mode, int16_t trf)
 {
 	register struct file *fp;
 	int i;
@@ -202,6 +211,7 @@ out:
 /*
  * close system call
  */
+void
 close()
 {
 	register struct file *fp;
@@ -227,6 +237,7 @@ close()
 #endif
 }
 
+#if UNUSED
 /*
  * seek system call
  */
@@ -271,10 +282,12 @@ seek()
 	fp->f_un.f_offset = uap->off;
 	u.u_r.r_off = uap->off;
 }
+#endif /* UNUSED */
 
 /*
  * link system call
  */
+void
 link()
 {
 	register struct inode *ip, *xp;
@@ -337,13 +350,14 @@ out:
 /*
  * mknod system call
  */
+void
 mknod()
 {
 	register struct inode *ip;
 	register struct a {
 		char	*fname;
-		int	fmode;
-		int	dev;
+		int16_t	fmode;
+		int16_t	dev;
 	} *uap;
 
 	if(suser()) {
@@ -373,6 +387,7 @@ out:
 	}
 }
 
+#if UNUSED
 /*
  * access system call
  */
@@ -408,3 +423,4 @@ done:
 	u.u_uid = svuid;
 	u.u_gid = svgid;
 }
+#endif /* UNUSED */

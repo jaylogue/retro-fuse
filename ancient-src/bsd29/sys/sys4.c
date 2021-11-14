@@ -1,16 +1,18 @@
+#include "bsd29adapt.h"
+
 /*
  *	SCCS id	@(#)sys4.c	2.1 (Berkeley)	9/4/83
  */
 
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/dir.h>
-#include <sys/user.h>
-#include <sys/reg.h>
-#include <sys/inode.h>
-#include <sys/proc.h>
-#include <sys/timeb.h>
-#include <sys/quota.h>
+#include "bsd29/include/sys/param.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/dir.h>
+#include <bsd29/include/sys/user.h>
+#include <bsd29/include/sys/reg.h>
+#include <bsd29/include/sys/inode.h>
+/* UNUSED #include <sys/proc.h> */
+/* UNUSED #include <sys/timeb.h> */
+/* UNUSED #include <sys/quota.h> */
 #ifdef	UCB_AUTOBOOT
 #include <sys/reboot.h>
 #include <sys/filsys.h>
@@ -20,6 +22,7 @@
  * Everything in this file is a routine implementing a system call.
  */
 
+#if UNUSED
 /*
  * return the current time (old-style entry)
  */
@@ -27,7 +30,9 @@ gtime()
 {
 	u.u_r.r_time = time;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * New time entry-- return TOD with milliseconds, timezone,
  * DST flag
@@ -54,7 +59,9 @@ ftime()
 	if (copyout((caddr_t)&t, (caddr_t)(((struct a *) u.u_ap)->tp), sizeof(t)) < 0)
 		u.u_error = EFAULT;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Set the time
  */
@@ -70,7 +77,9 @@ stime()
 		time = uap->time;
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 setuid()
 {
 	register uid;
@@ -85,13 +94,17 @@ setuid()
 		u.u_ruid = uid;
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 getuid()
 {
 	u.u_r.r_val1 = u.u_ruid;
 	u.u_r.r_val2 = u.u_uid;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 setgid()
 {
 	register gid;
@@ -105,19 +118,25 @@ setgid()
 		u.u_rgid = gid;
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 getgid()
 {
 	u.u_r.r_val1 = u.u_rgid;
 	u.u_r.r_val2 = u.u_gid;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 getpid()
 {
 	u.u_r.r_val1 = u.u_procp->p_pid;
 	u.u_r.r_val2 = u.u_procp->p_ppid;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 nice()
 {
 	register oldnice, newnice;
@@ -137,12 +156,14 @@ nice()
 		newnice = oldnice;
 	u.u_procp->p_nice = newnice;
 }
+#endif /* UNUSED */
 
 /*
  * Unlink system call.
  * Hard to avoid races here, especially
  * in unlinking directories.
  */
+void
 unlink()
 {
 	register struct inode *ip, *pp;
@@ -213,17 +234,22 @@ out:
 out1:
 	iput(pp);
 }
+#if UNUSED
 chdir()
 {
 	chdirec(&u.u_cdir);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 chroot()
 {
 	if (suser())
 		chdirec(&u.u_rdir);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 chdirec(ipp)
 register struct inode **ipp;
 {
@@ -253,13 +279,15 @@ register struct inode **ipp;
 bad:
 	iput(ip);
 }
+#endif /* UNUSED */
 
+void
 chmod()
 {
 	register struct inode *ip;
 	register struct a {
 		char	*fname;
-		int	fmode;
+		int16_t	fmode;
 	} *uap;
 
 #ifndef	UCB_SYMLINKS
@@ -279,6 +307,7 @@ chmod()
 	iput(ip);
 }
 
+#if UNUSED
 chown()
 {
 	register struct inode *ip;
@@ -300,7 +329,9 @@ chown()
 	ip->i_flag |= ICHG;
 	iput(ip);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 ssig()
 {
 #ifdef	MENLO_JCL
@@ -381,7 +412,9 @@ ssig()
 	u.u_procp->p_sig &= ~(1<<(a-1));
 #endif
 }
+#endif /* UNUSED */
 
+#if UNUSED
 kill()
 {
 #ifdef	MENLO_JCL
@@ -486,7 +519,9 @@ found:
 	if (f == 0)
 		u.u_error = ESRCH;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 times()
 {
 	register struct a {
@@ -498,7 +533,9 @@ times()
 	    sizeof(*uap->times)) < 0)
 		u.u_error = EFAULT;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 profil()
 {
 	register struct a {
@@ -514,7 +551,9 @@ profil()
 	u.u_prof.pr_off = uap->pcoffset;
 	u.u_prof.pr_scale = uap->pcscale;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * alarm clock signal
  */
@@ -531,7 +570,9 @@ alarm()
 	p->p_clktim = ((struct a *) u.u_ap)->deltat;
 	u.u_r.r_val1 = c;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * indefinite wait.
  * no one should wakeup(&u)
@@ -542,7 +583,9 @@ pause()
 	for(;;)
 		sleep((caddr_t)&u, PSLEP);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * mode mask for creation of files
  */
@@ -555,7 +598,9 @@ umask()
 	u.u_r.r_val1 = u.u_cmask;
 	u.u_cmask = ((struct a *)u.u_ap)->mask & 0777;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Set IUPD and IACC times on file.
  * Can't set ICHG.
@@ -587,7 +632,9 @@ utime()
 	}
 	iput(ip);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 #ifdef CGL_RTP
 /*
  * make/unmake this process into a real time one.
@@ -617,7 +664,9 @@ rtp()
 	}
 }
 #endif
+#endif /* UNUSED */
 
+#if UNUSED
 #ifdef	MENLO_JCL
 /*
  * Setpgrp on specified process and its descendants.
@@ -656,7 +705,9 @@ found1:
 	else
 		top->p_pgrp = uap->pgrp;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 spgrp(top, npgrp)
 register struct proc *top;
 {
@@ -691,7 +742,9 @@ register struct proc *top;
 	}
 	return (f);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Is p an inferior of the current process?
  */
@@ -704,9 +757,11 @@ register struct proc *p;
 			return (0);
 	return (1);
 }
+#endif /* UNUSED */
 
 #endif
 
+#if UNUSED
 #ifdef	UCB_AUTOBOOT
 reboot()
 {
@@ -728,3 +783,4 @@ reboot()
 	}
 }
 #endif
+#endif /* UNUSED */

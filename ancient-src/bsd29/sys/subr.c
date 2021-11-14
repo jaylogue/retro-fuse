@@ -1,15 +1,17 @@
+#include "bsd29adapt.h"
+
 /*
  *	SCCS id	@(#)subr.c	2.1 (Berkeley)	9/4/83
  */
 
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/conf.h>
-#include <sys/inode.h>
-#include <sys/dir.h>
-#include <sys/user.h>
-#include <sys/buf.h>
-#include <sys/quota.h>
+#include "bsd29/include/sys/param.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/conf.h>
+#include <bsd29/include/sys/inode.h>
+#include <bsd29/include/sys/dir.h>
+#include <bsd29/include/sys/user.h>
+#include <bsd29/include/sys/buf.h>
+/* UNUSED #include <sys/quota.h> */
 
 #ifndef	UCB_QUOTAS
 #define	qalloc(x,y)	alloc(y)
@@ -24,13 +26,11 @@
  * for use in read-ahead.
  */
 daddr_t
-bmap(ip, bn, rwflg)
-register struct inode *ip;
-daddr_t bn;
+bmap(struct inode *ip, daddr_t bn, int16_t rwflg)
 {
-	register i;
+	register int16_t i;
 	register struct buf *bp, *nbp;
-	int j, sh;
+	int16_t j, sh;
 	daddr_t nb, *bap, ra;
 	dev_t dev;
 
@@ -148,7 +148,7 @@ daddr_t bn;
 			else
 #endif
 				bdwrite(nbp);
-			bap = (daddr_t) mapin(bp);
+			bap = (daddr_t *) mapin(bp);
 			bap[i] = nb;
 			mapout(bp);
 			bdwrite(bp);
@@ -160,6 +160,7 @@ daddr_t bn;
 	return(nb);
 }
 
+#if UNUSED
 /*
  * Pass back  c  to the user at his location u_base;
  * update u_base, u_count, and u_offset.  Return -1
@@ -183,7 +184,9 @@ register c;
 	u.u_base++;
 	return(u.u_count == 0? -1: 0);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Pick up and return the next character from the user's
  * write call at location u_base;
@@ -209,7 +212,9 @@ cpass()
 	u.u_base++;
 	return(c&0377);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Routine which sets a user error; placed in
  * illegal entries in the bdevsw and cdevsw tables.
@@ -219,7 +224,9 @@ nodev()
 
 	u.u_error = ENODEV;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * copy count bytes from from to to.
  */
@@ -236,3 +243,4 @@ register count;
 			*((short *)to)++ = *((short *)from)++;
 	}
 }
+#endif /* UNUSED */

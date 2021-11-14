@@ -1,18 +1,20 @@
+#include "bsd29adapt.h"
+
 /*
  *	SCCS id	@(#)fio.c	2.1 (Berkeley)	8/5/83
  */
 
 
-#include "param.h"
-#include <sys/systm.h>
-#include <sys/dir.h>
-#include <sys/user.h>
-#include <sys/filsys.h>
-#include <sys/file.h>
-#include <sys/conf.h>
-#include <sys/inode.h>
-#include <sys/reg.h>
-#include <sys/acct.h>
+#include "bsd29/include/sys/param.h"
+#include <bsd29/include/sys/systm.h>
+#include <bsd29/include/sys/dir.h>
+#include <bsd29/include/sys/user.h>
+#include <bsd29/include/sys/filsys.h>
+#include <bsd29/include/sys/file.h>
+#include <bsd29/include/sys/conf.h>
+#include <bsd29/include/sys/inode.h>
+#include <bsd29/include/sys/reg.h>
+/* UNUSED #include <sys/acct.h> */
 
 /*
  * Convert a user supplied
@@ -22,8 +24,7 @@
  * of the descriptor.
  */
 struct file *
-getf(f)
-register int f;
+getf(int16_t f)
 {
 	register struct file *fp;
 
@@ -47,17 +48,17 @@ register int f;
  * removal to the referencing file structure.
  * Call device handler on last close.
  */
+void
 #ifdef	UCB_NET
 closef(fp, nouser)
 #else
-closef(fp)
+closef(struct file *fp)
 #endif
-register struct file *fp;
 {
 	register struct inode *ip;
-	int flag, mode;
+	int16_t flag, mode;
 	dev_t dev;
-	register int (*cfunc)();
+	register int16_t (*cfunc)();
 #ifdef	MPX_FILS
 	struct chan *cp;
 #endif
@@ -103,14 +104,14 @@ register struct file *fp;
 #ifdef	MPX_FILS
 	case IFMPC:
 #endif
-		cfunc = cdevsw[major(dev)].d_close;
+		cfunc = (int16_t (*)())cdevsw[major(dev)].d_close;
 		break;
 
 	case IFBLK:
 #ifdef	MPX_FILS
 	case IFMPB:
 #endif
-		cfunc = bdevsw[major(dev)].d_close;
+		cfunc = (int16_t (*)())bdevsw[major(dev)].d_close;
 		break;
 	default:
 		return;
@@ -140,11 +141,11 @@ register struct file *fp;
  * of special files to initialize and
  * validate before actual IO.
  */
-openi(ip, rw)
-register struct inode *ip;
+void
+openi(register struct inode *ip, int16_t rw)
 {
 	register dev_t dev;
-	register unsigned int maj;
+	register uint16_t maj;
 
 	dev = (dev_t)ip->i_un.i_rdev;
 	maj = major(dev);
@@ -186,9 +187,8 @@ bad:
  * The super user is granted all
  * permissions.
  */
-access(ip, mode)
-register mode;
-register struct inode *ip;
+int16_t
+access(register struct inode *ip, register int16_t mode)
 {
 	register struct filsys *fp;
 
@@ -223,7 +223,7 @@ register struct inode *ip;
 	}
 	if((ip->i_mode&mode) != 0)
 		return(0);
-bad:
+/* UNUSED bad: */
 	u.u_error = EACCES;
 	return(1);
 }
@@ -240,8 +240,7 @@ struct inode *
 #ifndef	UCB_SYMLINKS
 owner()
 #else
-owner(follow)
-int follow;
+owner(int16_t follow)
 #endif
 {
 	register struct inode *ip;
@@ -266,8 +265,8 @@ int follow;
 	return((struct inode *) NULL);
 }
 
-own(ip)
-register struct inode *ip;
+int16_t
+own(register struct inode *ip)
 {
 	if(ip->i_uid == u.u_uid)
 		return(1);
@@ -284,6 +283,7 @@ register struct inode *ip;
  * Test if the current user is the
  * super user.
  */
+int16_t
 suser()
 {
 
@@ -300,9 +300,10 @@ suser()
 /*
  * Allocate a user file descriptor.
  */
+int16_t
 ufalloc()
 {
-	register i;
+	register int16_t i;
 
 	for(i=0; i<NOFILE; i++)
 		if(u.u_ofile[i] == NULL) {
@@ -325,7 +326,7 @@ struct file *
 falloc()
 {
 	register struct file *fp;
-	register i;
+	register int16_t i;
 
 	i = ufalloc();
 	if (i < 0)

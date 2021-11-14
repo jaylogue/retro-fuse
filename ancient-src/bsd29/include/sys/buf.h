@@ -20,16 +20,16 @@
  */
 struct buf
 {
-	short	b_flags;		/* see defines below */
+	int16_t	b_flags;		/* see defines below */
 	struct	buf *b_forw;		/* headed by d_tab of conf.c */
 	struct	buf *b_back;		/*  "  */
 	struct	buf *av_forw;		/* position on free list, */
 	struct	buf *av_back;		/*     if not BUSY*/
 	dev_t	b_dev;			/* major+minor device name */
-	u_short	b_bcount;		/* transfer count */
+	uint16_t	b_bcount;		/* transfer count */
 	union	{
 		caddr_t	b_addr;		/* low order core address */
-		short	*b_words;	/* words for clearing */
+		int16_t	*b_words;	/* words for clearing */
 		struct	filsys	*b_filsys;	/* superblocks */
 		struct	dinode	*b_dino;/* ilist */
 		daddr_t	*b_daddr;	/* indirect block */
@@ -40,7 +40,7 @@ struct buf
 #ifdef	UCB_BHASH
 	struct	buf *b_link;		/* hash links for buffer cache */
 #endif
-	u_short	b_resid;		/* words not transferred after error */
+	uint16_t	b_resid;		/* words not transferred after error */
 };
 
 #ifdef	KERNEL
