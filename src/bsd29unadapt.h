@@ -113,6 +113,7 @@
 #undef rablock
 #undef rdwr
 #undef readi
+#undef readlink
 #undef readp
 #undef rootdev
 #undef rootdir
@@ -129,6 +130,7 @@
 #undef suser
 #undef swbuf
 #undef symchar
+#undef symlink
 #undef tablefull
 #undef time
 #undef time_t
@@ -165,28 +167,36 @@ static inline dev_t bsd29_makedev(int16_t x, int16_t y) { return makedev(x, y); 
 
 #ifdef S_IFMT
 enum {
-    BSD29_S_IFMT   = S_IFMT,
-    BSD29_S_IFDIR  = S_IFDIR,
-    BSD29_S_IFCHR  = S_IFCHR,
-    BSD29_S_IFBLK  = S_IFBLK,
-    BSD29_S_IFREG  = S_IFREG,
-    BSD29_S_IFMPC  = S_IFMPC,
-    BSD29_S_IFMPB  = S_IFMPB,
-    BSD29_S_ISUID  = S_ISUID,
-    BSD29_S_ISGID  = S_ISGID,
-    BSD29_S_ISVTX  = S_ISVTX,
-    BSD29_S_IREAD  = S_IREAD,
-    BSD29_S_IWRITE = S_IWRITE,
-    BSD29_S_IEXEC  = S_IEXEC
+    BSD29_S_IFMT    = S_IFMT,
+    BSD29_S_IFDIR   = S_IFDIR,
+    BSD29_S_IFCHR   = S_IFCHR,
+    BSD29_S_IFBLK   = S_IFBLK,
+    BSD29_S_IFREG   = S_IFREG,
+    BSD29_S_IFMPC   = S_IFMPC,
+    BSD29_S_IFMPB   = S_IFMPB,
+    BSD29_S_ISUID   = S_ISUID,
+    BSD29_S_ISGID   = S_ISGID,
+    BSD29_S_ISVTX   = S_ISVTX,
+    BSD29_S_IREAD   = S_IREAD,
+    BSD29_S_IWRITE  = S_IWRITE,
+    BSD29_S_IEXEC   = S_IEXEC
 };
 #endif /* S_IFMT */
 
 #ifdef FREAD
 enum {
-    BSD29_FREAD    = FREAD,
-    BSD29_FWRITE   = FWRITE
+    BSD29_FREAD     = FREAD,
+    BSD29_FWRITE    = FWRITE
 };
 #endif /* FREAD */
+
+#ifdef LOOKUP
+enum {
+    BSD29_LOOKUP    = LOOKUP,
+    BSD29_CREATE    = CREATE,
+    BSD29_DELETE    = DELETE
+};
+#endif /* LOOKUP */
 
 /* Restore modern definitions of macros that collide with 2.9BSD code.
  */
@@ -213,6 +223,7 @@ enum {
 #pragma pop_macro("S_IFCHR")
 #pragma pop_macro("S_IFBLK")
 #pragma pop_macro("S_IFREG")
+#pragma pop_macro("S_IFLNK")
 #pragma pop_macro("S_ISUID")
 #pragma pop_macro("S_ISGID")
 #pragma pop_macro("S_ISVTX")

@@ -163,8 +163,8 @@ extern void bsd29_mknod();
 
 /* sys3.c */
 extern void bsd29_stat1(struct bsd29_inode *ip, struct bsd29_stat *ub, bsd29_off_t pipeadj);
-extern void readlink();
-extern void symlink();
+extern void bsd29_readlink();
+extern void bsd29_symlink();
 
 /* sys4.c */
 extern void bsd29_unlink();
@@ -248,6 +248,8 @@ static inline int32_t wswap_int32(int32_t v)
 #undef S_IFBLK
 #pragma push_macro("S_IFREG")
 #undef S_IFREG
+#pragma push_macro("S_IFLNK")
+#undef S_IFLNK
 #pragma push_macro("S_ISUID")
 #undef S_ISUID
 #pragma push_macro("S_ISGID")
@@ -352,6 +354,7 @@ static inline int32_t wswap_int32(int32_t v)
 #define rablock     bsd29_rablock
 #define rdwr        bsd29_rdwr
 #define readi       bsd29_readi
+#define readlink    bsd29_readlink
 #define readp       bsd29_readp
 #define rootdev     bsd29_rootdev
 #define rootdir     bsd29_rootdir
@@ -369,6 +372,7 @@ static inline int32_t wswap_int32(int32_t v)
 #define suser       bsd29_suser
 #define swbuf       bsd29_swbuf
 #define symchar     bsd29_symchar
+#define symlink     bsd29_symlink
 #define tablefull   bsd29_tablefull
 #define time        bsd29_time
 #define time_t      bsd29_time_t

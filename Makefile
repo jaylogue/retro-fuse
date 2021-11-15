@@ -122,15 +122,17 @@ BSD29_OBJS = $(BSD29_SRC:.c=.o)
 BSD29_DEPS = $(BSD29_SRC:.c=.d)
 
 BSD29FS_SRC = \
+	src/fusecommon.c \
+	src/bsd29fuse.c \
+	src/bsd29fs.c \
     src/bsd29adapt.c \
 	src/idmap.c \
 	src/dskio.c
-
 BSD29FS_OBJS = $(BSD29FS_SRC:.c=.o)
 BSD29FS_DEPS = $(BSD29FS_SRC:.c=.d)
 
-$(BSD29_OBJS) src/bsd29adapt.o : CFLAGS += -Wno-comment -Wno-endif-labels -I./ancient-src
-$(BSD29_DEPS) src/bsd29adapt.d : CPPFLAGS += -Wno-comment -Wno-endif-labels -I./ancient-src
+$(BSD29_OBJS) src/bsd29fs.o src/bsd29adapt.o : CFLAGS += -Wno-comment -Wno-endif-labels -I./ancient-src
+$(BSD29_DEPS) src/bsd29fs.d src/bsd29adapt.d : CPPFLAGS += -Wno-comment -Wno-endif-labels -I./ancient-src
 
 -include $(BSD29_DEPS) $(BSD29FS_DEPS)
 
@@ -139,7 +141,7 @@ $(BSD29FS_PROG) : $(BSD29FS_OBJS) $(BSD29_OBJS)
 
 ########### GENERAL TARGETS ############
 
-all : $(V6FS_PROG) $(V7FS_PROG)
+all : $(V6FS_PROG) $(V7FS_PROG) $(BSD29FS_PROG)
 
 clean :
 	rm -f $(V6FS_PROG) $(V6FS_PROG).map $(V6FS_OBJS) $(V6_OBJS) $(V6FS_DEPS) $(V6_DEPS)

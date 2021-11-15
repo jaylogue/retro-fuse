@@ -216,7 +216,7 @@ close()
 {
 	register struct file *fp;
 	register struct a {
-		int	fdes;
+		int16_t	fdes;
 	} *uap;
 
 	uap = (struct a *)u.u_ap;

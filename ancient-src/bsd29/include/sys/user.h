@@ -34,7 +34,7 @@ struct	user
 	int16_t	u_ruid;			/* real user id */
 	int16_t	u_rgid;			/* real group id */
 	struct	proc	*u_procp;	/* pointer to proc structure */
-	short	*u_ap;			/* pointer to arglist */
+	void	*u_ap;			/* pointer to arglist */
 	union {				/* syscall return values */
 		struct	{
 			int16_t	r_val1;

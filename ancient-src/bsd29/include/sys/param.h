@@ -85,9 +85,9 @@
 #endif
 #define	NULL	0
 #define	CMASK	0		/* default mask for file creation */
-#define	NODEV	(dev_t)(-1)
-#define	ROOTINO	((ino_t)2)	/* i number of all roots */
-#define	SUPERB	((daddr_t)1)	/* block number of the super block */
+#define	NODEV	(bsd29_dev_t)(-1)
+#define	ROOTINO	((bsd29_ino_t)2)	/* i number of all roots */
+#define	SUPERB	((bsd29_daddr_t)1)	/* block number of the super block */
 #define	DIRSIZ	14		/* max characters per directory */
 
 #define	NICINOD	100		/* number of superblock inodes */
