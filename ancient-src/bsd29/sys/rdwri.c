@@ -108,7 +108,7 @@ writei(register struct inode *ip)
 	dev_t dev;
 	daddr_t bn;
 	register int16_t n, on;
-	register int16_t type;
+	register uint16_t type;
 #ifdef	UCB_FSFIX
 	struct	direct	*dp;
 #endif

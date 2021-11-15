@@ -99,9 +99,9 @@ static inline int16_t bsd29fs_maphostgid(gid_t hostgid) { return (int16_t)idmap_
 static inline uid_t bsd29fs_mapfsuid(int16_t fsuid) { return (uid_t)idmap_tohostid(&bsd29fs_uidmap, (uint32_t)fsuid); }
 static inline gid_t bsd29fs_mapfsgid(int16_t fsgid) { return (gid_t)idmap_tohostid(&bsd29fs_gidmap, (uint32_t)fsgid); }
 
-/** Initialize the Unix v7 filesystem.
+/** Initialize the 2.9 BSD filesystem.
  * 
- * This function is very similar to the v7 kernel main() function.
+ * This function is very similar to the BSD kernel main() function.
  */
 int bsd29fs_init(int readonly)
 {
@@ -158,7 +158,7 @@ int bsd29fs_init(int readonly)
     return 0;
 }
 
-/** Shutdown the Unix v7 filesystem, sycning any unwritten data.
+/** Shutdown the filesystem, sycning any unwritten data.
  */
 int bsd29fs_shutdown()
 {
@@ -174,7 +174,7 @@ int bsd29fs_shutdown()
 /** Initialize a new filesystem.
  * 
  * Thus function is effectly a simplified re-implementation of the
- * v7 mkfs command.
+ * BSD mkfs command.
  */
 int bsd29fs_mkfs(uint32_t fssize, uint32_t isize, const struct bsd29fs_flparams *flparams)
 {
@@ -324,7 +324,7 @@ exit:
 #endif
 }
 
-/** Open file or directory in the v7 filesystem.
+/** Open file or directory in the filesystem.
  */
 int bsd29fs_open(const char *name, int flags, mode_t mode)
 {
@@ -923,6 +923,51 @@ int bsd29fs_access(const char *pathname, int mode)
     return res;
 }
 
+/** Read the value of a symbolic link
+ */
+ssize_t bsd29fs_readlink(const char *pathname, char *buf, size_t bufsiz)
+{
+    struct a {
+        const char *name;
+        char *buf;
+        int16_t	count;
+    } uap;
+
+    bsd29_refreshclock();
+    bsd29_u.u_error = 0;
+
+    uap.name = pathname;
+    uap.buf = buf;
+    uap.count = (uint16_t)bufsiz;
+    bsd29_u.u_ap = &uap;
+    bsd29_u.u_dirp = (bsd29_caddr_t)pathname;
+    bsd29_readlink();
+    if (bsd29_u.u_error == 0)
+        return bsd29_u.u_r.r_val1;
+    else
+        return -bsd29_u.u_error;
+}
+
+/** Make a new symbolic link for a file
+ */
+int bsd29fs_symlink(const char *target, const char *linkpath)
+{
+    struct a {
+        const char *target;
+        const char *linkname;
+    } uap;
+
+    bsd29_refreshclock();
+    bsd29_u.u_error = 0;
+
+    uap.target = target;
+    uap.linkname = linkpath;
+    bsd29_u.u_ap = &uap;
+    bsd29_u.u_dirp = (bsd29_caddr_t)target;
+    bsd29_symlink();
+    return -bsd29_u.u_error;
+}
+
 /** Create a directory.
  */
 int bsd29fs_mkdir(const char *pathname, mode_t mode)
@@ -1305,12 +1350,12 @@ int bsd29fs_addgidmap(uid_t hostgid, uint32_t fsgid)
 /** Construct the initial free block list for a new filesystem.
  *
  * This function is effectively identical to the bflist() function in the
- * v7 mkfs command.  However, unlike the original, this adaptation omits
+ * BSD mkfs command.  However, unlike the original, this adaptation omits
  * code for creating the bad block file, which is handled in bsd29fs_mkfs()
  * instead.
  * 
  * n and m are values used to create an initial interleave in the order
- * that blocks appear on the free list.  The v7 mkfs command used default
+ * that blocks appear on the free list.  The BSD mkfs command used default
  * values of n=500,m=3 for all devices unless overriden on the command line.
  */
 static void bsd29fs_initfreelist(struct bsd29_filsys *fp, uint16_t n, uint16_t m)
@@ -1351,7 +1396,7 @@ static void bsd29fs_convertstat(const struct bsd29_stat *fsstatbuf, struct stat 
     statbuf->st_uid = bsd29fs_mapfsuid(fsstatbuf->st_uid);
     statbuf->st_gid = bsd29fs_mapfsgid(fsstatbuf->st_gid);
     statbuf->st_size = (off_t)fsstatbuf->st_size;
-    statbuf->st_blocks = (statbuf->st_size + 511) >> 9;
+    statbuf->st_blocks = (statbuf->st_size + (BSIZE-1)) / BSIZE;
     switch (fsstatbuf->st_mode & BSD29_S_IFMT) {
     case BSD29_S_IFDIR:
         statbuf->st_mode = S_IFDIR;
@@ -1365,6 +1410,9 @@ static void bsd29fs_convertstat(const struct bsd29_stat *fsstatbuf, struct stat 
     case BSD29_S_IFMPB:
         statbuf->st_mode = S_IFBLK;
         statbuf->st_rdev = fsstatbuf->st_rdev;
+        break;
+    case BSD29_S_IFLNK:
+        statbuf->st_mode = S_IFLNK;
         break;
     default:
         statbuf->st_mode = S_IFREG;

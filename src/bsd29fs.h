@@ -92,6 +92,8 @@ extern int bsd29fs_chmod(const char *pathname, mode_t mode);
 extern int bsd29fs_chown(const char *pathname, uid_t owner, gid_t group);
 extern int bsd29fs_utimens(const char *filename, const struct timespec times[2]);
 extern int bsd29fs_access(const char *pathname, int mode);
+extern ssize_t bsd29fs_readlink(const char *pathname, char *buf, size_t bufsiz);
+extern int bsd29fs_symlink(const char *target, const char *linkpath);
 extern int bsd29fs_mkdir(const char *pathname, mode_t mode);
 extern int bsd29fs_rmdir(const char *pathname);
 extern int bsd29fs_enumdir(const char *pathname, bsd29fs_enum_dir_funct enum_funct, void *context);

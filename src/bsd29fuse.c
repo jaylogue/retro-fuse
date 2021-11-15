@@ -416,6 +416,25 @@ static int retrofuse_statfs(const char *pathname, struct statvfs *statvfsbuf)
     return bsd29fs_statfs(pathname, statvfsbuf);
 }
 
+static int retrofuse_readlink(const char *pathname, char *buf, size_t bufsiz)
+{
+    setfscontext();
+    ssize_t res = bsd29fs_readlink(pathname, buf, bufsiz);
+    if (res >= 0) {
+        if (res > (bufsiz-1))
+            res = (bufsiz-1);
+        buf[res] = 0;
+        res = 0;
+    }
+    return (int)res;
+}
+
+int retrofuse_symlink(const char *target, const char *linkpath)
+{
+    setfscontext();
+    return bsd29fs_symlink(target, linkpath);
+}
+
 const struct fuse_operations retrofuse_ops = 
 {
     .init       = retrofuse_init,
@@ -440,6 +459,8 @@ const struct fuse_operations retrofuse_ops =
     .chown      = retrofuse_chown,
     .utimens    = retrofuse_utimens,
     .statfs     = retrofuse_statfs,
+    .readlink   = retrofuse_readlink,
+    .symlink    = retrofuse_symlink,
 
     .flag_utime_omit_ok = 1
 };
