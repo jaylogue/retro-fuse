@@ -126,9 +126,9 @@ stat1(register struct inode *ip, struct stat *ub, off_t pipeadj)
 	bp = bread(ip->i_dev, itod(ip->i_number));
 	dp = (struct dinode *) mapin(bp);
 	dp += itoo(ip->i_number);
-	ds.st_atime = dp->di_atime;
-	ds.st_mtime = dp->di_mtime;
-	ds.st_ctime = dp->di_ctime;
+	ds.st_atime = wswap_int32(dp->di_atime);
+	ds.st_mtime = wswap_int32(dp->di_mtime);
+	ds.st_ctime = wswap_int32(dp->di_ctime);
 	mapout(bp);
 	brelse(bp);
 	if (copyout((caddr_t)&ds, (caddr_t)ub, sizeof(ds)) < 0)

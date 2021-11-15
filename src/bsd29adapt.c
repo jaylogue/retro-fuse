@@ -67,8 +67,8 @@ struct bsd29_buf bsd29_buf[NBUF];
 struct bsd29_buf bsd29_bfreelist;
 
 dev_t bsd29_rootdev;                                /* root device number (always 0) */
-int16_t bsd29_nblkdev;                              /* number of entries in the block device switch table */
-int16_t bsd29_nchrdev;                              /* number of entries in the character device table (always 0) */
+int16_t bsd29_nblkdev = 1;                          /* number of entries in the block device switch table */
+int16_t bsd29_nchrdev = 0;                          /* number of entries in the character device table (always 0) */
 struct inode *bsd29_rootdir;                        /* pointer to inode of root directory */
 bsd29_time_t bsd29_time;                            /* time in sec from 1970 */
 int16_t bsd29_updlock;                              /* lock for sync */
@@ -285,8 +285,6 @@ void bsd29_zerocore()
     memset(bsd29_buf, 0, sizeof(bsd29_buf));
     memset(&bsd29_bfreelist, 0, sizeof(bsd29_bfreelist));
     bsd29_rootdev = 0;
-    bsd29_nblkdev = 0;
-    bsd29_nchrdev = 0;
     bsd29_rootdir = NULL;
     bsd29_time = 0;
     bsd29_updlock = 0;

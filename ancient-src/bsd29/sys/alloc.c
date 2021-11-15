@@ -91,7 +91,7 @@ alloc(dev_t dev)
 			fserr(fp, "bad free count");
 			goto nospace;
 		}
-		bno = fp->s_free[--fp->s_nfree];
+		bno = wswap_int32(fp->s_free[--fp->s_nfree]);
 		if(bno == 0)
 			goto nospace;
 	} while (badblock(fp, bno));
@@ -114,7 +114,7 @@ alloc(dev_t dev)
 		 */
 		bp = getblk(dev, SUPERB);
 		fp->s_fmod = 0;
-		fp->s_time = time;
+		fp->s_time = wswap_int32(time);
 		fps = (struct filsys *) mapin(bp);
 		*fps = *fp;
 		mapout(bp);
@@ -129,7 +129,7 @@ alloc(dev_t dev)
 	bp = getblk(dev, bno);
 	clrbuf(bp);
 	fp->s_fmod = 1;
-	fp->s_tfree--;
+	fp->s_tfree = wswap_int32(wswap_int32(fp->s_tfree) + 1);
 	return(bp);
 
 nospace:
@@ -203,8 +203,8 @@ free(dev_t dev, daddr_t bno)
 		fp->s_flock = 0;
 		wakeup((caddr_t)&fp->s_flock);
 	}
-	fp->s_free[fp->s_nfree++] = bno;
-	fp->s_tfree++;
+	fp->s_free[fp->s_nfree++] = wswap_int32(bno);
+	fp->s_tfree = wswap_int32(wswap_int32(fp->s_tfree) + 1);
 	fp->s_fmod = 1;
 }
 
@@ -221,7 +221,7 @@ int16_t
 badblock(register struct filsys *fp, daddr_t bn)
 {
 
-	if (bn < fp->s_isize || bn >= fp->s_fsize) {
+	if (bn < fp->s_isize || bn >= wswap_int32(fp->s_fsize)) {
 		fserr(fp, "bad block");
 		return(1);
 	}
@@ -445,7 +445,7 @@ update()
 			if (bp->b_flags & B_ERROR)
 				continue;
 			fp->s_fmod = 0;
-			fp->s_time = time;
+			fp->s_time = wswap_int32(time);
 			fpdst = (struct filsys *) mapin(bp);
 			*fpdst = *fp;
 			mapout(bp);

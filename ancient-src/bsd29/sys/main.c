@@ -152,7 +152,7 @@ iinit()
 	fp->s_fsmnt[0] = '/';
 	for (i = 1; i < sizeof(fp->s_fsmnt); i++)
 		fp->s_fsmnt[i] = 0;
-	time = fp->s_time;
+	time = wswap_int32(fp->s_time);
 	/* UNUSED bootime = time; */
 }
 

@@ -200,22 +200,21 @@ loop:
 void
 iexpand(register struct inode *ip, register struct dinode *dp)
 {
-	register char *p1;
-	char *p2;
-	int i;
+	register daddr_t *p1;
+	uint8_t *p2;
+	int16_t i;
 
 	ip->i_mode = dp->di_mode;
 	ip->i_nlink = dp->di_nlink;
 	ip->i_uid = dp->di_uid;
 	ip->i_gid = dp->di_gid;
-	ip->i_size = dp->di_size;
-	p1 = (char *)ip->i_un.i_addr;
-	p2 = (char *)dp->di_addr;
+	ip->i_size = wswap_int32(dp->di_size);
+	p1 = (daddr_t *)ip->i_un.i_addr;
+	p2 = (uint8_t *)dp->di_addr;
 	for(i=0; i<NADDR; i++) {
-		*p1++ = *p2++;
-		*p1++ = 0;
-		*p1++ = *p2++;
-		*p1++ = *p2++;
+		*p1    = ((daddr_t)*p2++) << 16;
+		*p1   |= ((daddr_t)*p2++);
+		*p1++ |= ((daddr_t)*p2++) << 8;
 	}
 }
 
@@ -316,7 +315,8 @@ iupdat(register struct inode *ip, time_t *ta, time_t *tm)
 	register struct buf *bp;
 	register struct dinode *dp;
 	struct filsys *fp;
-	char *p1, *p2;
+	register uint8_t *p1;
+	daddr_t *p2;
 	int16_t i;
 
 	if((ip->i_flag&(IUPD|IACC|ICHG)) != 0) {
@@ -333,28 +333,28 @@ iupdat(register struct inode *ip, time_t *ta, time_t *tm)
 		dp->di_nlink = ip->i_nlink;
 		dp->di_uid = ip->i_uid;
 		dp->di_gid = ip->i_gid;
-		dp->di_size = ip->i_size;
-		p1 = (char *)dp->di_addr;
-		p2 = (char *)ip->i_un.i_addr;
+		dp->di_size = wswap_int32(ip->i_size);
+		p1 = (uint8_t *)dp->di_addr;
+		p2 = (daddr_t *)ip->i_un.i_addr;
 		for(i=0; i<NADDR; i++) {
-			*p1++ = *p2++;
+			*p1++ = (uint8_t)(*p2 >> 16);
 #ifdef	MPX_FILS
 			if(*p2++ != 0 && (ip->i_mode&IFMT)!=IFMPC
 			   && (ip->i_mode&IFMT)!=IFMPB)
 #else
-			if(*p2++ != 0)
+			if((*p2 >> 24) != 0)
 #endif
 			   printf("iaddr[%d] > 2^24(%D), inum = %d, dev = %d\n",
 				i, ip->i_un.i_addr[i], ip->i_number, ip->i_dev);
-			*p1++ = *p2++;
-			*p1++ = *p2++;
+			*p1++ = (uint8_t)(*p2);
+			*p1++ = (uint8_t)(*p2++ >> 8);
 		}
 		if(ip->i_flag&IACC)
-			dp->di_atime = *ta;
+			dp->di_atime = wswap_int32(*ta);
 		if(ip->i_flag&IUPD)
-			dp->di_mtime = *tm;
+			dp->di_mtime = wswap_int32(*tm);
 		if(ip->i_flag&ICHG)
-			dp->di_ctime = time;
+			dp->di_ctime = wswap_int32(time);
 		ip->i_flag &= ~(IUPD|IACC|ICHG);
 		mapout(bp);
 #ifdef UCB_FSFIX
@@ -470,7 +470,7 @@ tloop(dev_t dev, daddr_t bn, int16_t f1, int16_t f2)
 			}
 		}
 		bap = (daddr_t *) mapin(bp);
-		nb = bap[i];
+		nb = wswap_int32(bap[i]);
 		mapout(bp);
 		if(nb == (daddr_t)0)
 			continue;

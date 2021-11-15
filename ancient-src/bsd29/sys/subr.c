@@ -124,12 +124,12 @@ bmap(struct inode *ip, daddr_t bn, int16_t rwflg)
 		bap = (daddr_t *) mapin(bp);
 		sh -= NSHIFT;
 		i = (bn>>sh) & NMASK;
-		nb = bap[i];
+		nb = wswap_int32(bap[i]);
 		/*
 		 * calculate read-ahead
 		 */
 		if(i < NINDIR-1)
-			ra = bap[i+1];
+			ra = wswap_int32(bap[i+1]);
 		mapout(bp);
 		if(nb == 0) {
 			if(rwflg == B_READ || (nbp = qalloc(ip, dev)) == NULL) {
@@ -149,7 +149,7 @@ bmap(struct inode *ip, daddr_t bn, int16_t rwflg)
 #endif
 				bdwrite(nbp);
 			bap = (daddr_t *) mapin(bp);
-			bap[i] = nb;
+			bap[i] = wswap_int32(nb);
 			mapout(bp);
 			bdwrite(bp);
 		} else
