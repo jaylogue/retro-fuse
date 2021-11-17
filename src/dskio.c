@@ -40,8 +40,6 @@
 
 #include "dskio.h"
 
-#define BLKSIZE 512
-
 static int dsk_fd = -1;
 static off_t dsk_size = -1;     /* size of disk, in 512-byte blocks */
 static off_t dsk_start = -1;    /* logical start of disk, in bytes */
@@ -60,10 +58,10 @@ static int dsk_isblkdev = 0;    /* underlying storage is block device */
  *                          block device, size is inferred from the size
  *                          of the block device.
  * 
- * @param[in]   offset      Offset (in blocks) into the underlying device/
- *                          image file at which the virtual disk starts.
- *                          This value is added to the blkno argument to
- *                          dsk_read()/dsk_write() to determine the actual
+ * @param[in]   offset      Offset (in 512-byte blocks) into the underlying
+ *                          device/image file at which the virtual disk
+ *                          starts. This value is added to the blkno argument
+ *                          to dsk_read()/dsk_write() to determine the actual
  *                          read/write position.
  * 
  * @param[in]   create      If != 0, create a new disk image file. If
@@ -99,14 +97,14 @@ int dsk_open(const char *filename, off_t size, off_t offset, int create, int ro)
 #if defined(__linux__)
         uint64_t devsize;
         if (ioctl(dsk_fd, BLKGETSIZE64, &devsize) >= 0) {
-            size = (devsize / BLKSIZE) - offset;
+            size = (devsize / DSK_BLKSIZE) - offset;
         }
 #elif defined(__APPLE__)
 		uint32_t blocksize;
         uint64_t blockcount;
 		if (ioctl(dsk_fd, DKIOCGETBLOCKSIZE, &blocksize) >= 0 &&
             ioctl(dsk_fd, DKIOCGETBLOCKCOUNT, &blockcount) >= 0) {
-            size = ((blockcount * blocksize) / BLKSIZE) - offset;
+            size = ((blockcount * blocksize) / DSK_BLKSIZE) - offset;
 		}
 #endif
     }
@@ -119,7 +117,7 @@ int dsk_open(const char *filename, off_t size, off_t offset, int create, int ro)
         return -EINVAL;
     }
 
-    dsk_start = offset * BLKSIZE;
+    dsk_start = offset * DSK_BLKSIZE;
     dsk_setsize(size);
 
     /* if creating an image file, enlarge it to the size of the
@@ -151,7 +149,7 @@ int dsk_close()
  */
 int dsk_read(off_t blkno, void * buf, int count) 
 {
-    off_t blkoff = dsk_start + blkno * BLKSIZE;
+    off_t blkoff = dsk_start + blkno * DSK_BLKSIZE;
     if (count < 0 || blkoff < dsk_start || (blkoff + count) > dsk_end)
         return 0;
     ssize_t res = pread(dsk_fd, buf, count, blkoff);
@@ -164,7 +162,7 @@ int dsk_read(off_t blkno, void * buf, int count)
  */
 int dsk_write(off_t blkno, void * buf, int count) 
 {
-    off_t blkoff = dsk_start + blkno * BLKSIZE;
+    off_t blkoff = dsk_start + blkno * DSK_BLKSIZE;
     if (count < 0 || blkoff < dsk_start || (blkoff + count) > dsk_end)
         return 0;
     ssize_t res = pwrite(dsk_fd, buf, count, blkoff);
@@ -199,7 +197,7 @@ void dsk_setsize(off_t size)
 {
     dsk_size = size;
     if (size > 0)
-        dsk_end = dsk_start + (size * BLKSIZE);
+        dsk_end = dsk_start + (size * DSK_BLKSIZE);
     else
         dsk_end = LLONG_MAX;
 }

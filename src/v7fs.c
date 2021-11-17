@@ -178,7 +178,7 @@ int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flpar
     struct v7_buf *bp;
     struct v7_filsys *fp;
     struct v7_direct *dp;
-    int16_t rootdirblkno = 0;
+    v7_daddr_t rootdirblkno = 0;
     uint16_t fn = flparams->n, fm = flparams->m;
 
     if (v7fs_initialized)
@@ -1232,7 +1232,7 @@ int v7fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
             v7_geterror(bp);
             if (v7_u.u_error != 0)
                 return -v7_u.u_error;
-            struct fblk * fb = (struct fblk *)bp->b_un.b_addr;
+            struct v7_fblk * fb = (struct v7_fblk *)bp->b_un.b_addr;
             nfree = fb->df_nfree;
             nextfblk = wswap_int32(fb->df_free[0]);
             v7_brelse(bp);

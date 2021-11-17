@@ -29,6 +29,10 @@ struct statvfs;
 
 enum {
 
+    /** Filesystem block size
+     */
+    V7FS_BLOCK_SIZE         = 512,
+
     /** Maximum filesystem size, in blocks.
      *  Limited to 2^24-1 due to 3-byte block numbers used in on-disk inode structure.
      */

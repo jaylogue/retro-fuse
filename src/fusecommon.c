@@ -225,7 +225,9 @@ int main(int argc, char *argv[])
 
     /* open the underlying block device/image file */
     {
-        int openres = dsk_open(cfg.dskfilename, cfg.fssize, cfg.fsoffset, 0, cfg.readonly);
+        off_t dsksize = retrofuse_fsblktodskblk(cfg.fssize);
+        off_t dskoffset = retrofuse_fsblktodskblk(cfg.fsoffset);
+        int openres = dsk_open(cfg.dskfilename, dsksize, dskoffset, 0, cfg.readonly);
         if (openres != 0) {
             fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", retrofuse_cmdname, strerror(-openres));
             goto exit;

@@ -29,6 +29,10 @@ struct statvfs;
 
 enum {
 
+    /** Filesystem block size
+     */
+    V6FS_BLOCK_SIZE         = 512,
+
     /** Maximum filesystem size, in blocks.
      *  Limited to 2^16-1 due to 2-byte block numbers used throughout code.
      * 

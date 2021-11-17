@@ -24,6 +24,47 @@
 #define __V7UNADAPT_H__
 
 
+/* Define constructs that provide access to certain conflicting v7 macros 
+ * even after their modern definitions have been restored.
+  */
+
+#ifdef major
+inline int16_t v7_major(dev_t dev) { return major(dev); }
+#endif
+
+#ifdef minor
+inline int16_t v7_minor(dev_t dev) { return minor(dev); }
+#endif
+
+#ifdef makedev
+static inline dev_t v7_makedev(int16_t x, int16_t y) { return makedev(x, y); }
+#endif
+
+#ifdef S_IFMT
+enum {
+    V7_S_IFMT   = S_IFMT,
+    V7_S_IFDIR  = S_IFDIR,
+    V7_S_IFCHR  = S_IFCHR,
+    V7_S_IFBLK  = S_IFBLK,
+    V7_S_IFREG  = S_IFREG,
+    V7_S_IFMPC  = S_IFMPC,
+    V7_S_IFMPB  = S_IFMPB,
+    V7_S_ISUID  = S_ISUID,
+    V7_S_ISGID  = S_ISGID,
+    V7_S_ISVTX  = S_ISVTX,
+    V7_S_IREAD  = S_IREAD,
+    V7_S_IWRITE = S_IWRITE,
+    V7_S_IEXEC  = S_IEXEC
+};
+#endif /* S_IFMT */
+
+#ifdef FREAD
+enum {
+    V7_FREAD    = FREAD,
+    V7_FWRITE   = FWRITE
+};
+#endif /* FREAD */
+
 /* Undefine name mapping macros
  */
 #undef access
@@ -59,6 +100,7 @@
 #undef dinode
 #undef direct
 #undef falloc
+#undef fblk
 #undef file
 #undef filsys
 #undef free
@@ -137,47 +179,6 @@
 #undef writei
 #undef writep
 #undef xrele
-
-/* Define constructs that provide access to certain conflicting v7 macros 
- * even after their modern definitions have been restored.
-  */
-
-#ifdef major
-inline int16_t v7_major(dev_t dev) { return major(dev); }
-#endif
-
-#ifdef minor
-inline int16_t v7_minor(dev_t dev) { return minor(dev); }
-#endif
-
-#ifdef makedev
-static inline dev_t v7_makedev(int16_t x, int16_t y) { return makedev(x, y); }
-#endif
-
-#ifdef S_IFMT
-enum {
-    V7_S_IFMT   = S_IFMT,
-    V7_S_IFDIR  = S_IFDIR,
-    V7_S_IFCHR  = S_IFCHR,
-    V7_S_IFBLK  = S_IFBLK,
-    V7_S_IFREG  = S_IFREG,
-    V7_S_IFMPC  = S_IFMPC,
-    V7_S_IFMPB  = S_IFMPB,
-    V7_S_ISUID  = S_ISUID,
-    V7_S_ISGID  = S_ISGID,
-    V7_S_ISVTX  = S_ISVTX,
-    V7_S_IREAD  = S_IREAD,
-    V7_S_IWRITE = S_IWRITE,
-    V7_S_IEXEC  = S_IEXEC
-};
-#endif /* S_IFMT */
-
-#ifdef FREAD
-enum {
-    V7_FREAD    = FREAD,
-    V7_FWRITE   = FWRITE
-};
-#endif /* FREAD */
 
 /* Restore modern definitions of macros that collide with v7 code.
  */

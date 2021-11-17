@@ -122,11 +122,30 @@ int retrofuse_initfs(const struct retrofuse_config * cfg)
     if (cfg->initfsparams.isize != 0 && checkisize(cfg->initfsparams.isize, cfg->fssize) != 0)
         return -1;
 
+    /* create a new disk image file or open the underlying block device */
+    {
+        off_t dsksize = retrofuse_fsblktodskblk(cfg->fssize);
+        off_t dskoffset = retrofuse_fsblktodskblk(cfg->fsoffset);
+        res = dsk_open(cfg->dskfilename, dsksize, dskoffset, 1, 0);
+        if (res != 0) {
+            if (res == -EEXIST)
+                fprintf(stderr, "%s: ERROR: Filesystem image file exists. To prevent accidents, the filesystem image file must NOT exist when using -oinitfs.\n",
+                        retrofuse_cmdname);
+            else if (res == -EINVAL)
+                fprintf(stderr, "%s: ERROR: Missing -o fssize option. The size of the filesystem must be specified when using -oinitfs\n",
+                        retrofuse_cmdname);
+            else
+                fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", retrofuse_cmdname, strerror(-res));
+            return -1;
+        }
+    }
+
     /* get the final filesystem size.  Note that this value may have been derrived from the 
      * the size of the underlying block device. */
-    off_t fssize = dsk_getsize();
+    off_t fssize = retrofuse_dskblktofsblk(dsk_getsize());
 
-    /* double check the final filesystem size is sane and does not exceed the capabilities of the v6 code. */
+    /* double check the final filesystem size is sane and does not exceed the capabilities
+     * of the v7 code. */
     if (checkfssize(fssize) != 0)
         return -1;
 
@@ -224,8 +243,8 @@ void retrofuse_showhelp()
         "        of the filesystem, using the logic found in the original v7 mkfs command.\n"
         "\n"
         "        n and m are the interleave parameters for the initial free block list.\n"
-        "        If not specified, the values n=500,m=3 are used, as per the original v7\n"
-        "        mkfs command.  Specify n=1,m=1 for no interleave.\n"
+        "        Specify n=1,m=1 for no interleave, which is the default. To get the same\n"
+        "        interleave as used in the original v7 mkfs command specify n=500,m=3.\n"
         "\n"
         "  -o <mount-options>\n"
         "        Comma-separated list of standard mount options. See man 8 mount\n"
@@ -251,6 +270,16 @@ void retrofuse_showhelp()
         "  --help\n"
         "        Print this help message.\n",
         retrofuse_cmdname);
+}
+
+off_t retrofuse_fsblktodskblk(off_t fsblk)
+{
+    return fsblk * (V7FS_BLOCK_SIZE / DSK_BLKSIZE);
+}
+
+off_t retrofuse_dskblktofsblk(off_t dskblk)
+{
+    return dskblk / (V7FS_BLOCK_SIZE / DSK_BLKSIZE);
 }
 
 static inline void setfscontext()

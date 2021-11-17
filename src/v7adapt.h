@@ -38,6 +38,7 @@ struct v7_file;
 struct v7_stat;
 struct v7_devtab;
 struct v7_direct;
+struct v7_fblk;
 
 typedef int32_t v7_daddr_t;
 typedef int16_t v7_dev_t;
@@ -262,6 +263,7 @@ extern void v7_xrele(struct v7_inode *ip);
 #define dinode    v7_dinode
 #define direct    v7_direct
 #define falloc    v7_falloc
+#define fblk      v7_fblk
 #define file      v7_file
 #define filsys    v7_filsys
 #define free      v7_free

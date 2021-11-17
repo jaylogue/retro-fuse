@@ -62,5 +62,7 @@ extern int retrofuse_addgidmap(gid_t hostid, uint32_t fsid);
 extern int retrofuse_initfs(const struct retrofuse_config * cfg);
 extern int retrofuse_mount(const struct retrofuse_config * cfg);
 extern void retrofuse_showhelp();
+extern off_t retrofuse_fsblktodskblk(off_t fsblk);
+extern off_t retrofuse_dskblktofsblk(off_t fskblk);
 
 #endif /* __FUSECOMMON_H__ */
