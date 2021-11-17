@@ -129,7 +129,7 @@ alloc(dev_t dev)
 	bp = getblk(dev, bno);
 	clrbuf(bp);
 	fp->s_fmod = 1;
-	fp->s_tfree = wswap_int32(wswap_int32(fp->s_tfree) + 1);
+	fp->s_tfree = wswap_int32(wswap_int32(fp->s_tfree) - 1);
 	return(bp);
 
 nospace:

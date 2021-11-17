@@ -29,10 +29,13 @@ struct statvfs;
 
 enum {
 
+    /** Filesystem block size
+     */
+    BSD29FS_BLOCK_SIZE         = 1024,
+
     /** Maximum filesystem size, in blocks.
      *  Limited to 2^24-1 due to 3-byte block numbers used in on-disk inode structure.
      */
-    // TODO: check this
     BSD29FS_MAX_FS_SIZE        = 16777215,
 
     /** Minimum filesystem size, in blocks.
@@ -45,9 +48,9 @@ enum {
     BSD29FS_INODES_PER_BLOCK   = 16,
 
     /** Maximum size of the inode table, in blocks.
-     *  Limited to 4096 due to 2-byte inode number used in on-disk directory structure.
+     *  Limited to 4093 based on logic in mkfs command.
      */
-    BSD29FS_MAX_ITABLE_SIZE    = 65536/BSD29FS_INODES_PER_BLOCK,
+    BSD29FS_MAX_ITABLE_SIZE    = 65500/BSD29FS_INODES_PER_BLOCK,
 
     /** Minimum size of the inode table, in blocks.
      */
@@ -59,7 +62,6 @@ enum {
 
     /** Maximum value for freelist interleave parameter n
      */
-    // TODO: check this
     BSD29FS_MAXFN = 500,
 };
 

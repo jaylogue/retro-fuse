@@ -23,6 +23,63 @@
 #ifndef __BSD29UNADAPT_H__
 #define __BSD29UNADAPT_H__
 
+/* Define constructs that provide access to certain conflicting 2.9BSD macros 
+ * even after their modern definitions have been restored.
+  */
+
+#ifdef major
+inline int16_t bsd29_major(dev_t dev) { return major(dev); }
+#endif
+
+#ifdef minor
+inline int16_t bsd29_minor(dev_t dev) { return minor(dev); }
+#endif
+
+#ifdef makedev
+static inline dev_t bsd29_makedev(int16_t x, int16_t y) { return makedev(x, y); }
+#endif
+
+#ifdef fsbtodb
+static inline bsd29_daddr_t bsd29_fsbtodb(bsd29_daddr_t b) { return fsbtodb(b); }
+#endif
+
+#ifdef dbtofsb
+static inline bsd29_daddr_t bsd29_dbtofsb(bsd29_daddr_t b) { return dbtofsb(b); }
+#endif
+
+#ifdef S_IFMT
+enum {
+    BSD29_S_IFMT    = S_IFMT,
+    BSD29_S_IFDIR   = S_IFDIR,
+    BSD29_S_IFCHR   = S_IFCHR,
+    BSD29_S_IFBLK   = S_IFBLK,
+    BSD29_S_IFREG   = S_IFREG,
+    BSD29_S_IFLNK   = S_IFLNK,
+    BSD29_S_IFMPC   = S_IFMPC,
+    BSD29_S_IFMPB   = S_IFMPB,
+    BSD29_S_ISUID   = S_ISUID,
+    BSD29_S_ISGID   = S_ISGID,
+    BSD29_S_ISVTX   = S_ISVTX,
+    BSD29_S_IREAD   = S_IREAD,
+    BSD29_S_IWRITE  = S_IWRITE,
+    BSD29_S_IEXEC   = S_IEXEC
+};
+#endif /* S_IFMT */
+
+#ifdef FREAD
+enum {
+    BSD29_FREAD     = FREAD,
+    BSD29_FWRITE    = FWRITE
+};
+#endif /* FREAD */
+
+#ifdef LOOKUP
+enum {
+    BSD29_LOOKUP    = LOOKUP,
+    BSD29_CREATE    = CREATE,
+    BSD29_DELETE    = DELETE
+};
+#endif /* LOOKUP */
 
 /* Undefine name mapping macros
  */
@@ -35,6 +92,7 @@
 #undef bdwrite
 #undef bflush
 #undef bfreelist
+#undef bhash
 #undef binit
 #undef bmap
 #undef bread
@@ -60,6 +118,7 @@
 #undef dinode
 #undef direct
 #undef falloc
+#undef fblk
 #undef file
 #undef fileNFILE
 #undef filsys
@@ -148,56 +207,6 @@
 #undef writei
 #undef writep
 #undef xrele
-
-/* Define constructs that provide access to certain conflicting 2.9BSD macros 
- * even after their modern definitions have been restored.
-  */
-
-#ifdef major
-inline int16_t bsd29_major(dev_t dev) { return major(dev); }
-#endif
-
-#ifdef minor
-inline int16_t bsd29_minor(dev_t dev) { return minor(dev); }
-#endif
-
-#ifdef makedev
-static inline dev_t bsd29_makedev(int16_t x, int16_t y) { return makedev(x, y); }
-#endif
-
-#ifdef S_IFMT
-enum {
-    BSD29_S_IFMT    = S_IFMT,
-    BSD29_S_IFDIR   = S_IFDIR,
-    BSD29_S_IFCHR   = S_IFCHR,
-    BSD29_S_IFBLK   = S_IFBLK,
-    BSD29_S_IFREG   = S_IFREG,
-    BSD29_S_IFLNK   = S_IFLNK,
-    BSD29_S_IFMPC   = S_IFMPC,
-    BSD29_S_IFMPB   = S_IFMPB,
-    BSD29_S_ISUID   = S_ISUID,
-    BSD29_S_ISGID   = S_ISGID,
-    BSD29_S_ISVTX   = S_ISVTX,
-    BSD29_S_IREAD   = S_IREAD,
-    BSD29_S_IWRITE  = S_IWRITE,
-    BSD29_S_IEXEC   = S_IEXEC
-};
-#endif /* S_IFMT */
-
-#ifdef FREAD
-enum {
-    BSD29_FREAD     = FREAD,
-    BSD29_FWRITE    = FWRITE
-};
-#endif /* FREAD */
-
-#ifdef LOOKUP
-enum {
-    BSD29_LOOKUP    = LOOKUP,
-    BSD29_CREATE    = CREATE,
-    BSD29_DELETE    = DELETE
-};
-#endif /* LOOKUP */
 
 /* Restore modern definitions of macros that collide with 2.9BSD code.
  */

@@ -97,6 +97,17 @@ struct bsd29_cdevsw bsd29_cdevsw[1] = {
     { NULL }
 };
 
+#ifdef	UCB_BHASH
+enum {
+#ifdef	SMALL
+    BSD29_BUFHSZ = 8
+#else
+    BSD29_BUFHSZ = 64
+#endif	SMALL
+};
+extern struct bsd29_buf * bsd29_bhash[BSD29_BUFHSZ];
+#endif
+
 /*
  * Replacements for various 2.9BSD functions that either require significantly
  * different behavior or were originally written in PDP-11 assembly.
@@ -290,6 +301,7 @@ void bsd29_zerocore()
     bsd29_updlock = 0;
     bsd29_rablock = 0;
     memset(&bsd29_rootdsktab, 0, sizeof(bsd29_rootdsktab));
+    memset(&bsd29_bhash, 0, sizeof(bsd29_bhash));
 }
 
 #undef time

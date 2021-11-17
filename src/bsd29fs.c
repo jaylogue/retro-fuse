@@ -68,7 +68,10 @@
 
 enum {
     NIPB = (BSIZE/sizeof(struct bsd29_dinode)), /* from mkfs.c, same as INOPB */
-    NDIRECT = (BSIZE/sizeof(struct bsd29_direct))
+    NDIRECT = (BSIZE/sizeof(struct bsd29_direct)),
+#ifndef	CLSIZE
+    CLSIZE = 1
+#endif
 };
 
 static int bsd29fs_initialized = 0;
@@ -99,7 +102,7 @@ static inline int16_t bsd29fs_maphostgid(gid_t hostgid) { return (int16_t)idmap_
 static inline uid_t bsd29fs_mapfsuid(int16_t fsuid) { return (uid_t)idmap_tohostid(&bsd29fs_uidmap, (uint32_t)fsuid); }
 static inline gid_t bsd29fs_mapfsgid(int16_t fsgid) { return (gid_t)idmap_tohostid(&bsd29fs_gidmap, (uint32_t)fsgid); }
 
-/** Initialize the 2.9 BSD filesystem.
+/** Initialize the 2.9BSD filesystem.
  * 
  * This function is very similar to the BSD kernel main() function.
  */
@@ -136,7 +139,7 @@ int bsd29fs_init(int readonly)
        is smaller than the size declared in the filesystem superblock
        set the virtual disk size to the size from the superblock. */
     off_t dsksize = dsk_getsize();
-    bsd29_daddr_t fsize = wswap_int32(fs->s_fsize);
+    off_t fsize = wswap_int32(fs->s_fsize) * 2; /* adjust to 512-byte blocks */
     if (dsksize == 0 || dsksize > fsize)
         dsk_setsize((off_t)fsize);
 
@@ -178,30 +181,37 @@ int bsd29fs_shutdown()
  */
 int bsd29fs_mkfs(uint32_t fssize, uint32_t isize, const struct bsd29fs_flparams *flparams)
 {
-    return -EINVAL;
-#if 0
     struct bsd29_buf *bp;
     struct bsd29_filsys *fp;
+    struct bsd29_dinode rootino, lfino, bbino;
     struct bsd29_direct *dp;
-    int16_t rootdirblkno = 0;
+    bsd29_daddr_t bn;
     uint16_t fn = flparams->n, fm = flparams->m;
+
+    enum {
+        BADBLOCKINO = ROOTINO - 1,
+        LOSTFOUNDINO = ROOTINO + 1
+    };
 
     if (bsd29fs_initialized)
         return -EBUSY;
 
-    /* enforce min/max filesystem size.  v7 filesystems are limited to a max of
+    /* enforce min/max filesystem size.  2.9BSD filesystems are limited to a max of
      * 2^24-1 blocks due to 3 byte block numbers stored in inodes. */
     if (fssize < BSD29FS_MIN_FS_SIZE || fssize > BSD29FS_MAX_FS_SIZE)
         return -EINVAL;
 
     /* if not specified, compute the number of inode blocks based on the
-     * filesystem size (based on logic in v7 mkfs) */
+     * filesystem size (based on logic in mkfs) */
     if (isize == 0) {
-        isize = fssize / 25;
-        if (isize == 0)
+        if (fssize <= 5000/CLSIZE)
+            isize = fssize/50;
+        else
+            isize = fssize/25;
+        if(isize <= 0)
             isize = 1;
-        if (isize > 65500 / NIPB)
-            isize = 65500 / NIPB;
+        if(isize > BSD29FS_MAX_ITABLE_SIZE)
+            isize = BSD29FS_MAX_ITABLE_SIZE;
     }
 
     /* enforce min/max inode table size.  max size is limited by the size of
@@ -210,8 +220,13 @@ int bsd29fs_mkfs(uint32_t fssize, uint32_t isize, const struct bsd29fs_flparams 
     if (isize < BSD29FS_MIN_ITABLE_SIZE || isize > BSD29FS_MAX_ITABLE_SIZE || isize > (fssize - 4))
         return -EINVAL;
 
-    /* adjust interleave values as needed (based on logic in v7 mkfs) */
-    if (fn == 0 || fn >= BSD29FS_MAXFN)
+    /* adjust interleave values as needed (based on logic in mkfs) */
+    if (fn == 0) {
+        /* use default values */
+        fn = 10;
+        fm = 5;
+    }
+    if (fn >= BSD29FS_MAXFN)
         fn = BSD29FS_MAXFN;
     if (fm == 0 || fm > fn)
         fm = 3;
@@ -229,6 +244,10 @@ int bsd29fs_mkfs(uint32_t fssize, uint32_t isize, const struct bsd29fs_flparams 
 
     bsd29_u.u_error = 0;
 
+    /* create the mount for the root device. */
+    bsd29_mount[0].m_dev = bsd29_rootdev;
+    bsd29_mount[0].m_inodp = (struct bsd29_inode *) 1; /* as done in iinit() */
+
     /* initialize the filesystem superblock in memory.
      *
      * NB: While the description of the s_isize field in the filsys
@@ -242,9 +261,7 @@ int bsd29fs_mkfs(uint32_t fssize, uint32_t isize, const struct bsd29fs_flparams 
      * For this reason, the following code adds 2 to the given isize
      * parameter.
      */
-    bp = bsd29_getblk(bsd29_rootdev, -1);
-    bsd29_clrbuf(bp);
-    fp = (struct bsd29_filsys *)bp->b_un.b_addr;
+    fp = &bsd29_mount[0].m_filsys;
     fp->s_isize = isize + 2; /* adjusted to point to the block beyond the i-list */
     fp->s_fsize = wswap_int32(fssize);
     fp->s_n = (int16_t)fn;
@@ -254,20 +271,70 @@ int bsd29fs_mkfs(uint32_t fssize, uint32_t isize, const struct bsd29fs_flparams 
     fp->s_time = wswap_int32(bsd29_time);
     fp->s_fmod = 1;
 
-    /* create the mount for the root device. */
-    bsd29_mount[0].m_bufp = bp;
-    bsd29_mount[0].m_dev = bsd29_rootdev;
-
     /* initialize the free block list on disk. */
     bsd29fs_initfreelist(fp, fn, fm);
     if (bsd29_u.u_error != 0)
         goto exit;
 
-    /* allocate block for root directory and initialize '..' and '.' entries. */
+    /* initialize the inode structure for the lost+found directory
+     *
+     * note that, per the logic in the original BSD mkfs, the size of
+     * the lost+found directory is set to 4 blocks (4096 bytes), even
+     * though the directory initially contains only two entries. */
+    memset(&lfino, 0, sizeof(lfino));
+    lfino.di_mode = (int16_t)(IFDIR|ISVTX|0777);
+    lfino.di_nlink = 2;
+    lfino.di_uid = bsd29_u.u_uid;
+    lfino.di_gid = bsd29_u.u_gid;
+    lfino.di_size = wswap_int32(4 * BSIZE); /* pre-allocated to 4 blocks */
+    lfino.di_atime = lfino.di_mtime = lfino.di_ctime = wswap_int32(bsd29_time);
+
+    /* allocate 5 blocks to the lost+found directory (4 direct and 1
+     * single-level indirect). initialize the first block to contain the
+     * '.' and '..' directory entries. set the rest to all zeros.
+     *
+     * the reason for adding the 5th single-level indirect block is unclear
+     * and may simply be a bug. it is created by logic in the iput() function
+     * in mkfs.c. the behavior is preserved here so that the result of this
+     * function can be byte-by-byte compared for correctness against disk
+     * images created by the original mkfs. */
+    for (int i = 0; i < 5; i++) {
+        bp = bsd29_alloc(bsd29_rootdev);
+        if (bp == NULL)
+            goto exit;
+        bn = bsd29_dbtofsb(bp->b_blkno);
+        if (i == 0) {
+            dp = (struct bsd29_direct *)bp->b_un.b_addr;
+            dp->d_name[0] = '.';
+            dp->d_ino = LOSTFOUNDINO;
+            dp++;
+            dp->d_name[0] = '.';
+            dp->d_name[1] = '.';
+            dp->d_ino = ROOTINO;
+        }
+        bsd29_bwrite(bp);
+        if ((bp->b_flags & B_ERROR) != 0)
+            goto exit;
+        lfino.di_addr[(i*3) + 0] = (char)(bn >> 16);
+        lfino.di_addr[(i*3) + 1] = (char)(bn);
+        lfino.di_addr[(i*3) + 2] = (char)(bn >> 8);
+    }
+
+    /* initialize the inode structure for the root directory */
+    memset(&rootino, 0, sizeof(rootino));
+    rootino.di_mode = (int16_t)(IFDIR|0777);
+    rootino.di_nlink = 3;
+    rootino.di_uid = bsd29_u.u_uid;
+    rootino.di_gid = bsd29_u.u_gid;
+    rootino.di_size = wswap_int32(3*sizeof(struct bsd29_direct)); /* size of 3 directory entries */
+    rootino.di_atime = rootino.di_mtime = rootino.di_ctime = wswap_int32(bsd29_time);
+
+    /* allocate block for root directory and initialize it to
+     * contain the '.', '..' and 'lost+found' entries. */
     bp = bsd29_alloc(bsd29_rootdev);
     if (bp == NULL)
         goto exit;
-    rootdirblkno = bp->b_blkno;
+    bn = bsd29_dbtofsb(bp->b_blkno);
     dp = (struct bsd29_direct *)bp->b_un.b_addr;
     dp->d_name[0] = '.';
     dp->d_ino = ROOTINO;
@@ -275,45 +342,43 @@ int bsd29fs_mkfs(uint32_t fssize, uint32_t isize, const struct bsd29fs_flparams 
     dp->d_name[0] = '.';
     dp->d_name[1] = '.';
     dp->d_ino = ROOTINO;
+    dp++;
+    strcpy(dp->d_name, "lost+found");
+    dp->d_ino = LOSTFOUNDINO;
     bsd29_bwrite(bp);
     if ((bp->b_flags & B_ERROR) != 0)
         goto exit;
+    rootino.di_addr[0] = (char)(bn >> 16);
+    rootino.di_addr[1] = (char)(bn);
+    rootino.di_addr[2] = (char)(bn >> 8);
 
-    /* initialize the inode table on disk. setup the first 2 inodes (in inode block 0)
-     * to represent the bad block file and the root directory, respectively. */
+    /* initialize the inode structure for the bad block file. */
+    memset(&bbino, 0, sizeof(bbino));
+    bbino.di_mode = (int16_t)(IFREG);
+    bbino.di_nlink = 0;
+    bbino.di_uid = 0;
+    bbino.di_gid = 0;
+    bbino.di_size = 0;
+    bbino.di_atime = bbino.di_mtime = bbino.di_ctime = wswap_int32(bsd29_time);
+
+    /* initialize the inode table on disk. setup the first 3 inodes (in inode block 0)
+     * to represent the bad block file, the root directory and the lost+found directory,
+     * respectively. */
     for (bsd29_daddr_t iblk = 0; iblk < isize; iblk++) {
         bp = bsd29_getblk(bsd29_rootdev, iblk + 2);
         bsd29_clrbuf(bp);
+        fp->s_tinode += INOPB;
         if (iblk == 0) {
             struct bsd29_dinode * ip = (struct bsd29_dinode *)bp->b_un.b_addr;
-            /* bad block file */
-            ip->di_mode = (int16_t)(IFREG);
-            ip->di_nlink = 0;
-            ip->di_uid = 0;
-            ip->di_gid = 0;
-            ip->di_size = 0;
-            ip->di_atime = ip->di_mtime = ip->di_ctime = wswap_int32(bsd29_time);
-            /* root directory */
-            ip++;
-            ip->di_mode = (int16_t)(IFDIR|0777);
-            ip->di_nlink = 2;
-            ip->di_uid = bsd29_u.u_uid;
-            ip->di_gid = bsd29_u.u_gid;
-            ip->di_size = wswap_int32(2*sizeof(struct bsd29_direct)); /* size of 2 directory entries */
-            ip->di_addr[0] = (char)(rootdirblkno >> 16);
-            ip->di_addr[1] = (char)(rootdirblkno);
-            ip->di_addr[2] = (char)(rootdirblkno >> 8);
-            ip->di_atime = ip->di_mtime = ip->di_ctime = wswap_int32(bsd29_time);
+            ip[BADBLOCKINO - 1] = bbino;
+            ip[ROOTINO - 1] = rootino;
+            ip[LOSTFOUNDINO - 1] = lfino;
+            fp->s_tinode -= 3;
         }
         bsd29_bwrite(bp);
         if ((bp->b_flags & B_ERROR) != 0)
             goto exit;
     }
-
-    /* make the superblock pristine by zeroing unused entries in 
-     * the free table. */
-    for (int i = fp->s_nfree; i < NICFREE; i++)
-        fp->s_free[i] = 0;
 
     /* sync the superblock */
     bsd29_update();
@@ -321,7 +386,6 @@ int bsd29fs_mkfs(uint32_t fssize, uint32_t isize, const struct bsd29fs_flparams 
 exit:
     bsd29_zerocore();
     return -bsd29_u.u_error;
-#endif
 }
 
 /** Open file or directory in the filesystem.
@@ -1287,7 +1351,7 @@ int bsd29fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
             bsd29_geterror(bp);
             if (bsd29_u.u_error != 0)
                 return -bsd29_u.u_error;
-            struct fblk * fb = (struct fblk *)bp->b_un.b_addr;
+            struct bsd29_fblk * fb = (struct bsd29_fblk *)bp->b_un.b_addr;
             nfree = fb->df_nfree;
             nextfblk = wswap_int32(fb->df_free[0]);
             bsd29_brelse(bp);

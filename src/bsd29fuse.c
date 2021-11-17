@@ -122,11 +122,30 @@ int retrofuse_initfs(const struct retrofuse_config * cfg)
     if (cfg->initfsparams.isize != 0 && checkisize(cfg->initfsparams.isize, cfg->fssize) != 0)
         return -1;
 
+    /* create a new disk image file or open the underlying block device */
+    {
+        off_t dsksize = retrofuse_fsblktodskblk(cfg->fssize);
+        off_t dskoffset = retrofuse_fsblktodskblk(cfg->fsoffset);
+        res = dsk_open(cfg->dskfilename, dsksize, dskoffset, 1, 0);
+        if (res != 0) {
+            if (res == -EEXIST)
+                fprintf(stderr, "%s: ERROR: Filesystem image file exists. To prevent accidents, the filesystem image file must NOT exist when using -oinitfs.\n",
+                        retrofuse_cmdname);
+            else if (res == -EINVAL)
+                fprintf(stderr, "%s: ERROR: Missing -o fssize option. The size of the filesystem must be specified when using -oinitfs\n",
+                        retrofuse_cmdname);
+            else
+                fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", retrofuse_cmdname, strerror(-res));
+            return -1;
+        }
+    }
+
     /* get the final filesystem size.  Note that this value may have been derrived from the 
      * the size of the underlying block device. */
-    off_t fssize = dsk_getsize();
+    off_t fssize = retrofuse_dskblktofsblk(dsk_getsize());
 
-    /* double check the final filesystem size is sane and does not exceed the capabilities of the v6 code. */
+    /* double check the final filesystem size is sane and does not exceed the capabilities
+     * of the 2.9BSD code. */
     if (checkfssize(fssize) != 0)
         return -1;
 
@@ -174,7 +193,6 @@ int retrofuse_mount(const struct retrofuse_config * cfg)
 
 void retrofuse_showhelp()
 {
-    // TODO: fix this
     printf(
         "usage: %s [options] <device-or-image-file> <mount-point>\n"
         "\n"
@@ -204,13 +222,13 @@ void retrofuse_showhelp()
         "        Multiple map options may be given, up to a limit of 100.\n"
         "\n"
         "  -o fssize=<blocks>\n"
-        "        The size of the filesystem, in 512-byte blocks. This is used to\n"
+        "        The size of the filesystem, in 1K-byte blocks. This is used to\n"
         "        constrain I/O on the underlying device/image file.  Defaults to the\n"
         "        size given in the filesystem superblock.\n"
         "\n"
         "  -o fsoffset=<blocks>\n"
         "        Offset into the device/image at which the filesystem starts, in\n"
-        "        512-byte blocks.  Defaults to 0.\n"
+        "        1K-byte blocks.  Defaults to 0.\n"
         "\n"
         "  -o initfs\n"
         "  -o initfs=<isize>\n"
@@ -219,14 +237,14 @@ void retrofuse_showhelp()
         "        mounting.  When using the initfs option on an image file the size of\n"
         "        the filesystem must be specified via the -ofssize option.\n"
         "\n"
-        "        isize gives the size of the filesystem's inode table in 512-byte\n"
-        "        blocks (8 inodes per block).  If not specified, or if 0 is given,\n"
+        "        isize gives the size of the filesystem's inode table in 1K-byte\n"
+        "        blocks (16 inodes per block).  If not specified, or if 0 is given,\n"
         "        an appropriate inode table size is computed automatically from the size\n"
         "        of the filesystem, using the logic found in the original BSD mkfs command.\n"
         "\n"
         "        n and m are the interleave parameters for the initial free block list.\n"
-        "        If not specified, the values n=500,m=3 are used, as per the original BSD\n"
-        "        mkfs command.  Specify n=1,m=1 for no interleave.\n"
+        "        Specify n=1,m=1 for no interleave, which is the default. To get the same\n"
+        "        interleave as used in the original BSD mkfs command specify n=10,m=5.\n"
         "\n"
         "  -o <mount-options>\n"
         "        Comma-separated list of standard mount options. See man 8 mount\n"
@@ -252,6 +270,16 @@ void retrofuse_showhelp()
         "  --help\n"
         "        Print this help message.\n",
         retrofuse_cmdname);
+}
+
+off_t retrofuse_fsblktodskblk(off_t fsblk)
+{
+    return fsblk * (BSD29FS_BLOCK_SIZE / DSK_BLKSIZE);
+}
+
+off_t retrofuse_dskblktofsblk(off_t dskblk)
+{
+    return dskblk / (BSD29FS_BLOCK_SIZE / DSK_BLKSIZE);
 }
 
 static inline void setfscontext()

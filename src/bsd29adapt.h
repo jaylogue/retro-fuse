@@ -47,6 +47,7 @@ struct bsd29_file;
 struct bsd29_stat;
 struct bsd29_devtab;
 struct bsd29_direct;
+struct bsd29_fblk;
 
 typedef int32_t bsd29_daddr_t;
 typedef int16_t bsd29_dev_t;
@@ -276,6 +277,7 @@ static inline int32_t wswap_int32(int32_t v)
 #define bdwrite     bsd29_bdwrite
 #define bflush      bsd29_bflush
 #define bfreelist   bsd29_bfreelist
+#define bhash       bsd29_bhash
 #define binit       bsd29_binit
 #define bmap        bsd29_bmap
 #define bread       bsd29_bread
@@ -301,6 +303,7 @@ static inline int32_t wswap_int32(int32_t v)
 #define dinode      bsd29_dinode
 #define direct      bsd29_direct
 #define falloc      bsd29_falloc
+#define fblk        bsd29_fblk
 #define file        bsd29_file
 #define fileNFILE   bsd29_fileNFILE
 #define filsys      bsd29_filsys
