@@ -1,6 +1,7 @@
 *.o
 *.d
 v[67]fs
+bsd29fs
 *.map
 *.dsk
 .vscode/
