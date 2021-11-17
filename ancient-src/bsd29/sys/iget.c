@@ -515,6 +515,13 @@ maknode(int16_t mode)
 #endif
 
 	wdir(ip);
+	/* Fix for an ancient bug that results in a leaked inode when there's no
+	 * room to create the directory entry for a new file. */
+	if (u.u_error != 0) {
+		ip->i_nlink--;
+		iput(ip);
+		return(NULL);
+	}
 	return(ip);
 }
 
