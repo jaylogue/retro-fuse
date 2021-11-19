@@ -379,17 +379,18 @@ void
 itrunc(register struct inode *ip)
 {
 	register int16_t i;
+	uint16_t ui;
 	register dev_t dev;
 	daddr_t bn;
 #ifdef UCB_FSFIX
 	struct inode itmp;
 #endif
 
-	i = ip->i_mode & IFMT;
+	ui = ip->i_mode & IFMT;
 #ifndef UCB_SYMLINKS
-	if (i!=IFREG && i!=IFDIR)
+	if (ui!=IFREG && ui!=IFDIR)
 #else
-	if (i!=IFREG && i!=IFDIR && i!=IFLNK)
+	if (ui!=IFREG && ui!=IFDIR && ui!=IFLNK)
 #endif
 		return;
 
