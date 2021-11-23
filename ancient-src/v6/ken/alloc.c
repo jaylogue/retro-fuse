@@ -319,8 +319,12 @@ update()
 				continue;
 			bp = getblk(mp->m_dev, 1);
 			fp->s_fmod = 0;
-			fp->s_time[0] = time[0];
-			fp->s_time[1] = time[1];
+			/* Avoid changing the filesystem timestamp.
+			 * At boot time, v6 sets the system time to the timestamp in the root
+			 * filesystem. If this time is happens to be later than about 30 years
+			 * past the Unix epoch, it triggers a bug in the v6 date(1) program. */
+			/* UNUSED fp->s_time[0] = time[0]; */
+			/* UNUSED fp->s_time[1] = time[1]; */
 			bcopy(fp, bp->b_addr, 256);
 			bwrite(bp);
 		}

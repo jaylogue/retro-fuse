@@ -197,14 +197,17 @@ int v6fs_mkfs(uint16_t fssize, uint16_t isize, const struct v6fs_flparams *flpar
 
     v6_u.u_error = 0;
 
-    /* initialize the filesystem superblock in memory. */
+    /* initialize the filesystem superblock in memory. 
+     * Note that the timestamp for the new filesystem is always set to the Unix
+     * epoch. This is because, at boot time, v6 will set the system time to the
+     * timestamp in the root filesystem. If this time is happens to be later than
+     * about 30 years past the Unix epoch, it will trigger a bug in the v6 date(1)
+     * program. Always setting the time to the Unix epoch avoids this. */
 	bp = v6_getblk(NODEV, -1);
     v6_clrbuf(bp);
 	fp = (struct v6_filsys *)bp->b_addr;
     fp->s_isize = (int16_t)isize;
     fp->s_fsize = (int16_t)fssize;
-    fp->s_time[0] = v6_time[0];
-    fp->s_time[1] = v6_time[1];
     fp->s_fmod = 1;
 
     /* create the mount for the root device. */
