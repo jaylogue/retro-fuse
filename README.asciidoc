@@ -3,7 +3,7 @@
 A user-space filesystem (FUSE) for accessing ancient Unix filesystems.
 
 *retro-fuse* provides a way to mount filesystems created by ancient Unix systems
-on modern OSes.  The initcurrential version of *retro-fuse* supports filesystems
+on modern OSes.  The current version of *retro-fuse* supports filesystems
 created by fifth, sixth and seventh-edition Unix.
 It can also initialize such filesystems.
 Support for additional ancient filesystems, such as early BSD filesystems, is
