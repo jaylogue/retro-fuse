@@ -60,14 +60,16 @@ struct v7_inode v7_inode[NINODE];
 struct v7_buf v7_buf[NBUF];
 struct v7_file v7_file[NFILE];
 struct v7_buf v7_bfreelist;
+struct v7_mount v7_mount[NMOUNT];
 
 dev_t	v7_rootdev;                             /* root device number (always 0) */
 int16_t	v7_nblkdev;                             /* number of entries in the block device switch table */
 int16_t	v7_nchrdev;                             /* number of entries in the character device table (always 0) */
-struct inode *v7_rootdir;                       /* pointer to root directory inode */
+struct v7_inode *v7_rootdir;                    /* pointer to root directory inode */
 v7_time_t	v7_time;                            /* time in sec from 1970 */
 int16_t	v7_updlock;                             /* lock for sync */
 daddr_t	v7_rablock;                             /* block to be read ahead */
+struct v7_inode *v7_mpxip;                      /* mpx virtual inode (unused) */
 
 /* Root device block table */
 static struct buf v7_rootdsktab = { 0 };

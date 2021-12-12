@@ -134,6 +134,7 @@ enum {
 #undef min
 #undef mknod
 #undef mount
+#undef mpxip
 #undef namei
 #undef nblkdev
 #undef nchrdev

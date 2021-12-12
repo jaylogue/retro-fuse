@@ -8,4 +8,5 @@ struct	mount
 	dev_t	m_dev;		/* device mounted */
 	struct buf *m_bufp;	/* pointer to superblock */
 	struct inode *m_inodp;	/* pointer to mounted on inode */
-} mount[NMOUNT];
+};
+extern struct mount mount[NMOUNT];

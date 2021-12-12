@@ -15,7 +15,7 @@
  * structure used to address
  * a sequence of integers.
  */
-physadr	ka6;		/* 11/40 KISA6; 11/45 KDSA6 */
+extern physadr	ka6;		/* 11/40 KISA6; 11/45 KDSA6 */
 
 /*
  * address to access 11/70 UNIBUS map

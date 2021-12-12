@@ -39,6 +39,7 @@ struct v7_stat;
 struct v7_devtab;
 struct v7_direct;
 struct v7_fblk;
+struct v7_mount;
 
 typedef int32_t v7_daddr_t;
 typedef int16_t v7_dev_t;
@@ -296,6 +297,7 @@ extern void v7_xrele(struct v7_inode *ip);
 #define min       v7_min
 #define mknod     v7_mknod
 #define mount     v7_mount
+#define mpxip     v7_mpxip
 #define namei     v7_namei
 #define nblkdev   v7_nblkdev
 #define nchrdev   v7_nchrdev

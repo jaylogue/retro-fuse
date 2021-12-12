@@ -20,7 +20,7 @@
 .DEFAULT_GOAL := all
 CC = gcc
 CPPFLAGS = -MMD -MP -I./src
-CFLAGS = -std=c11 -g -Wall -O0
+CFLAGS = -std=c11 -g -Wall -O0 -fno-common
 LIBS = -lfuse
 
 vpath %.c $(dir $(MAKEFILE_LIST))
