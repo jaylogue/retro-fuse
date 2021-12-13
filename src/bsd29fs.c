@@ -458,7 +458,7 @@ int bsd29fs_close(int fd)
 off_t bsd29fs_seek(int fd, off_t offset, int whence)
 {
     struct bsd29_file *fp;
-    off_t curSize, curPos;
+    off_t curSize;
 
     bsd29_refreshclock();
     bsd29_u.u_error = 0;
@@ -471,12 +471,11 @@ off_t bsd29fs_seek(int fd, off_t offset, int whence)
     if (fp->f_flag & FPIPE)
         return -ESPIPE;
     curSize = (off_t)fp->f_inode->i_size;
-    curPos = (off_t)fp->f_un.f_offset;
     switch (whence) {
     case SEEK_SET:
         break;
     case SEEK_CUR:
-        offset += curPos;
+        offset += (off_t)fp->f_un.f_offset;
         break;
     case SEEK_END:
         offset += curSize;
@@ -496,7 +495,7 @@ off_t bsd29fs_seek(int fd, off_t offset, int whence)
     default:
         return -EINVAL;
     }
-    if (offset < 0 || offset > curSize)
+    if (offset < 0 || offset > INT32_MAX)
         return -EINVAL;
     fp->f_un.f_offset = (bsd29_off_t)(offset);
     return offset;
