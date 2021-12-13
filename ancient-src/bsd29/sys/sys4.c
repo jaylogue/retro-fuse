@@ -298,8 +298,12 @@ chmod()
 		return;
 	ip->i_mode &= ~07777;
 	uap = (struct a *)u.u_ap;
+	/* relax access controls on setting the sticky bit to
+	 * match modern norms. */
+#if UNUSED
 	if (u.u_uid)
 		uap->fmode &= ~ISVTX;
+#endif
 	ip->i_mode |= uap->fmode & 07777;
 	ip->i_flag |= ICHG;
 	if (ip->i_flag & ITEXT && (ip->i_mode & ISVTX)==0)
