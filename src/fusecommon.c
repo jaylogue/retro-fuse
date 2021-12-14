@@ -51,6 +51,7 @@ static const struct fuse_opt retrofuse_options[] = {
     FUSE_OPT_KEY("mapgid=", RETROFUSE_OPT_KEY_MAPID),
     FUSE_OPT_KEY("initfs", RETROFUSE_OPT_KEY_INITFS),
     FUSE_OPT_KEY("initfs=", RETROFUSE_OPT_KEY_INITFS),
+    RETROFUSE_OPT("overwrite", overwrite, 1),
     RETROFUSE_OPT("-r", readonly, 1),
     RETROFUSE_OPT("ro", readonly, 1),
     RETROFUSE_OPT("rw", readonly, 0),
@@ -227,7 +228,7 @@ int main(int argc, char *argv[])
     {
         off_t dsksize = retrofuse_fsblktodskblk(cfg.fssize);
         off_t dskoffset = retrofuse_fsblktodskblk(cfg.fsoffset);
-        int openres = dsk_open(cfg.dskfilename, dsksize, dskoffset, 0, cfg.readonly);
+        int openres = dsk_open(cfg.dskfilename, dsksize, dskoffset, 0, 0, cfg.readonly);
         if (openres != 0) {
             fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", retrofuse_cmdname, strerror(-openres));
             goto exit;

@@ -36,6 +36,7 @@ struct retrofuse_config {
     uint32_t fssize;
     uint32_t fsoffset;
     const char *mountpoint;
+    int overwrite;
     int readonly;
     int foreground;
     int debug;

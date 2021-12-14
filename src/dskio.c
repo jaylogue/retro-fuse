@@ -65,22 +65,34 @@ static int dsk_isblkdev = 0;    /* underlying storage is block device */
  *                          read/write position.
  * 
  * @param[in]   create      If != 0, create a new disk image file. If
- *                          specified, the target file must *not* exist.
- *                          Ignored if the filename specifies a block device.
+ *                          specified, the target file must *not* exist, unless
+ *                          overwrite != 0.
+ *                          Ignored if filename specifies a block device.
+ * 
+ * @param[in]   overwrite   If != 0, overwrite an existing disk image file, if
+ *                          such a file exists.
+ *                          Ignored if create == 0 or filename specifies a block
+ *                          device.
  * 
  * @param[in]   ro          If != 0, open the device/image file in read-only
  *                          mode.  Ignored if create != 0.
  */
-int dsk_open(const char *filename, off_t size, off_t offset, int create, int ro)
+int dsk_open(const char *filename, off_t size, off_t offset, int create, int overwrite, int ro)
 {
     struct stat statbuf;
     int oflags = (ro && !create) ? O_RDONLY : O_RDWR;
 
     if (stat(filename, &statbuf) == 0) {
         dsk_isblkdev = S_ISBLK(statbuf.st_mode);
-        /* image file must not exist when creating */
-        if (!dsk_isblkdev && create)
-            return -EEXIST;
+        /* only allow block devices and regular files */
+        if (!S_ISREG(statbuf.st_mode) && !dsk_isblkdev)
+            return -ENOTBLK;
+        /* image file must not exist when creating, unless overwrite != 0 */
+        if (!dsk_isblkdev && create) {
+            if (!overwrite)
+                return -EEXIST;
+            oflags |= O_TRUNC;
+        }
     }
     else {
         if (errno != ENOENT || !create)

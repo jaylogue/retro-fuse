@@ -25,7 +25,7 @@ enum {
     DSK_BLKSIZE = 512
 };
 
-extern int dsk_open(const char *filename, off_t size, off_t offset, int create, int ro);
+extern int dsk_open(const char *filename, off_t size, off_t offset, int create, int overwrite, int ro);
 extern int dsk_close();
 extern int dsk_read(off_t blkno, void * buf, int byteCount);
 extern int dsk_write(off_t blkno, void * buf, int byteCount);

@@ -126,13 +126,16 @@ int retrofuse_initfs(const struct retrofuse_config * cfg)
     {
         off_t dsksize = retrofuse_fsblktodskblk(cfg->fssize);
         off_t dskoffset = retrofuse_fsblktodskblk(cfg->fsoffset);
-        res = dsk_open(cfg->dskfilename, dsksize, dskoffset, 1, 0);
+        res = dsk_open(cfg->dskfilename, dsksize, dskoffset, 1, cfg->overwrite, 0);
         if (res != 0) {
             if (res == -EEXIST)
-                fprintf(stderr, "%s: ERROR: Filesystem image file exists. To prevent accidents, the filesystem image file must NOT exist when using -oinitfs.\n",
+                fprintf(stderr, 
+                        "%s: ERROR: Filesystem image file exists.\n"
+                        "To prevent accidents, -o initfs will not overwrite an existing image file.\n"
+                        "Use the -o overwrite option to force overwriting.\n",
                         retrofuse_cmdname);
             else if (res == -EINVAL)
-                fprintf(stderr, "%s: ERROR: Missing -o fssize option. The size of the filesystem must be specified when using -oinitfs\n",
+                fprintf(stderr, "%s: ERROR: Missing -o fssize option. The size of the filesystem must be specified when using -o initfs\n",
                         retrofuse_cmdname);
             else
                 fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", retrofuse_cmdname, strerror(-res));
@@ -245,6 +248,11 @@ void retrofuse_showhelp()
         "        n and m are the interleave parameters for the initial free block list.\n"
         "        Specify n=1,m=1 for no interleave, which is the default. To get the same\n"
         "        interleave as used in the original v7 mkfs command specify n=500,m=3.\n"
+        "\n"
+        "  -o overwrite\n"
+        "        When used with the initfs option, instructs the filesystem handler\n"
+        "        to overwrite any existing filesystem image file. Without this option,\n"
+        "        the `initfs` option will fail with an error if an image file exists.\n"
         "\n"
         "  -o <mount-options>\n"
         "        Comma-separated list of standard mount options. See man 8 mount\n"
