@@ -181,8 +181,12 @@ chmod()
 	if ((ip = owner()) == NULL)
 		return;
 	ip->i_mode &= ~07777;
+	/* relax access controls on setting the sticky bit to
+	 * match modern norms. */
+#if UNUSED
 	if (u.u_uid)
 		u.u_arg[1] &= ~ISVTX;
+#endif
 	ip->i_mode |= u.u_arg[1]&07777;
 	ip->i_flag |= IACC; /* modernized so that chmod changes atime, not mtime */
 	iput(ip);

@@ -379,7 +379,7 @@ off_t v6fs_seek(int fd, off_t offset, int whence)
     default:
         return -EINVAL;
     }
-    if (offset < 0 || offset > curSize)
+    if (offset < 0 || offset > INT32_MAX)
         return -EINVAL;
     fp->f_offset[1] = (uint16_t)(offset);
     fp->f_offset[0] = (uint16_t)(offset >> 16);
@@ -906,7 +906,7 @@ int v6fs_mkdir(const char *pathname, mode_t mode)
     if (res < 0)
         goto exit;
 
-    /* create the /. directory link. */
+    /* create the .. directory link. */
     strcat(namebuf, ".");
     res = v6fs_link(parentname, namebuf);
     if (res < 0)

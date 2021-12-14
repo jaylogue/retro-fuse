@@ -138,7 +138,16 @@ int16_t v6_lshift(uint16_t *n, int16_t s)
 void v6_dpadd(uint16_t *n, int16_t a)
 {
     uint32_t n32 = ((uint32_t)n[0]) << 16 | n[1];
-    n32 += a;
+
+    /* NOTE: The kernel version of dpadd (in m40.s/m45.s) always interprets
+     * 'a' as an *unsigned* number, despite the fact that in most cases a
+     * signed integer (int) is passed.
+     *
+     * This is different from the user-space version of dpadd (in dpadd.s)
+     * which does signed addition.
+     */
+    n32 += (uint16_t)a;
+
     n[0] = (uint16_t)(n32 >> 16);
     n[1] = (uint16_t)n32;
 }

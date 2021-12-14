@@ -266,15 +266,19 @@ chmod()
 	register struct inode *ip;
 	register struct a {
 		char	*fname;
-		int	fmode;
+		int16_t	fmode;
 	} *uap;
 
 	uap = (struct a *)u.u_ap;
 	if ((ip = owner()) == NULL)
 		return;
 	ip->i_mode &= ~07777;
+	/* relax access controls on setting the sticky bit to
+	 * match modern norms. */
+#if UNUSED
 	if (u.u_uid)
 		uap->fmode &= ~ISVTX;
+#endif
 	ip->i_mode |= uap->fmode&07777;
 	ip->i_flag |= ICHG;
 	if (ip->i_flag&ITEXT && (ip->i_mode&ISVTX)==0)

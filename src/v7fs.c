@@ -145,7 +145,6 @@ int v7fs_init(int readonly)
     v7_rootdir->i_flag &= ~ILOCK;
 
     /* set the user's current directory. */
-    v7_u.u_cdir = v7_rootdir;
     v7_u.u_cdir = v7_iget(v7_rootdev, ROOTINO);
     v7_u.u_cdir->i_flag &= ~ILOCK;
     v7_u.u_rdir = NULL;
@@ -426,7 +425,7 @@ off_t v7fs_seek(int fd, off_t offset, int whence)
     default:
         return -EINVAL;
     }
-    if (offset < 0 || offset > curSize)
+    if (offset < 0 || offset > INT32_MAX)
         return -EINVAL;
     fp->f_un.f_offset = (v7_off_t)(offset);
     return offset;
@@ -491,7 +490,7 @@ int v7fs_mknod(const char *pathname, mode_t mode, dev_t dev)
     ip = v7_maknode(v7mode);
     if (ip == NULL)
         return -v7_u.u_error;
-    ip->i_un.i_addr[0] = (v7_daddr_t)v7dev;
+    ip->i_un.i_rdev = (v7_daddr_t)v7dev;
     v7_iput(ip);
     return -v7_u.u_error;
 }
@@ -783,7 +782,7 @@ int v7fs_chmod(const char *pathname, mode_t mode)
 {
     struct a {
         char *fname;
-        int fmode;
+        int16_t fmode;
     } uap;
 
     v7_refreshclock();
@@ -971,7 +970,7 @@ int v7fs_mkdir(const char *pathname, mode_t mode)
     if (res < 0)
         goto exit;
 
-    /* create the /. directory link. */
+    /* create the .. directory link. */
     strcat(namebuf, ".");
     res = v7fs_link(parentname, namebuf);
     if (res < 0)
