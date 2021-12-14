@@ -3,24 +3,22 @@
 A user-space filesystem (FUSE) for accessing ancient Unix filesystems.
 
 *retro-fuse* provides a way to mount filesystems created by ancient Unix systems
-on modern OSes.  The current version of *retro-fuse* supports filesystems
-created by fifth, sixth and seventh-edition Unix.
+on modern OSes.  The current version of *retro-fuse* supports mounting filesystems
+created by fifth, sixth and seventh-edition research Unix, as well as 2.9BSD.
 It can also initialize such filesystems.
-Support for additional ancient filesystems, such as early BSD filesystems, is
-planned for the future.
 
-The design of *retro-fuse* is novel in that it incorprates source code from the
-original Unix kernel.  The ancient code has been "lightly" modernized to be palatable
+The design of *retro-fuse* is novel in that it incorprates original source code
+from the historic Unix kernels.  The ancient code has been "lightly" modernized to be palatable
 to current compilers, and adapted to run in userspace.  This approach (made possible
 by Caldera's generous open source license for ancient Unix) allows *retro-fuse* to
 support both reading and writing of ancient filesystems, while ensuring the historical
 fidelity of the on-disk structures.
 
 *retro-fuse* provides support for a broad array of modern filesystem operations on
-top the basic capabilities of the original code.  This includes support for modern
-rename(2) semantics and filesystem statistics gathering (e.g. via df(1)).
-Additionally, the code provides a modern C API, making it possible to incorporate
-ancient filesystem access into other projects.
+top of the basic capabilities of the original code.  This includes support for modern
+rename(2) semantics and filesystem statistics gathering (e.g. via statfs(2) / df(1)).
+The code also provides a C API with semantics that match modern Unix syscalls,
+making it possible to incorporate ancient filesystem access directly into other projects.
 
 The current version of *retro-fuse* runs on Linux and MacOS.
 
@@ -45,25 +43,28 @@ After the prerequisites have been installed, building is as simple as running ma
 $ make
 ----
 
-The build process produces two filesystem handler programs: ``v6fs`` and ``v7fs``.
-``v6fs`` supports mounting fifth and sixth edition filesystems, while ``v7fs``
-supports seventh-edition filesystems.  Both programs can be run directly from the
-command line.  Alternatively, the programs can be installed into ``/usr/local/sbin``,
-making it possible to mount filesystems using the standard mount(8) command (using the
-``-t fuse.<handler>`` option).
-
 ## Usage
 
-To mount an ancient unix filesystem, run the appropriate filesystem handler
+The build process produces the following filesystem handler programs:
+
+* `v6fs` -- Supports fifth and sixth edition filesystems
+* `v7fs` -- Supports seventh-edition filesystems
+* `bsd29fs` -- Supports 2.9BSD filesystems
+
+The filesystem handler programs can be run directly from the command line, or they
+can be installed into ``/usr/local/sbin``, making it possible to mount filesystems using
+the standard mount(8) command.
+
+To mount an ancient Unix filesystem, run the appropriate filesystem handler
 program, supplying the name of the block or image file containing
 the filesystem, and the desired mount point:
 
-``vXfs [_<options>_] __<device-or-image-file>__ _<mount-point>_``
+``__<handler>__ [_<options>_] __<device-or-image-file>__ _<mount-point>_``
 
 Alternatively, if the handler programs have been installed in ``/sbin``
 or ``/usr/local/sbin``, you can use the mount command:
 
-``sudo mount -t fuse.v__X__fs [_<options>_] _<device-or-image-file>_ _<mount-point>_``
+``sudo mount -t fuse.__<handler>__ [_<options>_] _<device-or-image-file>_ _<mount-point>_``
 
 When executed directly, the filesystem handlers can be run by a non-root
 user. This is often more convenient than using the mount command, which
@@ -73,17 +74,22 @@ must always be run as root.
 
 The first non-option argument to a filesystem handler program is the
 storage location of the filesystem.  This can be a regular file containing
-an image of the filesystem, or a standard Unix block device.  In the case
-of a block device, it may be useful to specify an offset to the start of
-the filesystem using the ``-o fsoffset`` option.
+an image of the filesystem, or a standard Unix block device.
+
+In the case of a block device, it may be useful to specify an offset to
+the start of the filesystem using the ``-o fsoffset=__x__`` option. If
+not specified, the filesystem is assumed to start at the beginning of the
+block device.
 
 
 ### _Options_
 
 The filesystem handler programs accept the standard set of options
-supported by the mount(8) command, as well as the FUSE mount options
-described in mount.fuse(8).  Additionally, they provide their own set
-of options useful for dealing with ancient filesystems.
+supported by the https://man7.org/linux/man-pages/man8/mount.8.html[mount(8)]
+command, as well as the FUSE mount options
+described in https://man7.org/linux/man-pages/man8/mount.fuse3.8.html[mount.fuse(8)].
+Additionally, the handlers provide their own set of options useful for
+dealing with ancient filesystems.
 
 The following is a summary of some of the more useful options:
 
@@ -122,35 +128,51 @@ Multiple mapping options may be given, up to a limit of 100.
 
 `**-o fssize=__<blocks>__**`;;
 
-The size of the filesystem, in 512-byte blocks. This is used to limit I/O
-on the underlying device/image file, e.g. to protect against the case
-where the filesystem contains malformed block pointers.  Defaults to the
-size given in the filesystem superblock.
+The size of the filesystem, in  blocks. This is used to limit the range
+of I/O on the underlying device/image file.  This can be useful to prevent
+malformed filesystems from accessing blocks outside of the intended area.
+It is also necessary when initializing a new filesystem using an image
+file (see the `initfs` option for further details).
++
+The size of a block varies by filesystem type:
++
+[options="header",width="40%"]
+|=======================
+|Filesystem|Block Size (bytes)
+|v6    |512
+|v7    |512
+|2.9BSD    |1024
+|=======================
++
+For an existing filesystem, the `fssize` value defaults to the size given
+in the filesystem superblock.
 
 ``**-o fsoffset=__<blocks>__**``;;
 
-Offset into the device/image at which the filesystem starts, in 512-byte
+Offset into the device/image file at which the filesystem starts, in 
 blocks.  Defaults to 0.
 
 ``**-o initfs**``;;
-``**-o initfs=__<isize>__**``;;
-``**-o initfs=__<isize>__:__<n>__:__<m>__**``;;
+``**-o initfs=__<params>__**``;;
 
 Create an empty filesystem on the underlying device/image file before
-mounting.  When using the initfs option on an image file, the size of
-the filesystem must be specified via the ``fssize`` option.
+mounting.  When using the `initfs` option on an image file, the desired
+size of the filesystem must be specified using the ``fssize`` option.
 +
-__isize__ gives the size of the filesystem's inode table in 512-byte
-blocks (16 inodes per block for v6, 8 inodes per block for v7).
-If not specified, or if 0 is given, the size of the inode table is
-computed automatically from the size of the filesystem, using the
-formula from the original unix mkfs(8) command.
+__params__ is a set of initialization parameters which control the layout
+and configuration of the new filesystem. The interpretation of these
+parameters varies by filesystem type. Details on the syntax can be
+found in the help output of the associated filesystem handler (e.g. by
+running ``v6fs --help``).
 +
-__n__ and __m__ are the interleave parameters for the initial free block list.
-Traditionally, the v6 mkfs command used n=10,m=4 for rp devices, 24,3
-for rk devices, and 1,1 (i.e. no interleave) for all other devices.
-The v7 mkfs command used n=500,m=3 for all devices.
-If the interleave parameters are omitted, no interleave is used.
+If __params__ is not specified, the filesystem is initialized using
+the default parameters as used by the original Unix mkfs(8) command.
+
+``**-o overwrite**``;;
+
+When used with the `initfs` option, instructs the filesystem handler
+to overwrite any existing filesystem image file. Without this option,
+the `initfs` option will fail with an error if an image file exists.
 
 ``**-f**``;;
 ``**--foreground**``;;
@@ -174,25 +196,25 @@ Print usage information.
 
 ### _Examples_
 
-**Mount an image file containing v6 filesystem**
+**Mount an image file containing a v6 filesystem**
 
 [source,bash]
 ----
 $ v6fs root.dsk /mnt/tmp
 ----
 
-**Mount a v7 filesystem occupying a particular offset and size on a block device**
+**Mount a v7 filesystem occupying a particular offset and size on a host block device**
 
 [source,bash]
 ----
 $ v7fs -o fssize=4872,fsoffset=4194304 /dev/sdc /mnt/tmp
 ----
 
-**Mount a v6 filesystem, mapping the host's user id 1000 to uid 3 on the filesystem**
+**Mount a 2.9BSD filesystem, mapping the host's user id 1000 to uid 33 on the filesystem**
 
 [source,bash]
 ----
-$ v6fs -o mapuid=1000:33 root.dsk /mnt/tmp
+$ bsd29fs -o mapuid=1000:33 root.dsk /mnt/tmp
 ----
 
 **Mount a v6 filesystem as root, allowing other users to access it**
@@ -208,7 +230,8 @@ $ sudo v6fs -oallow_other root.dsk /mnt/tmp
 ----
 $ v6fs -o initfs,fssize=4872 scratch.dsk /mnt/tmp
 ----
-__NOTE -- When using the ``initfs`` option with an image file, the file must **not** exist when the command is invoked.__
+__NOTE -- When using the ``initfs`` option with an image file, the file
+must **not** exist when the command is invoked.__
 
 **Initialize and mount a new v7 filesystem with a specific number of inode blocks**
 
@@ -241,33 +264,54 @@ image::doc/retro-fuse-architecture.png[align="center"]
 
 ### _Source Modules_
 
-*unix kernel* (e.g. ancient-src/v6/+*.[ch]+) -- Modernized ancient Unix source code.  Modifications to the original kernel code are purposefully minimal, and consist mostly of syntatical and type compatibility changes. Additionally, a series of #defines and selective hand editing is used to add a prefix for functions and global variables (e.g. "v6_"), so as to avoid conflicts with similarly named modern constructs.
+*Unix kernel* (ancient-src/v6/+*+, ancient-src/v7/+*+, etc.) -- Modernized
+ancient Unix source code.  Modifications to the original kernel code are
+purposefully minimal, and consist mostly of syntatical and type compatibility
+changes. Additionally, a series of #defines and selective hand editing is
+used to add a prefix for functions and global variables (e.g. "v6_"), so
+as to avoid conflicts with similarly named modern constructs.
 
-*unix adapter* (e.g. src/v6adapt.[ch]) -- Code supporting the modernized kernel code. This includes replacements for various Unix functions that either require significantly different behavior in the *retro-fuse* context, or were originally written in PDP-11 assembly.
+*Unix adapter* (src/v6adapt.[ch], src/v7adapt.[ch], etc.) -- Code supporting
+the modernized kernel code. This includes replacements for various Unix
+functions that either require significantly different behavior in the
+*retro-fuse* context, or were originally written in PDP-11 assembly.
 
-*filesystem API* (e.g. src/v6fs.[ch]) -- Provides a modern API for accessing ancient filesystems. The API closely mimics the modern Unix filesystem API, with the notible exception that errors are returned as return values rather than via errno. This API is designed such that it could be reused outside of the context of a FUSE filesystem.
+*filesystem API* (src/v6fs.[ch], src/v7fs.[ch], etc.) -- Provides a modern
+API for accessing ancient filesystems. The API closely mimics the modern
+Unix filesystem API, with the notible exception that errors are returned as
+return values rather than via errno. This API is designed such that it could
+be reused outside of the context of a FUSE filesystem.
 
-*fuse app* (e.g. src/v6fuse.c) -- Main program implementing a mountable FUSE filesystem. The primary purpose of the fuse module is to handle filesystem I/O requests from the host kernel via the libfuse library. Implements a variety of command-line options to make it easier to work with ancient filesystems.
+*fuse app* (src/fusecommon.c, src/v6fuse.c, src/v7fuse.c, etc.) -- Main
+program implementing the FUSE filesystem handler. The primary purpose of the
+fuse module is to handle filesystem I/O requests from the host kernel via
+the libfuse library. Implements a variety of command-line options to make
+it easier to work with ancient filesystems.
 
-*dsk* (src/dsk.[ch]) -- Provides a simple abstraction of a virtual block-oriented disk device. Supports filesystems contained in image files as well as host block devices (e.g. a MicroSD card).
+*dsk* (src/dsk.[ch]) -- Provides a simple abstraction of a virtual block-oriented
+disk device. Supports filesystems contained in image files as well as host
+block devices (e.g. a MicroSD card).
 
 
 
 ## License
 
-The modern portions of retro-fuse are licensed under the xref:LICENSE.txt[Apache 2.0 license].  Code derived from ancient Unix source is licensed under xref:Caldera-license.pdf[Caldera open source license].
+The modern portions of retro-fuse are licensed under the xref:LICENSE.txt[Apache 2.0 license].
+Code derived from ancient Unix source is licensed under xref:Caldera-license.pdf[Caldera open source license].
 
 
 
 ## Release Notes
 
-**Version 5 / 2021/11/10** -- Various code restructuring and clean up. Fixed a few minor bugs. Improved Makefile.
+**Version 5 / 2021/11/10** -- Various code restructuring and clean up. Fixed a
+few minor bugs. Improved Makefile.
 
 **Version 4 / 2021/11/06** -- Added support for seventh-edition Unix filesystems.
 
 **Version 3 / 2021/03/27** -- Added support for MacOS.
 
-**Version 2 / 2021/03/02** -- Fixed bug in link(), unlink(), chmod() and chown() that caused the files modified time to be updated (this fixes problems
+**Version 2 / 2021/03/02** -- Fixed bug in link(), unlink(), chmod() and chown()
+that caused the files modified time to be updated (this fixes problems
 with rsync).  Minor modifications to error handling.
 
 **Version 1 / 2021/02/23** -- Initial release.
