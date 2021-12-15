@@ -60,6 +60,7 @@ extern const uint32_t retrofuse_maxuidgid;
 extern int retrofuse_parseinitfsopt(struct retrofuse_config *cfg, const char *arg);
 extern int retrofuse_adduidmap(uid_t hostid, uint32_t fsid);
 extern int retrofuse_addgidmap(gid_t hostid, uint32_t fsid);
+extern int retrofuse_checkinitfsconfig(const struct retrofuse_config * cfg);
 extern int retrofuse_initfs(const struct retrofuse_config * cfg);
 extern int retrofuse_mount(const struct retrofuse_config * cfg);
 extern void retrofuse_showhelp();

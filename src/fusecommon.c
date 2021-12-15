@@ -200,8 +200,52 @@ int main(int argc, char *argv[])
 
     /* if requested, call filesystem-specific code to initialize a new filesystem. */
     if (cfg.initfs) {
+
+        /* verify the configuration parameters for initfs are acceptable. */
+        if (retrofuse_checkinitfsconfig(&cfg) != 0)
+            goto exit;
+
+        /* create a new disk image file or open the underlying block device */
+        {
+            off_t dsksize = retrofuse_fsblktodskblk(cfg.fssize);
+            off_t dskoffset = retrofuse_fsblktodskblk(cfg.fsoffset);
+            res = dsk_open(cfg.dskfilename, dsksize, dskoffset, 1, cfg.overwrite, 0);
+            if (res != 0) {
+                if (res == -EEXIST)
+                    fprintf(stderr, 
+                            "%s: ERROR: Filesystem image file exists.\n"
+                            "To prevent accidents, -o initfs will not overwrite an existing image file.\n"
+                            "Use the -o overwrite option to force overwriting.\n",
+                            retrofuse_cmdname);
+                else if (res == -EINVAL)
+                    fprintf(stderr,
+                            "%s: ERROR: Missing -o fssize option.\n"
+                            "The size of the filesystem must be specified when using -o initfs with an image file.\n",
+                            retrofuse_cmdname);
+                else
+                    fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", retrofuse_cmdname, strerror(-res));
+                return -1;
+            }
+        }
+
+        /* if the filesystem size wasn't specified on the command line... */
+        if (cfg.fssize == 0) {
+
+            /* derrive the filesystem size based on the size of the underlying block device. */
+            cfg.fssize = retrofuse_dskblktofsblk(dsk_getsize());
+
+            /* double check that the configuration parameters are sane given the final
+             * filesystem size. */
+            if (retrofuse_checkinitfsconfig(&cfg) != 0)
+                goto exit;
+        }
+
+        /* initialize a new filesystem with the specified parameters. */
         if (retrofuse_initfs(&cfg) != 0)
             goto exit;
+
+        /* close the virtual disk containing the new filesystem */
+        dsk_close();
     }
 
     /* verify access to the underlying block device/image file. */

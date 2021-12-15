@@ -75,38 +75,41 @@ int retrofuse_parseinitfsopt(struct retrofuse_config * cfg, const char * arg)
     return -1;
 }
 
-static int checkfssize(uint32_t fssize)
+int retrofuse_checkinitfsconfig(const struct retrofuse_config * cfg)
 {
-    if (fssize < V6FS_MIN_FS_SIZE) {
-        fprintf(stderr, "%s: ERROR: Filesystem size is too small (must be >= %d blocks).\n",
-                retrofuse_cmdname, V6FS_MIN_FS_SIZE);
-        return -1;
+    /* if given, verify that the fssize argument is within range. */
+    if (cfg->fssize != 0) {
+        if (cfg->fssize < V6FS_MIN_FS_SIZE) {
+            fprintf(stderr, "%s: ERROR: Filesystem size is too small (must be >= %d blocks).\n",
+                    retrofuse_cmdname, V6FS_MIN_FS_SIZE);
+            return -1;
+        }
+        if (cfg->fssize > V6FS_MAX_FS_SIZE) {
+            fprintf(stderr, "%s: ERROR: Filesystem size is too big (must be <= %d blocks).\n",
+                    retrofuse_cmdname, V6FS_MAX_FS_SIZE);
+            return -1;
+        }
     }
-    if (fssize > V6FS_MAX_FS_SIZE) {
-        fprintf(stderr, "%s: ERROR: Filesystem size is too big (must be <= %d blocks).\n",
-                retrofuse_cmdname, V6FS_MAX_FS_SIZE);
-        return -1;
-    }
-    return 0;
-}
 
-static int checkisize(uint32_t isize, uint32_t fssize)
-{
-    if (isize < V6FS_MIN_ITABLE_SIZE) {
-        fprintf(stderr, "%s: ERROR: Specified inode table size is too small (must be >= %d blocks).\n", 
-                retrofuse_cmdname, V6FS_MIN_ITABLE_SIZE);
-        return -1;
+    /* if given, verify that the inode table size argument is within range. */
+    if (cfg->initfsparams.isize != 0) {
+        if (cfg->initfsparams.isize < V6FS_MIN_ITABLE_SIZE) {
+            fprintf(stderr, "%s: ERROR: Specified inode table size is too small (must be >= %d blocks).\n", 
+                    retrofuse_cmdname, V6FS_MIN_ITABLE_SIZE);
+            return -1;
+        }
+        if (cfg->initfsparams.isize > V6FS_MAX_ITABLE_SIZE) {
+            fprintf(stderr, "%s: ERROR: Specified inode table size is too big (must be <= %d blocks).\n",
+                    retrofuse_cmdname, V6FS_MAX_ITABLE_SIZE);
+            return -1;
+        }
+        if (cfg->fssize != 0 && cfg->initfsparams.isize > (cfg->fssize - 4)) {
+            fprintf(stderr, "%s: ERROR: Specified inode table size too big (must be <= filesystem size - 4 blocks).\n",
+                    retrofuse_cmdname);
+            return -1;
+        }
     }
-    if (isize > V6FS_MAX_ITABLE_SIZE) {
-        fprintf(stderr, "%s: ERROR: Specified inode table size is too big (must be <= %d blocks).\n",
-                retrofuse_cmdname, V6FS_MAX_ITABLE_SIZE);
-        return -1;
-    }
-    if (fssize != 0 && isize > (fssize - 4)) {
-        fprintf(stderr, "%s: ERROR: Specified inode table size too big (must be <= filesystem size - 4 blocks).\n",
-                retrofuse_cmdname);
-        return -1;
-    }
+
     return 0;
 }
 
@@ -114,57 +117,13 @@ int retrofuse_initfs(const struct retrofuse_config * cfg)
 {
     int res;
 
-    /* if given, verify that the fssize argument is within range. */
-    if (cfg->fssize != 0 && checkfssize(cfg->fssize) != 0)
-        return -1;
-
-    /* if given, verify that the inode table size argument is within range. */
-    if (cfg->initfsparams.isize != 0 && checkisize(cfg->initfsparams.isize, cfg->fssize) != 0)
-        return -1;
-
-    /* create a new disk image file or open the underlying block device */
-    {
-        off_t dsksize = retrofuse_fsblktodskblk(cfg->fssize);
-        off_t dskoffset = retrofuse_fsblktodskblk(cfg->fsoffset);
-        res = dsk_open(cfg->dskfilename, dsksize, dskoffset, 1, cfg->overwrite, 0);
-        if (res != 0) {
-            if (res == -EEXIST)
-                fprintf(stderr, 
-                        "%s: ERROR: Filesystem image file exists.\n"
-                        "To prevent accidents, -o initfs will not overwrite an existing image file.\n"
-                        "Use the -o overwrite option to force overwriting.\n",
-                        retrofuse_cmdname);
-            else if (res == -EINVAL)
-                fprintf(stderr, "%s: ERROR: Missing -o fssize option. The size of the filesystem must be specified when using -o initfs\n",
-                        retrofuse_cmdname);
-            else
-                fprintf(stderr, "%s: ERROR: Failed to open disk/image file: %s\n", retrofuse_cmdname, strerror(-res));
-            return -1;
-        }
-    }
-
-    /* get the final filesystem size.  Note that this value may have been derrived from the 
-     * the size of the underlying block device. */
-    off_t fssize = retrofuse_dskblktofsblk(dsk_getsize());
-
-    /* double check the final filesystem size is sane and does not exceed the capabilities of the v6 code. */
-    if (checkfssize(fssize) != 0)
-        return -1;
-
-    /* double check the inode table size. */
-    if (cfg->initfsparams.isize != 0 && checkisize(cfg->initfsparams.isize, fssize) != 0)
-        return -1;
-
     /* initialize the new filesystem with the specified parameters. */
     struct v6fs_flparams flparams = { .n = cfg->initfsparams.n, .m = cfg->initfsparams.m };
-    res = v6fs_mkfs((uint16_t)fssize, (uint16_t)cfg->initfsparams.isize, &flparams);
+    res = v6fs_mkfs((uint16_t)cfg->fssize, (uint16_t)cfg->initfsparams.isize, &flparams);
     if (res != 0) {
         fprintf(stderr, "%s: ERROR: Failed to initialize filesystem: %s\n", retrofuse_cmdname, strerror(-res));
         return -1;
     }
-
-    /* close the virtual disk containing the new filesystem */
-    dsk_close();
 
     return 0;
 }
