@@ -84,9 +84,11 @@ int dsk_open(const char *filename, off_t size, off_t offset, int create, int ove
 
     if (stat(filename, &statbuf) == 0) {
         dsk_isblkdev = S_ISBLK(statbuf.st_mode);
+        
         /* only allow block devices and regular files */
         if (!S_ISREG(statbuf.st_mode) && !dsk_isblkdev)
             return -ENOTBLK;
+        
         /* image file must not exist when creating, unless overwrite != 0 */
         if (!dsk_isblkdev && create) {
             if (!overwrite)
@@ -94,12 +96,20 @@ int dsk_open(const char *filename, off_t size, off_t offset, int create, int ove
             oflags |= O_TRUNC;
         }
     }
+
     else {
+        /* fail if there's an error accessing the file, or if the file doesn't
+         * exist and we're not creating. */
         if (errno != ENOENT || !create)
-            return 0;
+            return -errno;
+
         dsk_isblkdev = 0;
         oflags |= O_CREAT|O_EXCL;
     }
+
+    /* must specify disk size when creating a disk image file. */
+    if (!dsk_isblkdev && create && size <= 0)
+        return -EINVAL;
 
     dsk_fd = open(filename, oflags, 0666);
     if (dsk_fd < 0)
@@ -121,20 +131,12 @@ int dsk_open(const char *filename, off_t size, off_t offset, int create, int ove
 #endif
     }
 
-    /* when creating, disk size must be known. */
-    if (create && size <= 0) {
-        dsk_close();
-        if (!dsk_isblkdev)
-            unlink(filename);
-        return -EINVAL;
-    }
-
     dsk_start = offset * DSK_BLKSIZE;
     dsk_setsize(size);
 
     /* if creating an image file, enlarge it to the size of the
        virtual disk */
-    if (create && !dsk_isblkdev) {
+    if (!dsk_isblkdev && create) {
         if (ftruncate(dsk_fd, dsk_end) != 0) {
             int res = -errno;
             dsk_close();
