@@ -44,8 +44,8 @@ int retrofuse_parseinitfsopt(struct retrofuse_config *cfg, const char *arg)
 {
     cfg->initfs = 1;
     cfg->initfsparams.isize = 0;
-    cfg->initfsparams.n = 1;
-    cfg->initfsparams.m = 1;
+    cfg->initfsparams.n = 10;
+    cfg->initfsparams.m = 5;
 
     int matchend = -1;
     int scanres = sscanf(arg, " initfs %n= %" SCNu32 " %n: %" SCNu16 " : %" SCNu16 " %n",
@@ -195,7 +195,7 @@ void retrofuse_showhelp()
         "  -o initfs=<isize>\n"
         "  -o initfs=<isize>:<n>:<m>\n"
         "        Create an empty filesystem on the underlying device/image file before\n"
-        "        mounting.  When using the initfs option on an image file the size of\n"
+        "        mounting.  When using the initfs option on an image file, the size of\n"
         "        the filesystem must be specified via the -ofssize option.\n"
         "\n"
         "        isize gives the size of the filesystem's inode table in 1K-byte\n"
@@ -204,8 +204,8 @@ void retrofuse_showhelp()
         "        of the filesystem, using the logic found in the original BSD mkfs command.\n"
         "\n"
         "        n and m are the interleave parameters for the initial free block list.\n"
-        "        Specify n=1,m=1 for no interleave, which is the default. To get the same\n"
-        "        interleave as used in the original BSD mkfs command specify n=10,m=5.\n"
+        "        Specifying n=1,m=1 produces no interleave.  The default is n=10,m=5, which\n"
+        "        is the same as used in the original BSD mkfs command.\n"
         "\n"
         "  -o overwrite\n"
         "        When used with the initfs option, instructs the filesystem handler\n"

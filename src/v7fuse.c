@@ -44,8 +44,8 @@ int retrofuse_parseinitfsopt(struct retrofuse_config *cfg, const char *arg)
 {
     cfg->initfs = 1;
     cfg->initfsparams.isize = 0;
-    cfg->initfsparams.n = 1;
-    cfg->initfsparams.m = 1;
+    cfg->initfsparams.n = 500;
+    cfg->initfsparams.m = 3;
 
     int matchend = -1;
     int scanres = sscanf(arg, " initfs %n= %" SCNu32 " %n: %" SCNu16 " : %" SCNu16 " %n",
@@ -204,8 +204,8 @@ void retrofuse_showhelp()
         "        of the filesystem, using the logic found in the original v7 mkfs command.\n"
         "\n"
         "        n and m are the interleave parameters for the initial free block list.\n"
-        "        Specify n=1,m=1 for no interleave, which is the default. To get the same\n"
-        "        interleave as used in the original v7 mkfs command specify n=500,m=3.\n"
+        "        Specifying n=1,m=1 produces no interleave. The default is n=500,m=3,\n"
+        "        which is the same as used in the original v7 mkfs command.\n"
         "\n"
         "  -o overwrite\n"
         "        When used with the initfs option, instructs the filesystem handler\n"
