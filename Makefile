@@ -62,6 +62,7 @@ $(V6_DEPS) src/v6fs.d src/v6adapt.d : CPPFLAGS += -I./ancient-src/v6
 $(V6FS_PROG) : $(V6FS_OBJS) $(V6_OBJS)
 	$(CC) -o $@ -Xlinker $^ $(LIBS)
 
+
 ############### UNIX V7 ################
 
 V7FS_PROG = v7fs
@@ -99,6 +100,7 @@ $(V7_DEPS) src/v7fs.d src/v7adapt.d : CPPFLAGS += -I./ancient-src/v7
 
 $(V7FS_PROG) : $(V7FS_OBJS) $(V7_OBJS)
 	$(CC) -o $@ -Xlinker $^ $(LIBS)
+
 
 ############### 2.9 BSD ################
 
@@ -139,9 +141,17 @@ $(BSD29_DEPS) src/bsd29fs.d src/bsd29adapt.d : CPPFLAGS += -Wno-comment -Wno-end
 $(BSD29FS_PROG) : $(BSD29FS_OBJS) $(BSD29_OBJS)
 	$(CC) -o $@ -Xlinker $^ $(LIBS)
 
+
 ########### GENERAL TARGETS ############
 
-all : $(V6FS_PROG) $(V7FS_PROG) $(BSD29FS_PROG)
+ALL_PROGS = $(V6FS_PROG) $(V7FS_PROG) $(BSD29FS_PROG)
+
+all : $(ALL_PROGS)
+
+test : $(addprefix test-, $(ALL_PROGS))
+
+test-% : %
+	./test/retro-fuse-test.py $*
 
 clean :
 	rm -f $(V6FS_PROG) $(V6FS_PROG).map $(V6FS_OBJS) $(V6_OBJS) $(V6FS_DEPS) $(V6_DEPS)
