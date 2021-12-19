@@ -23,6 +23,7 @@
 import os
 import re
 import shutil
+import gzip
 import tempfile
 import pexpect
 from FileList import FileList
@@ -69,12 +70,11 @@ class SimhDriver:
     def sendSimhCommands(self, script):
         self.simh.setecho(False)
         self.simh.sendline('')
-        self.simh.expect_exact('sim> ', timeout=5)
         for line in script.split('\n'):
             line = line.strip()
             if len(line) > 0:
+                self.simh.expect_exact('sim> ', timeout=5)
                 self.simh.sendline(line)
-                self.simh.expect_exact('sim> ')
         self.simh.setecho(True)
 
     def __enter__(self):
@@ -87,7 +87,7 @@ class SimhDriver:
 class V6SimhDriver(SimhDriver):
     '''Runs a simulated v6 Unix system using simh'''
 
-    defaultSystemDiskImage = os.path.join(sysImagesDirName, 'v6-test-system-rk05.dsk')
+    defaultSystemDiskImage = os.path.join(sysImagesDirName, 'v6-test-system-rk05.dsk.gz')
 
     def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=30):
         super().__init__(simhCmd=simhCmd, cwd=cwd, debugStream=debugStream, timeout=timeout)
@@ -102,7 +102,7 @@ class V6SimhDriver(SimhDriver):
             if self.cwd is None:
                 self.tempDir = tempfile.TemporaryDirectory()
                 self.cwd = self.tempDir.name
-            shutil.copyfile(self.systemDiskImage, os.path.join(self.cwd, 'system.dsk'))
+            _copyImageFile(self.systemDiskImage, os.path.join(self.cwd, 'system.dsk'))
             super().start()
             initScript = V6SimhDriver._initScript
             if self.testDiskImage is not None:
@@ -225,7 +225,7 @@ attach rk0 system.dsk
 class V7SimhDriver(SimhDriver):
     '''Runs a simulated v7 Unix system using simh'''
 
-    defaultSystemDiskImage = os.path.join(sysImagesDirName, 'v7-test-system-rp04.dsk')
+    defaultSystemDiskImage = os.path.join(sysImagesDirName, 'v7-test-system-rp04.dsk.gz')
 
     def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=30):
         super().__init__(simhCmd=simhCmd, cwd=cwd, debugStream=debugStream, timeout=timeout)
@@ -240,7 +240,7 @@ class V7SimhDriver(SimhDriver):
             if self.cwd is None:
                 self.tempDir = tempfile.TemporaryDirectory()
                 self.cwd = self.tempDir.name
-            shutil.copyfile(self.systemDiskImage, os.path.join(self.cwd, 'system.dsk'))
+            _copyImageFile(self.systemDiskImage, os.path.join(self.cwd, 'system.dsk'))
             super().start()
             initScript = self._initScript
             if self.testDiskImage is not None:
@@ -362,7 +362,7 @@ attach rp0 system.dsk
 class BSD29SimhDriver(SimhDriver):
     '''Runs a simulated 2.9BSD Unix system using simh'''
 
-    defaultSystemDiskImage = os.path.join(sysImagesDirName, 'bsd29-test-system-rl02.dsk')
+    defaultSystemDiskImage = os.path.join(sysImagesDirName, 'bsd29-test-system-rl02.dsk.gz')
 
     def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=30):
         super().__init__(simhCmd=simhCmd, cwd=cwd, debugStream=debugStream, timeout=timeout)
@@ -377,7 +377,7 @@ class BSD29SimhDriver(SimhDriver):
             if self.cwd is None:
                 self.tempDir = tempfile.TemporaryDirectory()
                 self.cwd = self.tempDir.name
-            shutil.copyfile(self.systemDiskImage, os.path.join(self.cwd, 'system.dsk'))
+            _copyImageFile(self.systemDiskImage, os.path.join(self.cwd, 'system.dsk'))
             with open(os.path.join(self.cwd, 'swap.dsk'), "w+") as f:
                 pass
             super().start()
@@ -518,3 +518,11 @@ attach rl1 swap.dsk
 ** Phase 4 - Check Reference Counts\r
 ** Phase 5 - Check Free List \r
 '''
+
+def _copyImageFile(src, dest):
+    if src.endswith('.gz'):
+        with gzip.open(src, 'rb') as s:
+            with open(dest, 'wb') as d:
+                shutil.copyfileobj(s, d)
+    else:
+        shutil.copyfile(src, dest)
