@@ -8,23 +8,35 @@ created by fifth, sixth and seventh-edition research Unix, as well as 2.9BSD.
 It can also initialize such filesystems.
 
 The design of *retro-fuse* is novel in that it incorprates original source code
-from the historic Unix kernels.  The ancient code has been "lightly" modernized to be palatable
-to current compilers, and adapted to run in userspace.  This approach (made possible
-by Caldera's generous open source license for ancient Unix) allows *retro-fuse* to
-support both reading and writing of ancient filesystems, while ensuring the historical
-fidelity of the on-disk structures.
+from the historic Unix kernels.  The ancient code has been "lightly modernized" to be
+palatable to current compilers and adapted to run in userspace.  This approach (made
+possible by Caldera's generous open source license for ancient Unix) allows *retro-fuse*
+to support both reading and writing of ancient filesystems, while ensuring the historical
+fidelity of on-disk structures.
 
 *retro-fuse* provides support for a broad array of modern filesystem operations on
 top of the basic capabilities of the original code.  This includes support for modern
-rename(2) semantics and filesystem statistics gathering (e.g. via statfs(2) / df(1)).
-The code also provides a C API with semantics that match modern Unix syscalls,
-making it possible to incorporate ancient filesystem access directly into other projects.
+rename(2) semantics, filesystem statistics gathering (e.g. via statfs(2) / df(1)) and 
+symlinks (where appropriate). The code also provides a C API with semantics that match
+modern Unix syscalls, making it possible to incorporate ancient filesystem access
+directly into other projects.
 
 The current version of *retro-fuse* runs on Linux and MacOS.
 
-## Building and Running
+'''
+<<Building>> +
+<<Testing>> +
+<<Usage>> +
+<<Examples>> +
+<<Code Structure and Operation>> +
+<<License>> +
+<<Release Notes>>
 
-On Linux, *retro-fuse* requires the libfuse-dev package, which can be installed on
+'''
+
+## Building
+
+Building *retro-fuse* on Linux requires the libfuse-dev package, which can be installed on
 Ubuntu/debian-based systems as follows:
 
 [source,bash]
@@ -35,13 +47,58 @@ $ sudo apt install libfuse-dev
 On MacOS, *retro-fuse* requires the macFUSE sofware package, an installer for which
 can be downloaded from the https://osxfuse.github.io[macFUSE] website.
 
-
-After the prerequisites have been installed, building is as simple as running make:
+After the prerequisites have been installed, run make to build the filesystem handler
+programs:
 
 [source,bash]
 ----
 $ make
 ----
+
+
+## Testing
+
+*retro-fuse* includes a set of functionality tests for each of the filesystem handlers.
+These tests perform various I/O operations on a mounted test filesystem to confirm the
+correct behavior as observed from the modern system. Additionally, the tests verify the
+fidelity of the generated filesystem images by mounting them in a simulated historic Unix
+system and checking filesystem's integrity (using legacy tools such as icheck and fsck)
+and contents.
+
+The functionality tests rely on simh and python3. Additionally, the tests use the
+https://github.com/pexpect/pexpect[Pexpect] python module, which must be installed separately.
+
+simh can be installed on Ubuntu/debian-based systems as follows:
+
+[source,bash]
+----
+$ sudo apt install simh
+----
+
+The Pexpect python module can be installed using pip:
+
+[source,bash]
+----
+$ pip3 install --user pexpect
+----
+
+To run the functionality tests, use the `test` make target:
+
+[source,bash]
+----
+$ make test
+----
+
+Individual filesystem handlers can be tested by directly running the `retro-fuse-test.py`
+driver script and passing a path to the handler program.  Pass the `-v` option to see
+details about the tests being performed:
+
+[source,bash]
+----
+$ ./test/retro-fuse-test.py -v ./bsd29fs
+----
+
+
 
 ## Usage
 
@@ -194,7 +251,9 @@ Print version information
 
 Print usage information.
 
-### _Examples_
+
+
+## Examples
 
 **Mount an image file containing a v6 filesystem**
 
@@ -292,11 +351,31 @@ it easier to work with ancient filesystems.
 disk device. Supports filesystems contained in image files as well as host
 block devices (e.g. a MicroSD card).
 
+### _Test Modules_
+
+*test driver* (test/retro-fuse-test.py) -- Main script for testing filesystem
+handler programs.  Automatically selects and invokes the appropriate tests based
+on the type of filesystem handler specified.
+
+*filesystem-specific tests* (test/V6Tests.py, test/V7Tests.py, etc.) -- Filesystem
+functionality tests tailored to each filesystem type.
+
+*test framework code* (test/+*+.py) -- Various python modules implementing
+a reusable framework for testing ancient filesystems.
+
+*test system images* (test/system-images/+*+) -- Prebuilt ancient Unix system disk images
+for testing filesystem integrity.
+
+*ancient cksum code* (test/ancient-cksum/+*+.c) -- Implementations of POSIX-compliant
+cksum command for use on ancient Unix systems.
+
+
 
 
 ## License
 
 The modern portions of retro-fuse are licensed under the xref:LICENSE.txt[Apache 2.0 license].
+
 Code derived from ancient Unix source is licensed under xref:Caldera-license.pdf[Caldera open source license].
 
 
