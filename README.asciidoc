@@ -382,6 +382,10 @@ Code derived from ancient Unix source is licensed under xref:Caldera-license.pdf
 
 ## Release Notes
 
+**Version 6 / 2021/12/19** -- Added support for 2.9BSD filesystems. Implemented 
+functionality tests for v6, v7 and 2.9BSD filesystem drivers. Fixed various bugs
+reported by users and uncovered by functionality tests.
+
 **Version 5 / 2021/11/10** -- Various code restructuring and clean up. Fixed a
 few minor bugs. Improved Makefile.
 
