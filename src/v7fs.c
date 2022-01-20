@@ -94,6 +94,7 @@ static void v7fs_convertstat(const struct v7_stat *v7statbuf, struct stat *statb
 static int v7fs_isindir(const char *pathname, int16_t dirnum);
 static int v7fs_failnonemptydir(const char *entryname, const struct stat *statbuf, void *context);
 static int v7fs_isdirlinkpath(const char *pathname);
+static int v7fs_reparentdir(const char *pathname);
 static inline int16_t v7fs_maphostuid(uid_t hostuid) { return (int16_t)idmap_tofsid(&v7fs_uidmap, (uint32_t)hostuid); }
 static inline int16_t v7fs_maphostgid(gid_t hostgid) { return (int16_t)idmap_tofsid(&v7fs_gidmap, (uint32_t)hostgid); }
 static inline uid_t v7fs_mapv7uid(int16_t v7uid) { return (uid_t)idmap_tohostid(&v7fs_uidmap, (uint32_t)v7uid); }
@@ -418,8 +419,9 @@ off_t v7fs_seek(int fd, off_t offset, int whence)
 #endif /* SEEK_DATA */
 #ifdef SEEK_HOLE
     case SEEK_HOLE:
-        if (offset < curSize)
-            offset = curSize;
+        if (offset >= curSize)
+            return -ENXIO;
+        offset = curSize;
         break;
 #endif /* SEEK_DATA */
     default:
@@ -456,28 +458,30 @@ int v7fs_link(const char *oldpath, const char *newpath)
 int v7fs_mknod(const char *pathname, mode_t mode, dev_t dev)
 {
     struct v7_inode *ip;
-    int16_t v7mode;
-    v7_dev_t v7dev;
+    int16_t fsmode;
+    v7_dev_t fsdev;
+
+    switch (mode & IFMT)
+    {
+    case 0:
+    case S_IFREG:
+        fsmode = IFREG;
+        fsdev = 0;
+        break;
+    case S_IFBLK:
+    case S_IFCHR:
+        if (!v7_suser())
+            return -EPERM;
+        fsmode = (S_ISBLK(mode)) ? IFBLK : IFCHR;
+        fsdev = v7_makedev(major(dev) & 0xFF, minor(dev) & 0xFF);
+        break;
+    default:
+        return -EEXIST;
+    }
+    fsmode |= (mode & 07777);
 
     v7_refreshclock();
     v7_u.u_error = 0;
-
-    v7dev = v7_makedev(major(dev) & 0xFF, minor(dev) & 0xFF);
-    switch (mode & IFMT) {
-    case S_IFREG:
-        v7mode = 0;
-        v7dev = 0;
-        break;
-    case S_IFBLK:
-        v7mode = IFBLK;
-        break;
-    case S_IFCHR:
-        v7mode = IFCHR;
-        break;
-    default:
-        return -EINVAL;
-    }
-    v7mode |= (mode & 07777);
 
     v7_u.u_dirp = (char *)pathname;
     ip = v7_namei(&v7_uchar, 1);
@@ -487,10 +491,10 @@ int v7fs_mknod(const char *pathname, mode_t mode, dev_t dev)
     }
     if (v7_u.u_error != 0)
         return -v7_u.u_error;
-    ip = v7_maknode(v7mode);
+    ip = v7_maknode(fsmode);
     if (ip == NULL)
         return -v7_u.u_error;
-    ip->i_un.i_rdev = (v7_daddr_t)v7dev;
+    ip->i_un.i_rdev = (v7_daddr_t)fsdev;
     v7_iput(ip);
     return -v7_u.u_error;
 }
@@ -600,6 +604,11 @@ ssize_t v7fs_pwrite(int fd, const void *buf, size_t count, off_t offset)
     return v7fs_write(fd, buf, count);
 }
 
+/** Truncate file.
+ * 
+ * NB: Due to limitations in the v7 kernel, the truncate operation will
+ * return an error if length is not 0.
+ */
 int v7fs_truncate(const char *pathname, off_t length)
 {
     int res = 0;
@@ -664,6 +673,7 @@ int v7fs_rename(const char *oldpath, const char *newpath)
 {
     struct v7_inode *oldip = NULL, *newip = NULL;
     int res = 0;
+    int isdir = 0;
     int rmdirnew = 0;
     int unlinknew = 0;
     char preveuid = v7_u.u_uid;
@@ -679,6 +689,7 @@ int v7fs_rename(const char *oldpath, const char *newpath)
         goto exit;
     }
     oldip->i_flag &= ~ILOCK;
+    isdir = ((oldip->i_mode & IFMT) == IFDIR);
 
     /* disallow renaming the root directory, or from/to any directory with the
      * name '.' or '..' */
@@ -713,7 +724,7 @@ int v7fs_rename(const char *oldpath, const char *newpath)
         }
         else {
             /* otherwise, destination is a file, so fail if source is a directory */
-            if ((oldip->i_mode & IFMT) == IFDIR) {
+            if (isdir) {
                 res = -ENOTDIR;
                 goto exit;
             }
@@ -726,7 +737,7 @@ int v7fs_rename(const char *oldpath, const char *newpath)
     }
 
     /* if source is a directory ... */
-    if ((oldip->i_mode & IFMT) == IFDIR) {
+    if (isdir) {
         /* fail if destination is a child of source */
         res = v7fs_isindir(newpath, oldip->i_number);
         if (res < 0)
@@ -755,7 +766,7 @@ int v7fs_rename(const char *oldpath, const char *newpath)
             goto exit;
     }
 
-    /* perform the following as "set-uid" root. this allows creating addition temporary
+    /* perform the following as "set-uid" root. this allows creating additional temporary
      * links to source directory. */
     v7_u.u_uid = 0;
 
@@ -766,6 +777,13 @@ int v7fs_rename(const char *oldpath, const char *newpath)
 
     /* remove the source */
     res = v7fs_unlink(oldpath);
+    if (res < 0)
+        goto exit;
+
+    /* if a directory move occured, rewrite the ".." entry in the directory to point
+     * to the new parent directory. */
+    if (isdir)
+        res = v7fs_reparentdir(newpath);
 
 exit:
     if (oldip != NULL)
@@ -843,48 +861,64 @@ exit:
 int v7fs_utimens(const char *pathname, const struct timespec times[2])
 {
     int res = 0;
-    struct v7_inode *ip;
+    struct v7_inode *ip = NULL;
     v7_time_t atime, mtime;
+    int setBothNow;
 
-    v7_refreshclock();
-    v7_u.u_error = 0;
-
-    v7_u.u_dirp = (char *)pathname;
-    ip = v7_namei(&v7_schar, 0);
-    if (ip == NULL)
-        return -v7_u.u_error;
-
-    if (times[0].tv_nsec != UTIME_OMIT || times[1].tv_nsec != UTIME_OMIT) {
-        
-        if (v7_u.u_uid != ip->i_uid && v7_access(ip, IWRITE) != 0) {
-            res = -EPERM;
-            goto exit;
-        }
-
-        atime = mtime = v7_time;
-
-        if (times[0].tv_nsec != UTIME_OMIT) {
-            ip->i_flag |= IACC;
-            if (times[0].tv_nsec != UTIME_NOW) {
-                atime = (v7_time_t)times[0].tv_sec;
-            }
-        }
-
-        if (times[1].tv_nsec != UTIME_OMIT) {
-            ip->i_flag |= IUPD;
-            if (times[1].tv_nsec != UTIME_NOW) {
-                mtime = (v7_time_t)times[1].tv_sec;
-            }
-        }
-
-        v7_iupdat(ip, &atime, &mtime);
-        res = -v7_u.u_error;
-
-        ip->i_flag &= ~(IACC|IUPD);
+    if (times == NULL) {
+        static const struct timespec sNowTimes[] = {
+            { 0, UTIME_NOW },
+            { 0, UTIME_NOW },
+        };
+        times = sNowTimes;
     }
 
+    v7_refreshclock();
+
+    /* lookup the target file */
+    v7_u.u_error = 0;
+    v7_u.u_dirp = (char *)pathname;
+    ip = v7_namei(&v7_schar, 0);
+    if (ip == NULL) {
+        res = -v7_u.u_error;
+        goto exit;
+    }
+
+    /* exit immediately if nothing to do */
+    if (times[0].tv_nsec == UTIME_OMIT && times[1].tv_nsec == UTIME_OMIT)
+        goto exit;
+
+    /* both times being set to current time? */
+    setBothNow = (times[0].tv_nsec == UTIME_NOW && times[1].tv_nsec == UTIME_NOW);
+
+    /* exit with error if the caller doesn't have the appropriate permission. */
+    v7_u.u_error = setBothNow ? EACCES : EPERM;
+    if (v7_u.u_uid != 0 && v7_u.u_uid != ip->i_uid &&
+        (!setBothNow || v7_access(ip, IWRITE))) {
+        res = -v7_u.u_error;
+        goto exit;
+    }
+
+    /* update the inode timestamps */
+    v7_refreshclock();
+    atime = (times[0].tv_nsec != UTIME_OMIT && times[0].tv_nsec != UTIME_NOW)
+        ? (v7_time_t)times[0].tv_sec
+        : v7_time;
+    mtime = (times[1].tv_nsec != UTIME_OMIT && times[1].tv_nsec != UTIME_NOW)
+        ? (v7_time_t)times[1].tv_sec
+        : v7_time;
+    if (times[0].tv_nsec != UTIME_OMIT)
+        ip->i_flag |= IACC;
+    if (times[1].tv_nsec != UTIME_OMIT)
+        ip->i_flag |= IUPD;
+    v7_u.u_error = 0;
+    v7_iupdat(ip, &atime, &mtime);
+    res = -v7_u.u_error;
+    ip->i_flag &= ~(IACC|IUPD);
+
 exit:
-    v7_iput(ip);
+    if (ip != NULL)
+        v7_iput(ip);
     return res;
 }
 
@@ -1406,4 +1440,96 @@ static int v7fs_isdirlinkpath(const char *pathname)
     else
         p++;
     return (strcmp(p, ".") == 0 || strcmp(p, "..") == 0);
+}
+
+static int v7fs_reparentdir(const char *pathname)
+{
+    int res = 0;
+    char * pathnamecopy = strdup(pathname);
+    char * newparentname = dirname(pathnamecopy);
+    struct v7_inode *newparentip = NULL;
+    struct v7_inode *oldparentip = NULL;
+    int fd = -1;
+    struct v7_direct direntry;
+
+    /* get inode of new parent directory */
+    v7_u.u_dirp = newparentname;
+    newparentip = v7_namei(&v7_uchar, 0);
+    if (newparentip == NULL) {
+        res = -v7_u.u_error;
+        goto exit;
+    }
+    newparentip->i_flag &= ~ILOCK;
+
+    /* open the target directory */
+    res = fd = v7fs_open(pathname, O_RDONLY, 0);
+    if (res < 0)
+        goto exit;
+    v7_u.u_ofile[fd]->f_flag |= V7_FWRITE; /* bypass error check in open1() */
+
+    /* scan for the ".." entry... */
+    while (1) {
+        res = v7fs_read(fd, &direntry, sizeof(struct v7_direct));
+        if (res < 0)
+            goto exit;
+        if (res < sizeof(struct v7_direct)) {
+            res = -EIO; /* ".." entry not found! */
+            goto exit;
+        }
+        if (direntry.d_name[0] == '.' && direntry.d_name[1] == '.' && direntry.d_name[2] == 0)
+            break;
+    }
+    res = 0;
+
+    /* if the ".." entry does *not* contain the inode number of the
+     * new parent directory... */
+    if (direntry.d_ino != newparentip->i_number) {
+
+        /* get the inode for the old parent directory. */
+        oldparentip = v7_iget(newparentip->i_dev, direntry.d_ino);
+        if (oldparentip == NULL) {
+            res = -EIO; /* old parent not found */
+            goto exit;
+        }
+
+        /* decrement the link count on the old parent directory. */
+        oldparentip->i_nlink--;
+        oldparentip->i_flag |= IACC;
+        v7_iupdat(oldparentip, &v7_time, &v7_time);
+        res = -v7_u.u_error;
+        if (res != 0)
+            goto exit;
+
+        /* rewrite the ".." directory entry to contain the inode of
+         * the new parent directory. */
+        direntry.d_ino = newparentip->i_number;
+        res = v7fs_seek(fd, -sizeof(struct v7_direct), SEEK_CUR);
+        if (res < 0)
+            goto exit;
+        res = v7fs_write(fd, &direntry, sizeof(struct v7_direct));
+        if (res < 0)
+            goto exit;
+        if (res < sizeof(struct v7_direct)) {
+            res = -EIO;
+            goto exit;
+        }
+
+        /* increment the link count on the new parent directory. */
+        newparentip->i_nlink++;
+        newparentip->i_flag |= IACC;
+        v7_iupdat(newparentip, &v7_time, &v7_time);
+        res = -v7_u.u_error;
+        if (res != 0)
+            goto exit;
+    }
+
+exit:
+    if (fd != -1)
+        v7fs_close(fd);
+    if (newparentip != NULL)
+        v7_iput(newparentip);
+    if (oldparentip != NULL)
+        v7_iput(oldparentip);
+    free(pathnamecopy);
+    return res;
 }

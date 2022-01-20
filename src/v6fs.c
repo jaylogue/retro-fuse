@@ -84,6 +84,7 @@ static void v6fs_convertstat(const struct v6_stat *v6statbuf, struct stat *statb
 static int v6fs_isindir(const char *pathname, int16_t dirnum);
 static int v6fs_failnonemptydir(const char *entryname, const struct stat *statbuf, void *context);
 static int v6fs_isdirlinkpath(const char *pathname);
+static int v6fs_reparentdir(const char *pathname);
 static inline char v6fs_maphostuid(uid_t hostuid) { return (char)idmap_tofsid(&v6fs_uidmap, (uint32_t)hostuid); }
 static inline char v6fs_maphostgid(gid_t hostgid) { return (char)idmap_tofsid(&v6fs_gidmap, (uint32_t)hostgid); }
 static inline uid_t v6fs_mapv6uid(char v6uid) { return (uid_t)idmap_tohostid(&v6fs_uidmap, (uint32_t)v6uid); }
@@ -372,8 +373,9 @@ off_t v6fs_seek(int fd, off_t offset, int whence)
 #endif /* SEEK_DATA */
 #ifdef SEEK_HOLE
     case SEEK_HOLE:
-        if (offset < curSize)
-            offset = curSize;
+        if (offset >= curSize)
+            return -ENXIO;
+        offset = curSize;
         break;
 #endif /* SEEK_DATA */
     default:
@@ -404,28 +406,29 @@ int v6fs_link(const char *oldpath, const char *newpath)
 int v6fs_mknod(const char *pathname, mode_t mode, dev_t dev)
 {
     struct v6_inode *ip;
-    int16_t v6mode, v6dev;
+    int16_t fsmode, fsdev;
+
+    switch (mode & IFMT)
+    {
+    case 0:
+    case S_IFREG:
+        fsmode = 0;
+        fsdev = 0;
+        break;
+    case S_IFBLK:
+    case S_IFCHR:
+        if (!v6_suser())
+            return -EPERM;
+        fsmode = (S_ISBLK(mode)) ? IFBLK : IFCHR;
+        fsdev = ((int16_t)(major(dev) & 0xFF) << 8) | (int16_t)(minor(dev) & 0xFF);
+        break;
+    default:
+        return -EEXIST;
+    }
+    fsmode |= (mode & 07777);
 
     v6_refreshclock();
     v6_u.u_error = 0;
-
-    v6dev = ((int16_t)(major(dev) & 0xFF) << 8) | (int16_t)(minor(dev) & 0xFF);
-    switch (mode & S_IFMT)
-    {
-    case S_IFREG:
-        v6mode = 0;
-        v6dev = 0;
-        break;
-    case S_IFBLK:
-        v6mode = IFBLK;
-        break;
-    case S_IFCHR:
-        v6mode = IFCHR;
-        break;
-    default:
-        return -EINVAL;
-    }
-    v6mode |= (mode & 07777);
 
     v6_u.u_dirp = (char *)pathname;
     ip = v6_namei(&v6_uchar, 1);
@@ -435,10 +438,10 @@ int v6fs_mknod(const char *pathname, mode_t mode, dev_t dev)
     }
     if (v6_u.u_error != 0)
         return -v6_u.u_error;
-    ip = v6_maknode(v6mode);
+    ip = v6_maknode(fsmode);
     if (ip == NULL)
         return -v6_u.u_error;
-    ip->i_addr[0] = (int16_t)v6dev;
+    ip->i_addr[0] = (int16_t)fsdev;
     v6_iput(ip);
     return -v6_u.u_error;
 }
@@ -536,6 +539,11 @@ ssize_t v6fs_pwrite(int fd, const void *buf, size_t count, off_t offset)
     return v6fs_write(fd, buf, count);
 }
 
+/** Truncate file.
+ * 
+ * NB: Due to limitations in the v6 kernel, the truncate operation will
+ * return an error if length is not 0.
+ */
 int v6fs_truncate(const char *pathname, off_t length)
 {
     int res = 0;
@@ -600,6 +608,7 @@ int v6fs_rename(const char *oldpath, const char *newpath)
 {
     struct v6_inode *oldip = NULL, *newip = NULL;
     int res = 0;
+    int isdir = 0;
     int rmdirnew = 0;
     int unlinknew = 0;
     char preveuid = v6_u.u_uid;
@@ -615,6 +624,7 @@ int v6fs_rename(const char *oldpath, const char *newpath)
         goto exit;
     }
     oldip->i_flag &= ~ILOCK;
+    isdir = ((oldip->i_mode & IFMT) == IFDIR);
 
     /* disallow renaming the root directory, or from/to any directory with the
        name '.' or '..' */
@@ -649,7 +659,7 @@ int v6fs_rename(const char *oldpath, const char *newpath)
         }
         else {
             /* otherwise, destination is a file, so fail if source is a directory */
-            if ((oldip->i_mode & IFMT) == IFDIR) {
+            if (isdir) {
                 res = -ENOTDIR;
                 goto exit;
             }
@@ -662,7 +672,7 @@ int v6fs_rename(const char *oldpath, const char *newpath)
     }
 
     /* if source is a directory ... */
-    if ((oldip->i_mode & IFMT) == IFDIR) {
+    if (isdir) {
         /* fail if destination is a child of source */
         res = v6fs_isindir(newpath, oldip->i_number);
         if (res < 0)
@@ -692,7 +702,7 @@ int v6fs_rename(const char *oldpath, const char *newpath)
             goto exit;
     }
 
-    /* perform the following as "set-uid" root. this allows creating addition temporary
+    /* perform the following as "set-uid" root. this allows creating additional temporary
        links to source directory. */
     v6_u.u_uid = 0;
 
@@ -703,6 +713,13 @@ int v6fs_rename(const char *oldpath, const char *newpath)
 
     /* remove the source */
     res = v6fs_unlink(oldpath);
+    if (res < 0)
+        goto exit;
+
+    /* if a directory move occured, rewrite the ".." entry in the directory to point
+     * to the new parent directory. */
+    if (isdir)
+        res = v6fs_reparentdir(newpath);
 
 exit:
     if (oldip != NULL)
@@ -773,54 +790,81 @@ exit:
 int v6fs_utimens(const char *pathname, const struct timespec times[2])
 {
     int res = 0;
-    struct v6_inode *ip;
-    int16_t curTime[2], mtime[2];
+    struct v6_inode *ip = NULL;
+    int16_t mtime[2], savedClock[2];
+    int setBothNow;
 
-    v6_refreshclock();
-    v6_u.u_error = 0;
-
-    v6_u.u_dirp = (char *)pathname;
-    ip = v6_namei(&v6_schar, 0);
-    if (ip == NULL)
-        return -v6_u.u_error;
-
-    if (times[0].tv_nsec != UTIME_OMIT || times[1].tv_nsec != UTIME_OMIT) {
-        
-        if (v6_u.u_uid != ip->i_uid && v6_access(ip, IWRITE) != 0) {
-            res = -EPERM;
-            goto exit;
-        }
-        
-        curTime[0] = mtime[0] = v6_time[0]; 
-        curTime[1] = mtime[1] = v6_time[1];
-
-        if (times[0].tv_nsec != UTIME_OMIT) {
-            ip->i_flag |= IACC;
-            if (times[0].tv_nsec != UTIME_NOW) {
-                v6_time[0] = (int16_t)(times[0].tv_sec >> 16);
-                v6_time[1] = (int16_t)(times[0].tv_sec);
-            }
-        }
-
-        if (times[1].tv_nsec != UTIME_OMIT) {
-            ip->i_flag |= IUPD;
-            if (times[1].tv_nsec != UTIME_NOW) {
-                mtime[0] = (int16_t)(times[1].tv_sec >> 16);
-                mtime[1] = (int16_t)(times[1].tv_sec);
-            }
-        }
-
-        v6_iupdat(ip, mtime);
-        res = -v6_u.u_error;
-
-        ip->i_flag &= ~(IACC|IUPD);
-
-        v6_time[0] = curTime[0];
-        v6_time[1] = curTime[1];
+    if (times == NULL) {
+        static const struct timespec sNowTimes[] = {
+            { 0, UTIME_NOW },
+            { 0, UTIME_NOW },
+        };
+        times = sNowTimes;
     }
 
+    v6_refreshclock();
+
+    /* lookup the target file */
+    v6_u.u_error = 0;
+    v6_u.u_dirp = (char *)pathname;
+    ip = v6_namei(&v6_schar, 0);
+    if (ip == NULL) {
+        res = -v6_u.u_error;
+        goto exit;
+    }
+
+    /* exit immediately if nothing to do */
+    if (times[0].tv_nsec == UTIME_OMIT && times[1].tv_nsec == UTIME_OMIT)
+        goto exit;
+
+    /* both times being set to current time? */
+    setBothNow = (times[0].tv_nsec == UTIME_NOW && times[1].tv_nsec == UTIME_NOW);
+
+    /* exit with error if the caller doesn't have the appropriate permission. */
+    v6_u.u_error = setBothNow ? EACCES : EPERM;
+    if (v6_u.u_uid != 0 && v6_u.u_uid != ip->i_uid &&
+        (!setBothNow || v6_access(ip, IWRITE))) {
+        res = -v6_u.u_error;
+        goto exit;
+    }
+
+    /* save the current value of the system clock */
+    v6_refreshclock();
+    savedClock[0] = v6_time[0]; 
+    savedClock[1] = v6_time[1];
+
+    /* update the inode timestamps
+     * note that the system clock variable (v6_time) is used to pass the
+     * access time, since the v6 iupdat() function does not accept this
+     * as an argument. */
+    if (times[0].tv_nsec != UTIME_OMIT && times[0].tv_nsec != UTIME_NOW) {
+        v6_time[0] = (int16_t)(times[0].tv_sec >> 16);
+        v6_time[1] = (int16_t)(times[0].tv_sec);
+    }
+    if (times[1].tv_nsec != UTIME_OMIT && times[1].tv_nsec != UTIME_NOW) {
+        mtime[0] = (int16_t)(times[1].tv_sec >> 16);
+        mtime[1] = (int16_t)(times[1].tv_sec);
+    }
+    else {
+        mtime[0] = v6_time[0];
+        mtime[1] = v6_time[1];
+    }
+    if (times[0].tv_nsec != UTIME_OMIT)
+        ip->i_flag |= IACC;
+    if (times[1].tv_nsec != UTIME_OMIT)
+        ip->i_flag |= IUPD;
+    v6_u.u_error = 0;
+    v6_iupdat(ip, mtime);
+    res = -v6_u.u_error;
+    ip->i_flag &= ~(IACC|IUPD);
+
+    /* restore the system clock value */
+    v6_time[0] = savedClock[0];
+    v6_time[1] = savedClock[1];
+
 exit:
-    v6_iput(ip);
+    if (ip != NULL)
+        v6_iput(ip);
     return res;
 }
 
@@ -1350,4 +1394,96 @@ static int v6fs_isdirlinkpath(const char *pathname)
     else
         p++;
     return (strcmp(p, ".") == 0 || strcmp(p, "..") == 0);
+}
+
+static int v6fs_reparentdir(const char *pathname)
+{
+    int res = 0;
+    char * pathnamecopy = strdup(pathname);
+    char * newparentname = dirname(pathnamecopy);
+    struct v6_inode *newparentip = NULL;
+    struct v6_inode *oldparentip = NULL;
+    int fd = -1;
+    struct v6_direntry direntry;
+
+    /* get inode of new parent directory */
+    v6_u.u_dirp = newparentname;
+    newparentip = v6_namei(&v6_uchar, 0);
+    if (newparentip == NULL) {
+        res = -v6_u.u_error;
+        goto exit;
+    }
+    newparentip->i_flag &= ~ILOCK;
+
+    /* open the target directory */
+    res = fd = v6fs_open(pathname, O_RDONLY, 0);
+    if (res < 0)
+        goto exit;
+    v6_u.u_ofile[fd]->f_flag |= V6_FWRITE; /* bypass error check in open1() */
+
+    /* scan for the ".." entry... */
+    while (1) {
+        res = v6fs_read(fd, &direntry, sizeof(struct v6_direntry));
+        if (res < 0)
+            goto exit;
+        if (res < sizeof(struct v6_direntry)) {
+            res = -EIO; /* ".." entry not found! */
+            goto exit;
+        }
+        if (direntry.d_name[0] == '.' && direntry.d_name[1] == '.' && direntry.d_name[2] == 0)
+            break;
+    }
+    res = 0;
+
+    /* if the ".." entry does *not* contain the inode number of the
+     * new parent directory... */
+    if (direntry.d_inode != newparentip->i_number) {
+
+        /* get the inode for the old parent directory. */
+        oldparentip = v6_iget(newparentip->i_dev, direntry.d_inode);
+        if (oldparentip == NULL) {
+            res = -EIO; /* old parent not found */
+            goto exit;
+        }
+
+        /* decrement the link count on the old parent directory. */
+        oldparentip->i_nlink--;
+        oldparentip->i_flag |= IACC;
+        v6_iupdat(oldparentip, v6_time);
+        res = -v6_u.u_error;
+        if (res != 0)
+            goto exit;
+
+        /* rewrite the ".." directory entry to contain the inode of
+         * the new parent directory. */
+        direntry.d_inode = newparentip->i_number;
+        res = v6fs_seek(fd, -sizeof(struct v6_direntry), SEEK_CUR);
+        if (res < 0)
+            goto exit;
+        res = v6fs_write(fd, &direntry, sizeof(struct v6_direntry));
+        if (res < 0)
+            goto exit;
+        if (res < sizeof(struct v6_direntry)) {
+            res = -EIO;
+            goto exit;
+        }
+
+        /* increment the link count on the new parent directory. */
+        newparentip->i_nlink++;
+        newparentip->i_flag |= IACC;
+        v6_iupdat(newparentip, v6_time);
+        res = -v6_u.u_error;
+        if (res != 0)
+            goto exit;
+    }
+
+exit:
+    if (fd != -1)
+        v6fs_close(fd);
+    if (newparentip != NULL)
+        v6_iput(newparentip);
+    if (oldparentip != NULL)
+        v6_iput(oldparentip);
+    free(pathnamecopy);
+    return res;
 }

@@ -28,6 +28,7 @@
 #define _XOPEN_SOURCE 700
 #define _ATFILE_SOURCE 
 #define _DARWIN_C_SOURCE
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -97,6 +98,7 @@ static void bsd29fs_convertstat(const struct bsd29_stat *fsstatbuf, struct stat 
 static int bsd29fs_isindir(const char *pathname, int16_t dirnum);
 static int bsd29fs_failnonemptydir(const char *entryname, const struct stat *statbuf, void *context);
 static int bsd29fs_isdirlinkpath(const char *pathname);
+static int bsd29fs_reparentdir(const char *pathname);
 static inline int16_t bsd29fs_maphostuid(uid_t hostuid) { return (int16_t)idmap_tofsid(&bsd29fs_uidmap, (uint32_t)hostuid); }
 static inline int16_t bsd29fs_maphostgid(gid_t hostgid) { return (int16_t)idmap_tofsid(&bsd29fs_gidmap, (uint32_t)hostgid); }
 static inline uid_t bsd29fs_mapfsuid(int16_t fsuid) { return (uid_t)idmap_tohostid(&bsd29fs_uidmap, (uint32_t)fsuid); }
@@ -488,8 +490,9 @@ off_t bsd29fs_seek(int fd, off_t offset, int whence)
 #endif /* SEEK_DATA */
 #ifdef SEEK_HOLE
     case SEEK_HOLE:
-        if (offset < curSize)
-            offset = curSize;
+        if (offset >= curSize)
+            return -ENXIO;
+        offset = curSize;
         break;
 #endif /* SEEK_DATA */
     default:
@@ -521,7 +524,7 @@ int bsd29fs_link(const char *oldpath, const char *newpath)
     return -bsd29_u.u_error;
 }
 
-/** Create a new file, directory, block or character device node.
+/** Create a new file, block or character device node.
  */
 int bsd29fs_mknod(const char *pathname, mode_t mode, dev_t dev)
 {
@@ -529,25 +532,27 @@ int bsd29fs_mknod(const char *pathname, mode_t mode, dev_t dev)
     int16_t fsmode;
     bsd29_dev_t fsdev;
 
-    bsd29_refreshclock();
-    bsd29_u.u_error = 0;
-
-    fsdev = bsd29_makedev(major(dev) & 0xFF, minor(dev) & 0xFF);
-    switch (mode & IFMT) {
+    switch (mode & IFMT)
+    {
+    case 0:
     case S_IFREG:
-        fsmode = 0;
+        fsmode = IFREG;
         fsdev = 0;
         break;
     case S_IFBLK:
-        fsmode = IFBLK;
-        break;
     case S_IFCHR:
-        fsmode = IFCHR;
+        if (!bsd29_suser())
+            return -EPERM;
+        fsmode = (S_ISBLK(mode)) ? IFBLK : IFCHR;
+        fsdev = bsd29_makedev(major(dev) & 0xFF, minor(dev) & 0xFF);
         break;
     default:
-        return -EINVAL;
+        return -EEXIST;
     }
     fsmode |= (mode & 07777);
+
+    bsd29_refreshclock();
+    bsd29_u.u_error = 0;
 
     bsd29_u.u_dirp = (char *)pathname;
     ip = bsd29_namei(&bsd29_uchar, BSD29_CREATE, 0);
@@ -670,6 +675,11 @@ ssize_t bsd29fs_pwrite(int fd, const void *buf, size_t count, off_t offset)
     return bsd29fs_write(fd, buf, count);
 }
 
+/** Truncate file.
+ * 
+ * NB: Due to limitations in the 2.9BSD kernel, the truncate operation will
+ * return an error if length is not 0.
+ */
 int bsd29fs_truncate(const char *pathname, off_t length)
 {
     int res = 0;
@@ -734,6 +744,7 @@ int bsd29fs_rename(const char *oldpath, const char *newpath)
 {
     struct bsd29_inode *oldip = NULL, *newip = NULL;
     int res = 0;
+    int isdir = 0;
     int rmdirnew = 0;
     int unlinknew = 0;
     char preveuid = bsd29_u.u_uid;
@@ -749,6 +760,7 @@ int bsd29fs_rename(const char *oldpath, const char *newpath)
         goto exit;
     }
     oldip->i_flag &= ~ILOCK;
+    isdir = ((oldip->i_mode & IFMT) == IFDIR);
 
     /* disallow renaming the root directory, or from/to any directory with the
      * name '.' or '..' */
@@ -783,7 +795,7 @@ int bsd29fs_rename(const char *oldpath, const char *newpath)
         }
         else {
             /* otherwise, destination is a file, so fail if source is a directory */
-            if ((oldip->i_mode & IFMT) == IFDIR) {
+            if (isdir) {
                 res = -ENOTDIR;
                 goto exit;
             }
@@ -796,7 +808,7 @@ int bsd29fs_rename(const char *oldpath, const char *newpath)
     }
 
     /* if source is a directory ... */
-    if ((oldip->i_mode & IFMT) == IFDIR) {
+    if (isdir) {
         /* fail if destination is a child of source */
         res = bsd29fs_isindir(newpath, oldip->i_number);
         if (res < 0)
@@ -836,6 +848,13 @@ int bsd29fs_rename(const char *oldpath, const char *newpath)
 
     /* remove the source */
     res = bsd29fs_unlink(oldpath);
+    if (res < 0)
+        goto exit;
+
+    /* if a directory move occured, rewrite the ".." entry in the directory to point
+     * to the new parent directory. */
+    if (isdir)
+        res = bsd29fs_reparentdir(newpath);
 
 exit:
     if (oldip != NULL)
@@ -872,8 +891,8 @@ int bsd29fs_chown(const char *pathname, uid_t owner, gid_t group)
 {
     int res = 0;
     struct bsd29_inode *ip;
-    char fsuid = bsd29fs_maphostuid(owner);
-    char fsgid = bsd29fs_maphostgid(group);
+    int16_t fsuid = bsd29fs_maphostuid(owner);
+    int16_t fsgid = bsd29fs_maphostgid(group);
 
     bsd29_refreshclock();
     bsd29_u.u_error = 0;
@@ -913,52 +932,68 @@ exit:
 int bsd29fs_utimens(const char *pathname, const struct timespec times[2])
 {
     int res = 0;
-    struct bsd29_inode *ip;
+    struct bsd29_inode *ip = NULL;
     bsd29_time_t atime, mtime;
+    int setBothNow;
 
-    bsd29_refreshclock();
-    bsd29_u.u_error = 0;
-
-    bsd29_u.u_dirp = (char *)pathname;
-    ip = bsd29_namei(&bsd29_schar, BSD29_LOOKUP, 0);
-    if (ip == NULL)
-        return -bsd29_u.u_error;
-
-    if (times[0].tv_nsec != UTIME_OMIT || times[1].tv_nsec != UTIME_OMIT) {
-        
-        if (bsd29_u.u_uid != ip->i_uid && bsd29_access(ip, IWRITE) != 0) {
-            res = -EPERM;
-            goto exit;
-        }
-
-        atime = mtime = bsd29_time;
-
-        if (times[0].tv_nsec != UTIME_OMIT) {
-            ip->i_flag |= IACC;
-            if (times[0].tv_nsec != UTIME_NOW) {
-                atime = (bsd29_time_t)times[0].tv_sec;
-            }
-        }
-
-        if (times[1].tv_nsec != UTIME_OMIT) {
-            ip->i_flag |= IUPD;
-            if (times[1].tv_nsec != UTIME_NOW) {
-                mtime = (bsd29_time_t)times[1].tv_sec;
-            }
-        }
-
-#ifdef UCB_FSFIX
-        bsd29_iupdat(ip, &atime, &mtime, 1);
-#else
-        bsd29_iupdat(ip, &atime, &mtime);
-#endif
-        res = -bsd29_u.u_error;
-
-        ip->i_flag &= ~(IACC|IUPD);
+    if (times == NULL) {
+        static const struct timespec sNowTimes[] = {
+            { 0, UTIME_NOW },
+            { 0, UTIME_NOW },
+        };
+        times = sNowTimes;
     }
 
+    bsd29_refreshclock();
+
+    /* lookup the target file */
+    bsd29_u.u_error = 0;
+    bsd29_u.u_dirp = (char *)pathname;
+    ip = bsd29_namei(&bsd29_schar, BSD29_LOOKUP, 0);
+    if (ip == NULL) {
+        res = -bsd29_u.u_error;
+        goto exit;
+    }
+
+    /* exit immediately if nothing to do */
+    if (times[0].tv_nsec == UTIME_OMIT && times[1].tv_nsec == UTIME_OMIT)
+        goto exit;
+
+    /* both times being set to current time? */
+    setBothNow = (times[0].tv_nsec == UTIME_NOW && times[1].tv_nsec == UTIME_NOW);
+
+    /* exit with error if the caller doesn't have the appropriate permission. */
+    bsd29_u.u_error = setBothNow ? EACCES : EPERM;
+    if (bsd29_u.u_uid != 0 && bsd29_u.u_uid != ip->i_uid &&
+        (!setBothNow || bsd29_access(ip, IWRITE))) {
+        res = -bsd29_u.u_error;
+        goto exit;
+    }
+
+    /* update the inode timestamps */
+    bsd29_refreshclock();
+    atime = (times[0].tv_nsec != UTIME_OMIT && times[0].tv_nsec != UTIME_NOW)
+        ? (bsd29_time_t)times[0].tv_sec
+        : bsd29_time;
+    mtime = (times[1].tv_nsec != UTIME_OMIT && times[1].tv_nsec != UTIME_NOW)
+        ? (bsd29_time_t)times[1].tv_sec
+        : bsd29_time;
+    if (times[0].tv_nsec != UTIME_OMIT)
+        ip->i_flag |= IACC;
+    if (times[1].tv_nsec != UTIME_OMIT)
+        ip->i_flag |= IUPD;
+    bsd29_u.u_error = 0;
+#ifdef UCB_FSFIX
+    bsd29_iupdat(ip, &atime, &mtime, 1);
+#else
+    bsd29_iupdat(ip, &atime, &mtime);
+#endif
+    res = -bsd29_u.u_error;
+    ip->i_flag &= ~(IACC|IUPD);
+
 exit:
-    bsd29_iput(ip);
+    if (ip != NULL)
+        bsd29_iput(ip);
     return res;
 }
 
@@ -1528,4 +1563,103 @@ static int bsd29fs_isdirlinkpath(const char *pathname)
     else
         p++;
     return (strcmp(p, ".") == 0 || strcmp(p, "..") == 0);
+}
+
+static int bsd29fs_reparentdir(const char *pathname)
+{
+    int res = 0;
+    char * pathnamecopy = strdup(pathname);
+    char * newparentname = dirname(pathnamecopy);
+    struct bsd29_inode *newparentip = NULL;
+    struct bsd29_inode *oldparentip = NULL;
+    int fd = -1;
+    struct bsd29_direct direntry;
+
+    /* get inode of new parent directory */
+    bsd29_u.u_dirp = newparentname;
+    newparentip = bsd29_namei(&bsd29_uchar, BSD29_LOOKUP, 0);
+    if (newparentip == NULL) {
+        res = -bsd29_u.u_error;
+        goto exit;
+    }
+    newparentip->i_flag &= ~ILOCK;
+
+    /* open the target directory */
+    res = fd = bsd29fs_open(pathname, O_RDONLY, 0);
+    if (res < 0)
+        goto exit;
+    bsd29_u.u_ofile[fd]->f_flag |= BSD29_FWRITE; /* bypass error check in open1() */
+
+    /* scan for the ".." entry... */
+    while (1) {
+        res = bsd29fs_read(fd, &direntry, sizeof(struct bsd29_direct));
+        if (res < 0)
+            goto exit;
+        if (res < sizeof(struct bsd29_direct)) {
+            res = -EIO; /* ".." entry not found! */
+            goto exit;
+        }
+        if (direntry.d_name[0] == '.' && direntry.d_name[1] == '.' && direntry.d_name[2] == 0)
+            break;
+    }
+    res = 0;
+
+    /* if the ".." entry does *not* contain the inode number of the new parent directory... */
+    if (direntry.d_ino != newparentip->i_number) {
+
+        /* get the inode for the old parent directory. */
+        oldparentip = bsd29_iget(newparentip->i_dev, direntry.d_ino);
+        if (oldparentip == NULL) {
+            res = -EIO; /* old parent not found */
+            goto exit;
+        }
+
+        /* decrement the link count on the old parent directory. */
+        oldparentip->i_nlink--;
+        oldparentip->i_flag |= ICHG;
+#ifdef UCB_FSFIX
+        bsd29_iupdat(oldparentip, &bsd29_time, &bsd29_time, 1);
+#else
+        bsd29_iupdat(oldparentip, &bsd29_time, &bsd29_time);
+#endif
+        res = -bsd29_u.u_error;
+        if (res != 0)
+            goto exit;
+
+        /* rewrite the ".." directory entry to contain the inode of
+         * the new parent directory. */
+        direntry.d_ino = newparentip->i_number;
+        res = bsd29fs_seek(fd, -sizeof(struct bsd29_direct), SEEK_CUR);
+        if (res < 0)
+            goto exit;
+        res = bsd29fs_write(fd, &direntry, sizeof(struct bsd29_direct));
+        if (res < 0)
+            goto exit;
+        if (res < sizeof(struct bsd29_direct)) {
+            res = -EIO;
+            goto exit;
+        }
+
+        /* increment the link count on the new parent directory. */
+        newparentip->i_nlink++;
+        newparentip->i_flag |= ICHG;
+#ifdef UCB_FSFIX
+        bsd29_iupdat(newparentip, &bsd29_time, &bsd29_time, 1);
+#else
+        bsd29_iupdat(newparentip, &bsd29_time, &bsd29_time);
+#endif
+        res = -bsd29_u.u_error;
+        if (res != 0)
+            goto exit;
+    }
+
+exit:
+    if (fd != -1)
+        bsd29fs_close(fd);
+    if (newparentip != NULL)
+        bsd29_iput(newparentip);
+    if (oldparentip != NULL)
+        bsd29_iput(oldparentip);
+    free(pathnamecopy);
+    return res;
 }
