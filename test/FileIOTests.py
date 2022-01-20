@@ -210,6 +210,18 @@ class FileIOTests:
             self.assertEqual(stat.S_IMODE(statRes.st_mode), mode)
             self.fileList.append(FileListEntry(fn, 'f', size=0, mode=statRes.st_mode, linkCount=1))
 
+    def test_07_ChangeFileTimes(self):
+        '''Change File Times'''
+        ts = 157795200
+        fn = os.path.join(self.targetDir, 'f07-1')
+        with open(fn, "w+") as f:
+            pass
+        os.utime(fn, times=(ts,ts))
+        statRes = os.stat(fn)
+        self.assertEqual(statRes.st_atime, ts)
+        self.assertEqual(statRes.st_mtime, ts)
+        self.fileList.append(FileListEntry(fn, 'f', size=0, mode=statRes.st_mode, linkCount=1))
+
     # ---------- File Read/Write Tests ----------
 
     def test_10_ReadWriteFile(self):
@@ -386,24 +398,30 @@ class FileIOTests:
 
     def test_21_RemoveDirectory(self):
         '''Remove Directory'''
+        # make directory 1
         dn = os.path.join(self.targetDir, 'd21-1')
         os.mkdir(dn)
         statRes = os.stat(dn)
         self.assertTrue(stat.S_ISDIR(statRes.st_mode))
+        # remove directory 1
         os.rmdir(dn)
+        # ensure directory 1 is gone
         with self.assertRaises(OSError) as cm:
             os.stat(dn)
+        # make directory 2
         dn = os.path.join(self.targetDir, 'd21-2')
         os.mkdir(dn)
         statRes = os.stat(dn)
         self.assertTrue(stat.S_ISDIR(statRes.st_mode))
         self.fileList.append(FileListEntry(dn, 'd', mode=statRes.st_mode))
+        # create file in directory 2
         fn = os.path.join(dn, "f21")
         with open(fn, "w+") as f:
             pass
         statRes = os.stat(fn)
         self.assertEqual(statRes.st_size, 0)
         self.fileList.append(FileListEntry(fn, 'f', size=0, mode=statRes.st_mode, linkCount=1))
+        # verify error attempting to remove non-empty directory 2
         with self.assertRaises(OSError) as cm:
             os.rmdir(dn)
 
@@ -438,12 +456,62 @@ class FileIOTests:
             self.assertTrue(stat.S_ISDIR(statRes.st_mode))
             self.fileList.append(FileListEntry(dn, 'd', mode=statRes.st_mode))
 
-    def test_24_ChangeDirectoryMode(self):
+    def test_24_MoveDirectory(self):
+        '''Move Directory'''
+        # make dir 1
+        dn1 = os.path.join(self.targetDir, 'd24-1')
+        os.mkdir(dn1)
+        # make dir 2
+        dn2 = os.path.join(self.targetDir, 'd24-2')
+        os.mkdir(dn2)
+        # make dir 3 within dir 1
+        dn3 = os.path.join(dn1, 'd24-3')
+        os.mkdir(dn3)
+        # make file 1 within dir 1
+        fn1 = os.path.join(dn1, "f24-1")
+        with open(fn1, "w+") as f:
+            pass
+        # make file 2 within dir 2
+        fn2 = os.path.join(dn2, "f24-2")
+        with open(fn2, "w+") as f:
+            pass
+        # make file 3 within dir 3
+        fn3 = os.path.join(dn3, "f24-3")
+        with open(fn3, "w+") as f:
+            pass
+        # move dir 2 under dir 3 and rename
+        newdn2 = os.path.join(dn3, 'd24-2-new')
+        os.rename(dn2, newdn2)
+        # verify dir 2 exists in new location with new name
+        statRes = os.stat(newdn2)
+        self.assertTrue(stat.S_ISDIR(statRes.st_mode))
+        # verify ".." entry in dir 2 now refers to dir 3
+        self.assertTrue(os.stat(os.path.join(newdn2, "..")).st_ino,
+                        os.stat(dn3).st_ino)
+        # verify that file 2 still exists within dir 2
+        newfn2 = os.path.join(newdn2, "f24-2")
+        statRes = os.stat(newfn2)
+        self.assertTrue(stat.S_ISREG(statRes.st_mode))
+        # verify that file 1 still exists withing dir 1
+        statRes = os.stat(fn1)
+        self.assertTrue(stat.S_ISREG(statRes.st_mode))
+        # verify error attempting to move dir 1 under dir 2 (i.e. under itself)
+        with self.assertRaises(OSError) as cm:
+            newdn1 = os.path.join(newdn2, 'd24-1-new')
+            os.rename(dn3, newdn1)
+        self.fileList.append(FileListEntry(dn1, 'd'))
+        self.fileList.append(FileListEntry(newdn2, 'd'))
+        self.fileList.append(FileListEntry(dn3, 'd'))
+        self.fileList.append(FileListEntry(fn1, 'f'))
+        self.fileList.append(FileListEntry(newfn2, 'f'))
+        self.fileList.append(FileListEntry(fn3, 'f'))
+
+    def test_25_ChangeDirectoryMode(self):
         '''Change Directory Mode'''
         config = self.testConfig.ChangeDirectoryMode
         for i in range(0, len(config.Modes)):
             mode = config.Modes[i]
-            dn = os.path.join(self.targetDir, 'd24-%d' % (i+1))
+            dn = os.path.join(self.targetDir, 'd25-%d' % (i+1))
             os.mkdir(dn)
             os.chmod(dn, mode)
             statRes = os.stat(dn)
