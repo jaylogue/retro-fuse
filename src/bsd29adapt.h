@@ -57,7 +57,7 @@ typedef int32_t bsd29_time_t;
 typedef int32_t bsd29_off_t;
 typedef int bsd29_segm;
 
-/* Forward declarations of name-mangled 2.8BSD functions */
+/* Forward declarations of name-mangled 2.9BSD functions */
 
 /* main.c */
 extern void bsd29_iinit();
@@ -265,6 +265,12 @@ static inline int32_t wswap_int32(int32_t v)
 #undef S_IEXEC
 #pragma push_macro("bcopy")
 #undef bcopy
+#pragma push_macro("L_SET")
+#undef L_SET
+#pragma push_macro("L_INCR")
+#undef L_INCR
+#pragma push_macro("L_XTND")
+#undef L_XTND
 
 /* Map various names used by BSD code to avoid any conflicts with modern code
  */
@@ -319,7 +325,9 @@ static inline int32_t wswap_int32(int32_t v)
 #define iexpand     bsd29_iexpand
 #define ifind       bsd29_ifind
 #define ifree       bsd29_ifree
+#define ifreelist   bsd29_ifreelist
 #define iget        bsd29_iget
+#define ihash       bsd29_ihash
 #define ihinit      bsd29_ihinit
 #define iinit       bsd29_iinit
 #define incore      bsd29_incore
@@ -332,6 +340,7 @@ static inline int32_t wswap_int32(int32_t v)
 #define iput        bsd29_iput
 #define itrunc      bsd29_itrunc
 #define iupdat      bsd29_iupdat
+#define lastf       bsd29_lastf
 #define link        bsd29_link
 #define maknode     bsd29_maknode
 #define mapin       bsd29_mapin

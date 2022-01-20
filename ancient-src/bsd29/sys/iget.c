@@ -506,7 +506,7 @@ maknode(int16_t mode)
 	ip->i_mode = mode & ~u.u_cmask;
 	ip->i_nlink = 1;
 	ip->i_uid = u.u_uid;
-	ip->i_gid = u.u_gid;
+	ip->i_gid = u.u_gid; // TODO: implement sysv or BSD group ownership semantics based on OS
 
 #ifdef UCB_FSFIX
 	/*

@@ -13,7 +13,7 @@
 #include "../reg.h"
 #include "../inode.h"
 #include "../systm.h"
-#include "../proc.h"
+/* UNUSED: #include "../proc.h" */
 
 #if UNUSED
 getswit()

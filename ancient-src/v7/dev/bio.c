@@ -9,7 +9,7 @@
 #include "../h/proc.h"
 #include "../h/seg.h"
 
-#define	DISKMON	1
+/* UNUSED: #define	DISKMON	1 */
 
 #ifdef	DISKMON
 struct {
@@ -27,8 +27,10 @@ struct {
  * they are filled in to point
  * at the desired IO operation.
  */
+#if UNUSED
 struct	buf	swbuf1;
 struct	buf	swbuf2;
+#endif /* UNUSED */
 
 /*
  * The following several routines allocate and free

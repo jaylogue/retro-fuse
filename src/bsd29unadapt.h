@@ -134,7 +134,9 @@ enum {
 #undef iexpand
 #undef ifind
 #undef ifree
+#undef ifreelist
 #undef iget
+#undef ihash
 #undef ihinit
 #undef iinit
 #undef incore
@@ -147,6 +149,7 @@ enum {
 #undef iput
 #undef itrunc
 #undef iupdat
+#undef lastf
 #undef link
 #undef maknode
 #undef mapin
@@ -241,5 +244,8 @@ enum {
 #pragma pop_macro("S_IWRITE")
 #pragma pop_macro("S_IEXEC")
 #pragma pop_macro("bcopy")
+#pragma pop_macro("L_SET")
+#pragma pop_macro("L_INCR")
+#pragma pop_macro("L_XTND")
 
 #endif /* __BSD29UNADAPT_H__ */

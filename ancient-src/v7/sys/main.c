@@ -6,7 +6,7 @@
 #include "../h/user.h"
 #include "../h/filsys.h"
 #include "../h/mount.h"
-#include "../h/map.h"
+/* UNUSED: #include "../h/map.h" */
 #include "../h/proc.h"
 #include "../h/inode.h"
 #include "../h/seg.h"

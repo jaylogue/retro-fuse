@@ -28,8 +28,10 @@ struct	ioinfo	io_info;
  * they are filled in to point
  * at the desired IO operation.
  */
+#if UNUSED
 struct	buf	swbuf1;
 struct	buf	swbuf2;
+#endif /* UNUSED */
 
 /*
  * The following several routines allocate and free
