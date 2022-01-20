@@ -36,7 +36,8 @@ class BSD29FileIOTests(RetroFuseTestBase, FileIOTests, unittest.TestCase):
        Note that the majority of tests are implemented in the FileIOTests base class.
     '''
 
-    fsInitOpts = [ '-oinitfs,fssize=10240' ]
+    fsInitOpts = [ '-oinitfs' ]
+    fsMountOpts = [ '-ofssize=10240,use_ino' ]
 
     @classmethod
     def setUpClass(cls):

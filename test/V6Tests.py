@@ -35,7 +35,8 @@ class V6FileIOTests(RetroFuseTestBase, FileIOTests, unittest.TestCase):
        Note that the majority of tests are implemented in the FileIOTests base class.
     '''
 
-    fsInitOpts = [ '-oinitfs,fssize=4872' ]
+    fsInitOpts = [ '-oinitfs' ]
+    fsMountOpts = [ '-ofssize=4872,use_ino' ]
 
     @classmethod
     def setUpClass(cls):

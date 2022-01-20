@@ -56,7 +56,7 @@ class RetroFuseTestBase:
 
     @classmethod
     def initFS(cls):
-        cls.mountFS(fsHandlerOpts=cls.fsInitOpts)
+        cls.mountFS(fsHandlerOpts=cls.fsInitOpts + cls.fsMountOpts)
 
     @classmethod
     def unmountFS(cls):
