@@ -60,7 +60,7 @@ $(V6_DEPS) src/v6fs.d src/v6adapt.d : CPPFLAGS += -I./ancient-src/v6
 -include $(V6_DEPS) $(V6FS_DEPS)
  
 $(V6FS_PROG) : $(V6FS_OBJS) $(V6_OBJS)
-	$(CC) -o $@ -Xlinker $^ $(LIBS)
+	$(CC) -o $@ -Wl,-Map=$@.map $^ $(LIBS)
 
 
 ############### UNIX V7 ################
@@ -99,7 +99,7 @@ $(V7_DEPS) src/v7fs.d src/v7adapt.d : CPPFLAGS += -I./ancient-src/v7
 -include $(V7_DEPS) $(V7FS_DEPS)
 
 $(V7FS_PROG) : $(V7FS_OBJS) $(V7_OBJS)
-	$(CC) -o $@ -Xlinker $^ $(LIBS)
+	$(CC) -o $@ -Wl,-Map=$@.map $^ $(LIBS)
 
 
 ############### 2.9 BSD ################
@@ -107,18 +107,18 @@ $(V7FS_PROG) : $(V7FS_OBJS) $(V7_OBJS)
 BSD29FS_PROG = bsd29fs
 
 BSD29_SRC = \
-    ancient-src/bsd29/sys/alloc.c \
+	ancient-src/bsd29/sys/alloc.c \
 	ancient-src/bsd29/dev/bio.c \
-    ancient-src/bsd29/sys/subr.c \
-    ancient-src/bsd29/sys/iget.c \
-    ancient-src/bsd29/sys/rdwri.c \
-    ancient-src/bsd29/sys/nami.c \
-    ancient-src/bsd29/sys/fio.c \
-    ancient-src/bsd29/sys/pipe.c \
-    ancient-src/bsd29/sys/sys2.c \
-    ancient-src/bsd29/sys/sys3.c \
-    ancient-src/bsd29/sys/sys4.c \
-    ancient-src/bsd29/sys/main.c \
+	ancient-src/bsd29/sys/subr.c \
+	ancient-src/bsd29/sys/iget.c \
+	ancient-src/bsd29/sys/rdwri.c \
+	ancient-src/bsd29/sys/nami.c \
+	ancient-src/bsd29/sys/fio.c \
+	ancient-src/bsd29/sys/pipe.c \
+	ancient-src/bsd29/sys/sys2.c \
+	ancient-src/bsd29/sys/sys3.c \
+	ancient-src/bsd29/sys/sys4.c \
+	ancient-src/bsd29/sys/main.c \
 
 BSD29_OBJS = $(BSD29_SRC:.c=.o)
 BSD29_DEPS = $(BSD29_SRC:.c=.d)
@@ -127,7 +127,7 @@ BSD29FS_SRC = \
 	src/fusecommon.c \
 	src/bsd29fuse.c \
 	src/bsd29fs.c \
-    src/bsd29adapt.c \
+	src/bsd29adapt.c \
 	src/idmap.c \
 	src/dskio.c
 BSD29FS_OBJS = $(BSD29FS_SRC:.c=.o)
@@ -139,7 +139,7 @@ $(BSD29_DEPS) src/bsd29fs.d src/bsd29adapt.d : CPPFLAGS += -Wno-comment -Wno-end
 -include $(BSD29_DEPS) $(BSD29FS_DEPS)
 
 $(BSD29FS_PROG) : $(BSD29FS_OBJS) $(BSD29_OBJS)
-	$(CC) -o $@ -Xlinker $^ $(LIBS)
+	$(CC) -o $@ -Wl,-Map=$@.map $^ $(LIBS)
 
 
 ########### GENERAL TARGETS ############
