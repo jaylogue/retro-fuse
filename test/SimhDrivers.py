@@ -55,6 +55,8 @@ class SimhDriver:
     def stop(self):
         if self.simh is not None:
             if self.simh.isalive():
+                if self.debugStream is not None:
+                    print('Sending control-E', file=self.debugStream)
                 self.simh.sendline('\x05')
                 self.simh.expect_exact('sim> ')
                 self.simh.sendline('q')
@@ -159,9 +161,9 @@ class V6SimhDriver(SimhDriver):
         return res
 
     def enumFiles(self, dir):
-        fileListCmd = V6SimhDriver._fileListCmd % dir
+        fileListCmd = self._fileListCmd % dir
         fileListStr = self.sendShellCommands(fileListCmd)
-        return FileList.parse(fileListStr, V6SimhDriver._fileListRegex)
+        return FileList.parse(fileListStr, re.compile(self._fileListPattern))
 
     def icheckFS(self, dev):
         # Invoke the V6 icheck program on the specified device.
@@ -202,7 +204,9 @@ attach rk0 system.dsk
     _fileListCmd = '/usr/bin/find %s -exec /bin/ls -ild {} \\; -o \\( -type -f -a -exec /usr/bin/cksum {} \\; \\) -o \\( \\! -type -f -a -exec echo - \\; \\)'
 
     # Regex pattern to parse output from the above command.
-    _fileListPattern = r'''^
+    _fileListPattern = r'''
+                        (?mx)
+                        ^
                         \s* (?P<inode> \d+)
                         \s+ (?P<type> [bcd-]) (?P<mode> [rwsStTx-]{9}t?)
                         \s+ (?P<linkCount> \d+)
@@ -220,7 +224,6 @@ attach rk0 system.dsk
                         \s*
                         $
                         '''
-    _fileListRegex = re.compile(_fileListPattern, re.X|re.MULTILINE)
 
 class V7SimhDriver(SimhDriver):
     '''Runs a simulated v7 Unix system using simh'''
@@ -298,7 +301,7 @@ class V7SimhDriver(SimhDriver):
     def enumFiles(self, dir):
         fileListCmd = self._fileListCmd % dir
         fileListStr = self.sendShellCommands(fileListCmd)
-        return FileList.parse(fileListStr, self._fileListRegex)
+        return FileList.parse(fileListStr, re.compile(self._fileListPattern))
 
     def icheckFS(self, dev):
         # Invoke the V7 icheck program on the specified device.
@@ -339,7 +342,9 @@ attach rp0 system.dsk
     _fileListCmd = '/bin/find %s -exec /bin/ls -ild {} \\; -a \\( -type f -a -exec /bin/cksum {} \\; \\) -o \\( \\! -type f -a -exec echo - \\; \\)'
 
     # Regex pattern to parse output from the above command.
-    _fileListPattern = r'''^
+    _fileListPattern = r'''
+                        (?mx)
+                        ^
                         \s* (?P<inode> \d+)
                         \s+ (?P<type> [bcd-]) (?P<mode> [rwsStTx-]{9}t?)
                         \s* (?P<linkCount> \d+)
@@ -357,7 +362,6 @@ attach rp0 system.dsk
                         \s*
                         $
                         '''
-    _fileListRegex = re.compile(_fileListPattern, re.X|re.MULTILINE)
 
 class BSD29SimhDriver(SimhDriver):
     '''Runs a simulated 2.9BSD Unix system using simh'''
@@ -438,20 +442,20 @@ class BSD29SimhDriver(SimhDriver):
         return res
 
     def enumFiles(self, dir):
-        fileListCmd = BSD29SimhDriver._fileListCmd % dir
+        fileListCmd = self._fileListCmd % dir
         fileListStr = self.sendShellCommands(fileListCmd)
-        return FileList.parse(fileListStr, BSD29SimhDriver._fileListRegex)
+        return FileList.parse(fileListStr, re.compile(self._fileListPattern))
 
     def fsck(self, dev):
         # Invoke the 2.9BSD fsck program on the specified device
         fsckOut = self.sendShellCommands('/etc/fsck -n %s' % dev)
 
-        m = BSD29SimhDriver._fsckCheckingRegex.search(fsckOut)
+        m = re.search(string=fsckOut, pattern=self._fsckStartPattern)
         if not m:
             raise RuntimeError('Unexpected output from fsck')
         resultsStart = m.end()
 
-        m = BSD29SimhDriver._fsckSummaryRegex.search(fsckOut)
+        m = re.search(string=fsckOut, pattern=self._fsckSummaryPattern)
         if not m:
             raise RuntimeError('Unexpected output from fsck')
         resultsEnd = m.start()
@@ -486,7 +490,9 @@ attach rl1 swap.dsk
     _fileListCmd = '/bin/find %s -exec /usr/ucb/ls -ildn {} \\; \\( -type f -exec /bin/cksum {} \\; \\) -o -exec echo - \\;'
 
     # Regex pattern to parse output from the above command.
-    _fileListPattern = r'''^
+    _fileListPattern = r'''
+                        ^
+                        (?mx)
                         \s* (?P<inode> \d+)
                         \s+ (?P<type> [bcd-]) (?P<mode> [rwsStTx-]{9})
                         \s* (?P<linkCount> \d+)
@@ -505,18 +511,169 @@ attach rl1 swap.dsk
                         \s*
                         $
                         '''
-    _fileListRegex = re.compile(_fileListPattern, re.X|re.MULTILINE)
 
-    _fsckCheckingPattern = r'^\*\*\s+Checking\s+.*\n';
-    _fsckCheckingRegex = re.compile(_fsckCheckingPattern, re.MULTILINE)
-    _fsckSummaryPattern = r'^\s*(?P<files>\d+)\s+files\s+(?P<blocks>\d+)\s+blocks\s+(?P<free>\d+)\s+free\s*\n'
-    _fsckSummaryRegex = re.compile(_fsckSummaryPattern, re.MULTILINE)
+    _fsckStartPattern = r'(?m)^\*\*\s+Checking\s+.*\n';
+    _fsckSummaryPattern = r'(?m)^\s*(?P<files>\d+)\s+files\s+(?P<blocks>\d+)\s+blocks\s+(?P<free>\d+)\s+free\s*\n'
     _fsckNoErrors = '''\
 ** Phase 1 - Check Blocks and Sizes\r
 ** Phase 2 - Check Pathnames\r
 ** Phase 3 - Check Connectivity\r
 ** Phase 4 - Check Reference Counts\r
 ** Phase 5 - Check Free List \r
+'''
+
+class BSD211SimhDriver(SimhDriver):
+    '''Runs a simulated 2.11BSD Unix system using simh'''
+
+    defaultSystemDiskImage = os.path.join(sysImagesDirName, 'bsd211-test-system-mscp.dsk.gz')
+
+    def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=30):
+        super().__init__(simhCmd=simhCmd, cwd=cwd, debugStream=debugStream, timeout=timeout)
+        self.systemDiskImage = systemDiskImage if systemDiskImage is not None else type(self).defaultSystemDiskImage
+        self.testDiskImage = testDiskImage
+        self.tempDir = None
+
+    def start(self):
+        if self.simh is not None:
+            raise RuntimeError('Simulator already running')
+        try:
+            if self.cwd is None:
+                self.tempDir = tempfile.TemporaryDirectory()
+                self.cwd = self.tempDir.name
+            _copyImageFile(self.systemDiskImage, os.path.join(self.cwd, 'system.dsk'))
+            super().start()
+            initScript = BSD211SimhDriver._initScript
+            if self.testDiskImage is not None:
+                initScript += "set rq1 enabled\nset rq1 rauser\nattach rq1 %s\n" % os.path.abspath(self.testDiskImage)
+            if self.debugStream:
+                print('\nConfiguring simulator', file=self.debugStream)
+            self.sendSimhCommands(initScript)
+            if self.debugStream:
+                print('\nBooting 2.11BSD', file=self.debugStream)
+            self.sendSimhCommands('boot rq0\n')
+            if self.debugStream:
+                print('', file=self.debugStream)
+            self.simh.expect_exact(": ")
+            self.simh.send("\r")
+            self.simh.expect_exact("# ")
+            self.simh.sendline("stty -echo")
+            self.simh.expect_exact("# ")
+        except:
+            self.stop()
+            raise
+
+    def stop(self):
+        try:
+            if self.simh is not None:
+                self.simh.sendline('')
+                self.simh.expect_exact('# ', timeout=5)
+                self.simh.sendline('sync; sync; sync')
+                self.simh.expect_exact('# ', timeout=5)
+        finally:
+            try:
+                super().stop()
+            finally:
+                try:
+                    os.remove(os.path.join(self.cwd, 'system.dsk'))
+                except:
+                    pass
+                if self.tempDir is not None:
+                    self.tempDir.cleanup()
+                    self.tempDir = None
+                    self.cwd = None
+
+    def sendShellCommands(self, script) -> str:
+        res = ''
+        self.simh.sendline('')
+        self.simh.expect_exact('# ', timeout=5)
+        for line in script.split('\n'):
+            line = line.strip()
+            if len(line) > 0:
+                self.simh.sendline(line)
+                self.simh.expect_exact('# ')
+                res += self.simh.before
+        return res
+
+    def enumFiles(self, dir):
+        fileListCmd = self._fileListCmd % dir
+        fileListStr = self.sendShellCommands(fileListCmd)
+        with open('/tmp/filelist.txt', 'wb') as f:
+            f.write(fileListStr.encode())
+        return FileList.parse(fileListStr, re.compile(self._fileListPattern))
+
+    def fsck(self, dev):
+        # Invoke the 2.11BSD fsck program on the specified device
+        fsckOut = self.sendShellCommands('/sbin/fsck -n -f %s' % dev)
+
+        with open('/tmp/fsck.out', 'a+') as f:
+            f.write(fsckOut)
+
+        m = re.search(string=fsckOut, pattern=self._fsckStartPattern)
+        if not m:
+            raise RuntimeError('Unexpected output from fsck')
+        resultsStart = m.start()
+
+        m = re.search(string=fsckOut, pattern=self._fsckSummaryPattern)
+        if not m:
+            raise RuntimeError('Unexpected output from fsck')
+        resultsEnd = m.start()
+
+        results = fsckOut[resultsStart:resultsEnd]
+
+        files = int(m.group('files'))
+        used = int(m.group('used'))
+        free = int(m.group('free'))
+
+        if results == BSD211SimhDriver._fsckNoErrors:
+            results = None
+
+        return (files, used, free, results)
+
+    _initScript = """\
+set cpu 11/73
+set cpu 4M
+set cpu nocis
+set cpu idle
+set rq0 enabled
+set rq0 RD54
+attach rq0 system.dsk
+"""
+
+    # 2.11BSD command to enumerate all entries in a given directory, printing their metadata
+    # and, for files, a sum of their contents.
+    _fileListCmd = '/usr/bin/find %s -exec /bin/ls -ildg {} \\; \\( -type f -exec /bin/cksum {} \\; \\) -o -exec echo - \\;'
+
+    # Regex pattern to parse output from the above command.
+    _fileListPattern = r'''
+                        ^
+                        (?mx)
+                        \s* (?P<inode> \d+)
+                        \s+ (?P<type> [bcd-]) (?P<mode> [rwsStTx-]{9})
+                        \s* (?P<linkCount> \d+)
+                        \s+ (?P<uid> \S+)
+                        \s+ (?P<gid> \S+)
+                        \s+ (
+                            ( (?P<size> \d+) ) |
+                            ( (?P<major> \d+) \s* , \s* (?P<minor> \d+) )
+                        )
+                        \s+ (?P<time> [A-Za-z]{3} \s+ \d+ \s+ [0-9:]+ )
+                        \s+ (?P<name> [^\n\r]+ ) [\r\n]+
+                        \s* (
+                            ( (?P<cksum> \d+ ) \s+ \d+ \s+ [^\n\r]+ ) |
+                            -
+                        )
+                        \s*
+                        $
+                        '''
+
+    _fsckStartPattern = r'(?m)^\*\*\s+Phase\s+1\s+-\s+Check\s+Blocks\s+and\s+Sizes\s*\n'
+    _fsckSummaryPattern = r'(?m)^\s*(?P<files>\d+)\s+files,\s+(?P<used>\d+)\s+used,\s+(?P<free>\d+)\s+free\s*\n'
+    _fsckNoErrors = '''\
+** Phase 1 - Check Blocks and Sizes\r
+** Phase 2 - Check Pathnames\r
+** Phase 3 - Check Connectivity\r
+** Phase 4 - Check Reference Counts\r
+** Phase 5 - Check Free List\r
 '''
 
 def _copyImageFile(src, dest):

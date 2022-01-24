@@ -205,6 +205,7 @@ class FileIOTests:
             fn = os.path.join(self.targetDir, 'f06-%d' % (i+1))
             with open(fn, "w+") as f:
                 pass
+            os.chown(fn, -1, os.getresgid()[1]) # make sure the file's group is our effective gid
             os.chmod(fn, mode)
             statRes = os.stat(fn)
             self.assertEqual(stat.S_IMODE(statRes.st_mode), mode)
@@ -220,6 +221,18 @@ class FileIOTests:
         statRes = os.stat(fn)
         self.assertEqual(statRes.st_atime, ts)
         self.assertEqual(statRes.st_mtime, ts)
+        self.fileList.append(FileListEntry(fn, 'f', size=0, mode=statRes.st_mode, linkCount=1))
+
+    def test_08_ChangeFileGroup(self):
+        '''Change File Group'''
+        fn = os.path.join(self.targetDir, 'f08-1')
+        with open(fn, "w+") as f:
+            pass
+        for gid in os.getgroups():
+            if gid < 128:
+                os.chown(fn, -1, gid)
+                statRes = os.stat(fn)
+                self.assertEqual(statRes.st_gid, gid)
         self.fileList.append(FileListEntry(fn, 'f', size=0, mode=statRes.st_mode, linkCount=1))
 
     # ---------- File Read/Write Tests ----------

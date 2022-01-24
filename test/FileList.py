@@ -77,11 +77,15 @@ class FileListEntry:
         if self.linkCount is not None and not isinstance(self.linkCount, int):
             self.linkCount = int(self.linkCount)
         self.uid = kwargs.get('uid', None)
-        if self.uid is not None and not isinstance(self.uid, int):
+        try:
             self.uid = int(self.uid)
+        except:
+            pass
         self.gid = kwargs.get('gid', None)
-        if self.gid is not None and not isinstance(self.gid, int):
+        try:
             self.gid = int(self.gid)
+        except:
+            pass
         self.size = kwargs.get('size', None)
         if self.size is not None and not isinstance(self.size, int):
             self.size = int(self.size)

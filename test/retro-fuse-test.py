@@ -106,7 +106,10 @@ if not os.access(testOpts.fsHandler, os.X_OK):
 
 # Load the appropriate test cases
 fsHandlerBaseName = os.path.basename(testOpts.fsHandler)
-if fsHandlerBaseName == 'bsd29fs':
+if fsHandlerBaseName == 'bsd211fs':
+    import BSD211Tests
+    testSuite = unittest.TestLoader().loadTestsFromModule(BSD211Tests)
+elif fsHandlerBaseName == 'bsd29fs':
     import BSD29Tests
     testSuite = unittest.TestLoader().loadTestsFromModule(BSD29Tests)
 elif fsHandlerBaseName == 'v7fs':
@@ -117,7 +120,7 @@ elif fsHandlerBaseName == 'v6fs':
     testSuite = unittest.TestLoader().loadTestsFromModule(V6Tests)
 else:
     print(f'{scriptName}: Unknown filesystem handler: {testOpts.fsHandler}', file=sys.stderr)
-    print('Expected a file named v6fs, v7fs or bsd29fs', file=sys.stderr)
+    print('Expected a file named v6fs, v7fs, bsd29fs or bsd211fs', file=sys.stderr)
     sys.exit(1)
 
 # Run the tests
