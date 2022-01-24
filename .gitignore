@@ -1,8 +1,9 @@
 *.o
 *.d
 v[67]fs
-bsd29fs
+bsd2*fs
 *.map
 *.dsk
 .vscode/
 *.code-workspace
+__pycache__
