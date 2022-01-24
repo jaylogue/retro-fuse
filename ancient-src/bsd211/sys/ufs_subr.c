@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * Copyright (c) 1986 Regents of the University of California.
  * All rights reserved.  The Berkeley software License Agreement
@@ -6,28 +8,30 @@
  *	@(#)ufs_subr.c	1.8 (2.11BSD) 2020/1/20
  */
 
-#include "param.h"
-#include "../machine/seg.h"
+#include "bsd211/h/param.h"
+#include "bsd211/machine/seg.h"
 
-#include "user.h"
-#include "proc.h"
-#include "fs.h"
-#include "inode.h"
-#include "buf.h"
-#include "mount.h"
-#include "kernel.h"
-#include "systm.h"
+#include "bsd211/h/user.h"
+#include "bsd211/h/proc.h"
+#include "bsd211/h/fs.h"
+#include "bsd211/h/inode.h"
+#include "bsd211/h/buf.h"
+#include "bsd211/h/mount.h"
+#include "bsd211/h/kernel.h"
+#include "bsd211/h/systm.h"
 
+#if UNUSED
 /*
  * Go through the mount table looking for filesystems which have been modified.
  * For each "dirty" filesystem call 'ufs_sync' to flush changed inodes, data
  * blocks and the superblock to disc.
  */
+void
 sync()
 {
 	register struct mount *mp;
 	register struct fs *fs;
-	int async;
+	int16_t async;
 
 	if	(updlock)
 		return;
@@ -47,7 +51,9 @@ sync()
 		}
 	updlock = 0;
 	}
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Go through the mount table marking filesystems clean.
  * This function is identical to sync() except that it also
@@ -55,11 +61,12 @@ sync()
  *
  * This routine is used only by the reboot code.
  */
+void
 fsclean()
 {
 	register struct mount *mp;
 	register struct fs *fs;
-	int async;
+	int16_t async;
 
 	if	(updlock)
 		return;
@@ -88,6 +95,7 @@ fsclean()
 		}
 	updlock = 0;
 	}
+#endif /* UNUSED */
 
 /*
  * Flush all the blocks associated with an inode.
@@ -104,13 +112,14 @@ fsclean()
  *	overlap the inode. This brings the inode up to
  *	date with recent mods to the cooked device.
  */
+void
 syncip(ip)
 	struct inode *ip;
 {
 	register struct buf *bp;
 	register struct buf *lastbufp;
-	long lbn, lastlbn;
-	register int s;
+	int16_t lbn, lastlbn;
+	register int16_t s;
 	daddr_t blkno;
 
 	lastlbn = howmany(ip->i_size, DEV_BSIZE);
@@ -145,12 +154,13 @@ syncip(ip)
 /*
  * Check that a specified block number is in range.
  */
+int16_t
 badblock(fp, bn)
 	register struct fs *fp;
 	daddr_t bn;
 {
 
-	if (bn < fp->fs_isize || bn >= fp->fs_fsize) {
+	if (bn < fp->fs_isize || bn >= wswap_int32(fp->fs_fsize)) {
 		printf("bad block %D, ",bn);
 		fserr(fp, "bad block");
 		return (1);

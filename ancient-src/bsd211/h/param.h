@@ -8,20 +8,20 @@
 
 #define	BSD	200005		/* System version (year and month) */
 
-#include <sys/localopts.h>
-#include <sys/stddef.h>		/* for 'offsetof' */
+#include <bsd211/h/localopts.h>
+#include <bsd211/h/stddef.h>		/* for 'offsetof' */
 
 /*
  * Machine type dependent parameters.
  */
-#include <machine/machparam.h>
+#include <bsd211/machine/machparam.h>
 
 /*
  * Machine-independent constants
  */
 #define	NMOUNT	6		/* number of mountable file systems */
 #define	MAXUPRC	20		/* max processes per user */
-#define	NOFILE	30		/* max open files per process */
+#define	NOFILE	100		/* max open files per process */
 #define	CANBSIZ	256		/* max size of typewriter line */
 #define	NCARGS	5120		/* # characters in exec arglist */
 #define	NGROUPS	16		/* max number groups */
@@ -51,9 +51,9 @@
 /*
  * Signals
  */
-#include <signal.h>
+#include <bsd211/h/signal.h>
 
-#define	NBPW	sizeof(int)	/* number of bytes in an integer */
+#define	NBPW	sizeof(int16_t)	/* number of bytes in an integer */
 
 #ifndef	NULL
 #define	NULL	0
@@ -63,19 +63,19 @@
 
 #define	CLBYTES		(CLSIZE*NBPG)
 #define	CLOFSET		(CLBYTES-1)
-#define	claligned(x)	((((int)(x))&CLOFSET)==0)
+#define	claligned(x)	((((int16_t)(x))&CLOFSET)==0)
 #define	CLOFF		CLOFSET
 #define	CLSHIFT		(PGSHIFT + CLSIZELOG2)
 
 /* round a number of clicks up to a whole cluster */
-#define	clrnd(i)	(((i) + (CLSIZE-1)) &~ ((long)(CLSIZE-1)))
+#define	clrnd(i)	(((i) + (CLSIZE-1)) &~ ((int32_t)(CLSIZE-1)))
 
 /* CBLOCK is the size of a clist block, must be power of 2 */
 #define	CBLOCK	32
 #define	CBSIZE	(CBLOCK - sizeof(struct cblock *))	/* data chars/clist */
 #define	CROUND	(CBLOCK - 1)				/* clist rounding */
 
-#include	<sys/types.h>
+#include	<bsd211/h/types.h>
 
 /*
  * File system parameters and macros.

@@ -69,22 +69,22 @@ struct	namecache {
 	char	nc_name[NCHNAMLEN];	/* segment name */
 };
 #if	defined(KERNEL) && !defined(SUPERVISOR)
-struct	namecache *namecache;
-int	nchsize;
-#include <machine/seg.h>
-segm	nmidesc;
+extern struct	namecache *namecache;
+extern int16_t	nchsize;
+#include <bsd211/machine/seg.h>
+extern segm	nmidesc;
 #endif
 
 /*
  * Stats on usefulness of namei caches.
  */
 struct	nchstats {
-	long	ncs_goodhits;		/* hits that we can reall use */
-	long	ncs_badhits;		/* hits we must drop */
-	long	ncs_falsehits;		/* hits with id mismatch */
-	long	ncs_miss;		/* misses */
-	long	ncs_long;		/* long names that ignore cache */
-	long	ncs_pass2;		/* names found with passes == 2 */
-	long	ncs_2passes;		/* number of times we attempt it */
+	int32_t	ncs_goodhits;		/* hits that we can reall use */
+	int32_t	ncs_badhits;		/* hits we must drop */
+	int32_t	ncs_falsehits;		/* hits with id mismatch */
+	int32_t	ncs_miss;		/* misses */
+	int32_t	ncs_long;		/* int32_t names that ignore cache */
+	int32_t	ncs_pass2;		/* names found with passes == 2 */
+	int32_t	ncs_2passes;		/* number of times we attempt it */
 };
 #endif

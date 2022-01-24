@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * Copyright (c) 1986 Regents of the University of California.
  * All rights reserved.  The Berkeley software License Agreement
@@ -6,22 +8,22 @@
  *	@(#)ufs_inode.c	1.7 (2.11BSD GTE) 1997/2/7
  */
 
-#include "param.h"
-#include "../machine/seg.h"
+#include "bsd211/h/param.h"
+#include "bsd211/machine/seg.h"
 
-#include "user.h"
-#include "proc.h"
-#include "inode.h"
-#include "fs.h"
-#include "mount.h"
-#include "kernel.h"
-#include "buf.h"
-#include "text.h"
-#include "systm.h"
+#include "bsd211/h/user.h"
+#include "bsd211/h/proc.h"
+#include "bsd211/h/inode.h"
+#include "bsd211/h/fs.h"
+#include "bsd211/h/mount.h"
+#include "bsd211/h/kernel.h"
+#include "bsd211/h/buf.h"
+/* UNUSED: #include "bsd211/h/text.h" */
+#include "bsd211/h/systm.h"
 #ifdef QUOTA
 #include "quota.h"
 #endif
-#include "syslog.h"
+#include "bsd211/h/syslog.h"
 
 #define	INOHSZ	16		/* must be power of two */
 #define	INOHASH(dev,ino)	(((dev)+(ino))&(INOHSZ-1))
@@ -33,13 +35,16 @@ union ihead {				/* inode LRU cache, stolen */
 
 struct inode *ifreeh, **ifreet;
 
+static void trsingle(struct inode *ip, caddr_t bp, daddr_t last, int16_t aflags);
+
 /*
  * Initialize hash links for inodes
  * and build inode free list.
  */
+void
 ihinit()
 {
-	register int i;
+	register int16_t i;
 	register struct inode *ip = inode;
 	register union  ihead *ih = ihead;
 
@@ -227,13 +232,19 @@ loop:
 	dp = (struct dinode *)mapin(bp);
 	dp += itoo(ino);
 	ip->i_ic1 = dp->di_ic1;
+	ip->i_size = wswap_int32(ip->i_size);
 	ip->i_flags = dp->di_flags;
 #ifdef EXTERNALITIMES
 	xic2 = dp->di_ic2;
 #else
 	ip->i_ic2 = dp->di_ic2;
+	ip->i_atime = wswap_int32(ip->i_atime);
+	ip->i_mtime = wswap_int32(ip->i_mtime);
+	ip->i_ctime = wswap_int32(ip->i_ctime);
 #endif
-	bcopy(dp->di_addr, ip->i_addr, NADDR * sizeof (daddr_t));
+	/* UNUSED: bcopy(dp->di_addr, ip->i_addr, NADDR * sizeof (daddr_t)); */
+	for (int i = 0; i < NADDR; i++)
+		ip->i_addr[i] = wswap_int32(dp->di_addr[i]);
 	mapout(bp);
 	brelse(bp);
 #ifdef EXTERNALITIMES
@@ -260,6 +271,7 @@ loop:
  * filesystems.  It is caller's responsibility to check that
  * the inode pointer is valid.
  */
+void
 igrab(ip)
 	register struct inode *ip;
 {
@@ -289,6 +301,7 @@ igrab(ip)
  * write the inode out and if necessary,
  * truncate and deallocate the file.
  */
+void
 iput(ip)
 	register struct inode *ip;
 {
@@ -306,6 +319,7 @@ iput(ip)
 	irele(ip);
 }
 
+void
 irele(ip)
 	register struct inode *ip;
 {
@@ -360,10 +374,11 @@ irele(ip)
  * If waitfor set, then must insure
  * i/o order so wait for the write to complete.
  */
+void
 iupdat(ip, ta, tm, waitfor)
 	struct inode *ip;
 	struct timeval *ta, *tm;
-	int waitfor;
+	int16_t waitfor;
 {
 	register struct buf *bp;
 	register struct dinode *dp;
@@ -403,13 +418,19 @@ iupdat(ip, ta, tm, waitfor)
 	tip->i_flag &= ~(IUPD|IACC|ICHG|IMOD);
 	dp = (struct dinode *)mapin(bp) + itoo(tip->i_number);
 	dp->di_ic1 = tip->i_ic1;
+	dp->di_size = wswap_int32(dp->di_size);
 	dp->di_flags = tip->i_flags;
 #ifdef EXTERNALITIMES
 	dp->di_ic2 = xic2;
 #else
 	dp->di_ic2 = tip->i_ic2;
+	dp->di_atime = wswap_int32(dp->di_atime);
+	dp->di_mtime = wswap_int32(dp->di_mtime);
+	dp->di_ctime = wswap_int32(dp->di_ctime);
 #endif
-	bcopy(ip->i_addr, dp->di_addr, NADDR * sizeof (daddr_t));
+	/* UNUSED: bcopy(ip->i_addr, dp->di_addr, NADDR * sizeof (daddr_t)); */
+	for (int i = 0; i < NADDR; i++)
+		dp->di_addr[i] = wswap_int32(ip->i_addr[i]);
 	mapout(bp);
 	if (waitfor && ((ip->i_fs->fs_flags & MNT_ASYNC) == 0))
 		bwrite(bp);
@@ -428,21 +449,22 @@ iupdat(ip, ta, tm, waitfor)
  *
  * NB: triple indirect blocks are untested.
  */
+void
 itrunc(oip,length, ioflags)
 	register struct inode *oip;
 	u_long length;
-	int	ioflags;
+	int16_t	ioflags;
 {
 	daddr_t lastblock;
-	register int i;
+	register int16_t i;
 	register struct inode *ip;
 	daddr_t bn, lastiblock[NIADDR];
 	struct buf *bp;
-	int offset, level;
+	int16_t offset, level;
 	struct inode tip;
-	int aflags;
+	int16_t aflags;
 #ifdef QUOTA
-	long bytesreleased;
+	int32_t bytesreleased;
 #endif
 
 	aflags = B_CLRBUF;
@@ -593,15 +615,16 @@ updret:
  *
  * NB: triple indirect blocks are untested.
  */
+void
 indirtrunc(ip, bn, lastbn, level, aflags)
 	struct inode *ip;
 	daddr_t bn, lastbn;
-	int level;
-	int aflags;
+	int16_t level;
+	int16_t aflags;
 {
 	register struct buf *bp;
 	daddr_t nb, last;
-	long factor;
+	int32_t factor;
 
 	/*
 	 * Calculate index in current block of last
@@ -669,7 +692,7 @@ indirtrunc(ip, bn, lastbn, level, aflags)
 		 * Recursively free totally unused blocks.
 		 */
 		for (;bstart > bstop;--bstart) {
-			nb = *bstart;
+			nb = wswap_int32(*bstart);
 			if (nb) {
 				mapout(bp);
 				indirtrunc(ip,nb,(daddr_t)-1, level-1, aflags);
@@ -685,7 +708,7 @@ indirtrunc(ip, bn, lastbn, level, aflags)
 		if (lastbn >= 0) {
 
 			mapin(bp);
-			nb = *bstop;
+			nb = wswap_int32(*bstop);
 			mapout(bp);
 			last = lastbn % factor;
 			if (nb != 0)
@@ -695,12 +718,12 @@ indirtrunc(ip, bn, lastbn, level, aflags)
 	brelse(bp);
 }
 
-static
+static void
 trsingle(ip, bp,last, aflags)
 	register struct inode *ip;
 	caddr_t bp;
 	daddr_t last;
-	int aflags;
+	int16_t aflags;
 {
 	register daddr_t *bstart, *bstop;
 	daddr_t blarray[NINDIR];
@@ -711,7 +734,7 @@ trsingle(ip, bp,last, aflags)
 	bstop = &blarray[last];
 	for (;bstart > bstop;--bstart)
 		if (*bstart)
-			free(ip, *bstart);
+			free(ip, wswap_int32(*bstart));
 }
 
 /*
@@ -727,6 +750,7 @@ trsingle(ip, bp,last, aflags)
  *
  * this is called from sumount() when dev is being unmounted
  */
+int16_t
 #ifdef QUOTA
 iflush(dev, iq)
 	struct inode *iq;
@@ -736,7 +760,7 @@ iflush(dev)
 	dev_t dev;
 {
 	register struct inode *ip;
-	register int open = 0;
+	register int16_t open = 0;
 
 	for (ip = inode; ip < inodeNINODE; ip++) {
 #ifdef QUOTA
@@ -776,6 +800,7 @@ iflush(dev)
 /*
  * Lock an inode. If its already locked, set the WANT bit and sleep.
  */
+void
 ilock(ip)
 	register struct inode *ip;
 {
@@ -786,6 +811,7 @@ ilock(ip)
 /*
  * Unlock an inode.  If WANT bit is on, wakeup.
  */
+void
 iunlock(ip)
 	register struct inode *ip;
 {

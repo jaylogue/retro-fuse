@@ -9,15 +9,15 @@
 #ifndef	_SYS_TIME_H_
 #define	_SYS_TIME_H_
 
-#include <sys/types.h>
+#include <bsd211/h/types.h>
 
 /*
  * Structure returned by gettimeofday(2) system call,
  * and used in other calls.
  */
 struct timeval {
-	long	tv_sec;		/* seconds */
-	long	tv_usec;	/* and microseconds */
+	int32_t	tv_sec;		/* seconds */
+	int32_t	tv_usec;	/* and microseconds */
 };
 
 /*
@@ -27,12 +27,12 @@ struct timeval {
 */
 struct timespec {
 	time_t tv_sec;		/* seconds */
-	long   tv_nsec;		/* and nanoseconds */
+	int32_t   tv_nsec;		/* and nanoseconds */
 };
 
 struct timezone {
-	int	tz_minuteswest;	/* minutes west of Greenwich */
-	int	tz_dsttime;	/* type of dst correction */
+	int16_t	tz_minuteswest;	/* minutes west of Greenwich */
+	int16_t	tz_dsttime;	/* type of dst correction */
 };
 #define	DST_NONE	0	/* not on dst */
 #define	DST_USA		1	/* USA style dst */
@@ -62,8 +62,8 @@ struct timezone {
 #define	ITIMER_PROF	2
 
 struct	k_itimerval {
-	long	it_interval;		/* timer interval */
-	long	it_value;		/* current value */
+	int32_t	it_interval;		/* timer interval */
+	int32_t	it_value;		/* current value */
 };
 
 struct	itimerval {
@@ -79,9 +79,9 @@ struct	itimerval {
  * Getkerninfo clock information structure
  */
 struct clockinfo {
-	int	hz;		/* clock frequency */
-	int	tick;		/* micro-seconds per hz tick */
-	int	stathz;		/* statistics clock frequency */
-	int	profhz;		/* profiling clock frequency */
+	int16_t	hz;		/* clock frequency */
+	int16_t	tick;		/* micro-seconds per hz tick */
+	int16_t	stathz;		/* statistics clock frequency */
+	int16_t	profhz;		/* profiling clock frequency */
 };
 #endif	/* !_SYS_TIME_H_ */

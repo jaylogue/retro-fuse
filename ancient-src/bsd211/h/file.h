@@ -6,7 +6,7 @@
  *	@(#)file.h	1.3 (2.11BSD GTE) 1/19/95
  */
 
-#include <fcntl.h>
+#include <bsd211/include/fcntl.h>
 
 #ifndef	_SYS_FILE_H_
 #define	_SYS_FILE_H_
@@ -16,10 +16,10 @@
  * One for each kernel object.
  */
 struct	file {
-	int	f_flag;		/* see below */
+	int16_t	f_flag;		/* see below */
 	char	f_type;		/* descriptor type */
 	u_char	f_count;	/* reference count */
-	short	f_msgcount;	/* references from message queue */
+	int16_t	f_msgcount;	/* references from message queue */
 	union {
 		caddr_t	f_Data;
 		struct socket *f_Socket;
@@ -29,10 +29,10 @@ struct	file {
 
 #ifdef KERNEL
 struct	fileops {
-	int	(*fo_rw)();
-	int	(*fo_ioctl)();
-	int	(*fo_select)();
-	int	(*fo_close)();
+	int16_t	(*fo_rw)();
+	int16_t	(*fo_ioctl)();
+	int16_t	(*fo_select)();
+	int16_t	(*fo_close)();
 };
 
 #define f_data		f_un.f_Data
@@ -40,11 +40,11 @@ struct	fileops {
 
 #ifndef SUPERVISOR
 extern struct	file file[], *fileNFILE;
-int	nfile;
+extern int16_t	nfile;
 #endif
 
-struct	file *getf();
-struct	file *falloc();
+/* UNUSED: struct	file *getf(); */
+/* UNUSED: struct	file *falloc(); */
 #endif
 
 /*

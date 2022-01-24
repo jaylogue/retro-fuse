@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * Copyright (c) 1986 Regents of the University of California.
  * All rights reserved.  The Berkeley software License Agreement
@@ -6,25 +8,26 @@
  *	@(#)kern_descrip.c	1.6 (2.11BSD) 1999/9/13
  */
 
-#include "param.h"
-#include "user.h"
-#include "proc.h"
-#include "file.h"
-#include "systm.h"
-#include "inode.h"
-#include "ioctl.h"
-#include "stat.h"
-#include "conf.h"
+#include "bsd211/h/param.h"
+#include "bsd211/h/user.h"
+#include "bsd211/h/proc.h"
+#include "bsd211/h/file.h"
+#include "bsd211/h/systm.h"
+#include "bsd211/h/inode.h"
+#include "bsd211/h/ioctl.h"
+#include "bsd211/h/stat.h"
+#include "bsd211/h/conf.h"
 #ifdef INET
 #include "socket.h"
 #include "socketvar.h"
 #endif
-#include <syslog.h>
+#include <bsd211/h/syslog.h>
 
 /*
  * Descriptor management.
  */
 
+#if UNUSED
 /*
  * System calls on descriptors.
  */
@@ -33,7 +36,9 @@ getdtablesize()
 
 	u.u_r.r_val1 = NOFILE;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 dup()
 {
 	register struct a {
@@ -50,7 +55,9 @@ dup()
 		return;
 	dupit(j, fp, u.u_pofile[uap->i] &~ UF_EXCLOSE);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 dup2()
 {
 	register struct a {
@@ -73,7 +80,9 @@ dup2()
 		(void) closef(u.u_ofile[uap->j]);
 	dupit(uap->j, fp, u.u_pofile[uap->i] &~ UF_EXCLOSE);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 dupit(fd, fp, flags)
 	register int fd;
 	register struct file *fp;
@@ -86,7 +95,9 @@ dupit(fd, fp, flags)
 	if (fd > u.u_lastfile)
 		u.u_lastfile = fd;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * The file control system call.
  */
@@ -152,7 +163,9 @@ fcntl()
 		u.u_error = EINVAL;
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 fset(fp, bit, value)
 register struct file *fp;
 	int bit, value;
@@ -165,7 +178,9 @@ register struct file *fp;
 	return (fioctl(fp, (u_int)(bit == FNONBLOCK ? FIONBIO : FIOASYNC),
 			(caddr_t)&value));
 }
+#endif /* UNUSED */
 
+#if UNUSED
 fgetown(fp, valuep)
 	register struct file *fp;
 	register int *valuep;
@@ -182,7 +197,9 @@ fgetown(fp, valuep)
 	*valuep = -*valuep;
 	return (error);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 fsetown(fp, value)
 	register struct file *fp;
 	int value;
@@ -203,9 +220,11 @@ fsetown(fp, value)
 		value = -value;
 	return (fioctl(fp, (u_int)TIOCSPGRP, (caddr_t)&value));
 }
+#endif /* UNUSED */
 
 extern	struct	fileops	*Fops[];
 
+#if UNUSED
 fioctl(fp, cmd, value)
 register struct file *fp;
 	u_int cmd;
@@ -214,11 +233,13 @@ register struct file *fp;
 
 	return ((*Fops[fp->f_type]->fo_ioctl)(fp, cmd, value));
 }
+#endif /* UNUSED */
 
+void
 close()
 {
 	register struct a {
-		int	i;
+		int16_t	i;
 	} *uap = (struct a *)u.u_ap;
 	register struct file *fp;
 
@@ -230,6 +251,7 @@ close()
 	/* WHAT IF u.u_error ? */
 }
 
+#if UNUSED
 fstat()
 {
 	register struct file *fp;
@@ -264,13 +286,15 @@ fstat()
 		u.u_error = copyout((caddr_t)&ub, (caddr_t)uap->sb,
 		    sizeof (ub));
 }
+#endif /* UNUSED */
 
 /* copied, for supervisory networking, to sys_net.c */
 /*
  * Allocate a user file descriptor.
  */
+int16_t
 ufalloc(i)
-	register int i;
+	register int16_t i;
 {
 
 	for (; i < NOFILE; i++)
@@ -296,7 +320,7 @@ struct file *
 falloc()
 {
 	register struct file *fp;
-	register i;
+	register int16_t i;
 
 	i = ufalloc(0);
 	if (i < 0)
@@ -329,11 +353,11 @@ slot:
  */
 struct file *
 getf(f)
-	register int f;
+	register int16_t f;
 {
 	register struct file *fp;
 
-	if ((unsigned)f >= NOFILE || (fp = u.u_ofile[f]) == NULL) {
+	if ((uint16_t)f >= NOFILE || (fp = u.u_ofile[f]) == NULL) {
 		u.u_error = EBADF;
 		return (NULL);
 	}
@@ -344,10 +368,11 @@ getf(f)
  * Internal form of close.
  * Decrement reference count on file structure.
  */
+int16_t
 closef(fp)
 	register struct file *fp;
 {
-	int	error;
+	int16_t	error;
 
 	if (fp == NULL)
 		return(0);
@@ -356,14 +381,17 @@ closef(fp)
 		return(0);
 	}
 
+#if UNUSED
 	if	((fp->f_flag & (FSHLOCK|FEXLOCK)) && fp->f_type == DTYPE_INODE)
 		ino_unlock(fp, FSHLOCK|FEXLOCK);
+#endif /* UNUSED */
 
-	error = (*Fops[fp->f_type]->fo_close)(fp);
+	error = (*Fops[(int)fp->f_type]->fo_close)(fp);
 	fp->f_count = 0;
 	return(error);
 }
 
+#if UNUSED
 /*
  * Apply an advisory lock on a file descriptor.
  */
@@ -397,7 +425,9 @@ flock()
 	error = ino_lock(fp, uap->how);
 	return(u.u_error = error);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * File Descriptor pseudo-device driver (/dev/fd/).
  *
@@ -423,16 +453,18 @@ fdopen(dev, mode, type)
 	u.u_dupfd = minor(dev);
 	return(ENODEV);
 	}
+#endif /* UNUSED */
 
 /*
  * Duplicate the specified descriptor to a free descriptor.
  */
+int16_t
 dupfdopen(indx, dfd, mode, error)
-	register int indx, dfd;
-	int mode;
-	int error;
+	register int16_t indx, dfd;
+	int16_t mode;
+	int16_t error;
 	{
-	register register struct file *wfp;
+	register struct file *wfp;
 	struct file *fp;
 	
 	/*

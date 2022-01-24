@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * 	@(#) 	ufs_syscalls2.c	  1.6 (2.11BSD) 2019/12/17
  *
@@ -5,17 +7,19 @@
  * relocated to this file.
 */
 
-#include "param.h"
-#include "../machine/seg.h"
-#include "sys/file.h"
-#include "user.h"
-#include "inode.h"
-#include "buf.h"
-#include "fs.h"
-#include "namei.h"
-#include "mount.h"
-#include "kernel.h"
+#include "bsd211/h/param.h"
+#include "bsd211/machine/seg.h"
+#include "bsd211/h/file.h"
+#include "bsd211/h/user.h"
+#include "bsd211/h/inode.h"
+#include "bsd211/h/buf.h"
+#include "bsd211/h/fs.h"
+#include "bsd211/h/namei.h"
+#include "bsd211/h/mount.h"
+#include "bsd211/h/kernel.h"
 
+#if UNUSED
+int16_t
 statfs()
 	{
 	register struct a
@@ -32,12 +36,14 @@ statfs()
 	ip = namei(ndp);
 	if	(!ip)
 		return(u.u_error);
-	mp = (struct mount *)((int)ip->i_fs - offsetof(struct mount, m_filsys));
+	mp = (struct mount *)((intptr_t)ip->i_fs - offsetof(struct mount, m_filsys));
 	iput(ip);
 	u.u_error = statfs1(mp, uap->buf);
 	return(u.u_error);
 	}
+#endif /* UNUSED */
 
+#if UNUSED
 fstatfs()
 	{
 	register struct a
@@ -55,7 +61,10 @@ fstatfs()
 	u.u_error = statfs1(mp, uap->buf);
 	return(u.u_error);
 	}
+#endif /* UNUSED */
 
+#if UNUSED
+int16_t
 statfs1(mp, sbp)
 	struct	mount	*mp;
 	struct	statfs	*sbp;
@@ -82,18 +91,21 @@ statfs1(mp, sbp)
 	sfsp->f_flags = mp->m_flags & MNT_VISFLAGMASK;
 	return(copyout(sfsp, sbp, sizeof (struct statfs)));
 	}
+#endif /* UNUSED */
 
+#if UNUSED
+int16_t
 getfsstat()
 	{
 	register struct a
 		{
 		struct	statfs	*buf;
-		int	bufsize;
+		int16_t	bufsize;
 		u_int	flags;
 		} *uap = (struct a *)u.u_ap;
 	register struct	mount *mp;
 	caddr_t	sfsp;
-	int	count, maxcount, error;
+	int16_t	count, maxcount, error;
 
 	maxcount = uap->bufsize / sizeof (struct statfs);
 	sfsp = (caddr_t)uap->buf;
@@ -116,6 +128,7 @@ getfsstat()
 		u.u_r.r_val1 = count;
 	return(0);
 	}
+#endif /* UNUSED */
 
 /*
  * 'ufs_sync' is the routine which syncs a single filesystem.  This was
@@ -123,12 +136,13 @@ getfsstat()
  * sync _every_ filesystem when unmounting just one filesystem.
 */
 
+int16_t
 ufs_sync(mp)
 	register struct mount *mp;
 	{
 	register struct fs *fs;
 	struct	buf *bp;
-	int	error = 0;
+	int16_t	error = 0;
 
 	fs = &mp->m_filsys;
 	if	(fs->fs_fmod && (mp->m_flags & MNT_RDONLY))
@@ -164,7 +178,7 @@ ufs_sync(mp)
  * filesystem but it didn't seem worth a page or two of code on something
  * which only happens every 30 seconds.
 */
-
+void
 syncinodes(fs)
 	struct	fs *fs;
 	{
@@ -191,6 +205,7 @@ syncinodes(fs)
 		}
 	}
 
+#if UNUSED
 /*
  * mode mask for creation of files
  */
@@ -203,17 +218,20 @@ umask()
 	u.u_r.r_val1 = u.u_cmask;
 	u.u_cmask = uap->mask & 07777;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Seek system call
  */
+void
 lseek()
 {
 	register struct file *fp;
 	register struct a {
-		int	fd;
+		int16_t	fd;
 		off_t	off;
-		int	sbase;
+		int16_t	sbase;
 	} *uap = (struct a *)u.u_ap;
 
 	if ((fp = getf(uap->fd)) == NULL)
@@ -239,14 +257,16 @@ lseek()
 	}
 	u.u_r.r_off = fp->f_offset;
 }
+#endif /* UNUSED */
 
 /*
  * Synch an open file.
  */
+void
 fsync()
 {
 	register struct a {
-		int	fd;
+		int16_t	fd;
 	} *uap = (struct a *)u.u_ap;
 	register struct inode *ip;
 
@@ -257,6 +277,7 @@ fsync()
 	iunlock(ip);
 }
 
+void
 utimes()
 {
 	register struct a {

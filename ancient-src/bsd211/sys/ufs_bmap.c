@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * Copyright (c) 1986 Regents of the University of California.
  * All rights reserved.  The Berkeley software License Agreement
@@ -6,18 +8,18 @@
  *	@(#)ufs_bmap.c	1.2 (2.11BSD) 1996/9/19
  */
 
-#include "param.h"
-#include "../machine/seg.h"
+#include "bsd211/h/param.h"
+#include "bsd211/machine/seg.h"
 
-#include "systm.h"
-#include "conf.h"
-#include "dir.h"
-#include "inode.h"
-#include "user.h"
-#include "buf.h"
-#include "fs.h"
-#include "mount.h"
-#include "uio.h"
+#include "bsd211/h/systm.h"
+#include "bsd211/h/conf.h"
+#include "bsd211/h/dir.h"
+#include "bsd211/h/inode.h"
+#include "bsd211/h/user.h"
+#include "bsd211/h/buf.h"
+#include "bsd211/h/fs.h"
+#include "bsd211/h/mount.h"
+#include "bsd211/h/uio.h"
 
 /*
  * Bmap defines the structure of file system storage
@@ -31,14 +33,14 @@ daddr_t
 bmap(ip, bn, rwflg, flags)
 	register struct inode *ip;
 	daddr_t bn;
-	int rwflg, flags;
+	int16_t rwflg, flags;
 {
-	register int i;
+	register int16_t i;
 	register struct buf *bp;
 	struct buf *nbp;
-	int j, sh;
+	int16_t j, sh;
 	daddr_t nb, *bap, ra;
-	int async = ip->i_fs->fs_flags & MNT_ASYNC;
+	int16_t async = ip->i_fs->fs_flags & MNT_ASYNC;
 
 	if (bn < 0) {
 		u.u_error = EFBIG;
@@ -126,12 +128,12 @@ bmap(ip, bn, rwflg, flags)
 		bap = (daddr_t *) mapin(bp);
 		sh -= NSHIFT;
 		i = (bn>>sh) & NMASK;
-		nb = bap[i];
+		nb = wswap_int32(bap[i]);
 		/*
 		 * calculate read-ahead
 		 */
 		if (i < NINDIR-1)
-			ra = bap[i+1];
+			ra = wswap_int32(bap[i+1]);
 		mapout(bp);
 		if (nb == 0) {
 			if (rwflg == B_READ || (nbp = balloc(ip, flags | B_CLRBUF)) == NULL) {
@@ -150,7 +152,7 @@ bmap(ip, bn, rwflg, flags)
 			else
 				bdwrite(nbp);
 			bap = (daddr_t *) mapin(bp);
-			bap[i] = nb;
+			bap[i] = wswap_int32(nb);
 			mapout(bp);
 			bdwrite(bp);
 		} else

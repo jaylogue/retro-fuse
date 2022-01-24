@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * Copyright (c) 1986 Regents of the University of California.
  * All rights reserved.  The Berkeley software License Agreement
@@ -6,20 +8,22 @@
  *	@(#)sys_generic.c	1.8 (2.11BSD) 2000/2/28
  */
 
-#include "param.h"
-#include "../machine/seg.h"
+#include "bsd211/h/param.h"
+#include "bsd211/machine/seg.h"
 
-#include "user.h"
-#include "proc.h"
-#include "signalvar.h"
-#include "inode.h"
-#include "file.h"
-#include "ioctl.h"
-#include "conf.h"
-#include "uio.h"
-#include "pty.h"
-#include "kernel.h"
-#include "systm.h"
+#include "bsd211/h/user.h"
+#include "bsd211/h/proc.h"
+#include "bsd211/h/signalvar.h"
+#include "bsd211/h/inode.h"
+#include "bsd211/h/file.h"
+#include "bsd211/h/ioctl.h"
+#include "bsd211/h/conf.h"
+#include "bsd211/h/uio.h"
+/* UNUSED: #include "pty.h" */
+#include "bsd211/h/kernel.h"
+#include "bsd211/h/systm.h"
+
+static void bsd211_rwuio(struct bsd211_uio *uio);
 
 /* 
  * this is consolidated here rather than being scattered all over the
@@ -27,21 +31,24 @@
  * networking might not be defined an appropriate error has to be set
 */
 
+#if UNUSED
 	int	sorw(), soctl(), sosel(), socls();
 	struct	fileops	socketops =
 		{ sorw, soctl, sosel, socls };
+#endif /* UNUSED */
 extern	struct	fileops	inodeops, pipeops;
-	struct	fileops	*Fops[] = { NULL, &inodeops, &socketops, &pipeops };
+	struct	fileops	*Fops[] = { NULL, &inodeops, NULL, NULL };
 
 /*
  * Read system call.
  */
+void
 read()
 {
 	register struct a {
-		int	fdes;
+		int16_t	fdes;
 		char	*cbuf;
-		unsigned count;
+		uint16_t count;
 	} *uap = (struct a *)u.u_ap;
 	struct uio auio;
 	struct iovec aiov;
@@ -54,6 +61,7 @@ read()
 	rwuio(&auio);
 }
 
+#if UNUSED
 readv()
 {
 	register struct a {
@@ -77,16 +85,18 @@ readv()
 		return;
 	rwuio(&auio);
 }
+#endif /* UNUSED */
 
 /*
  * Write system call
  */
+void
 write()
 {
 	register struct a {
-		int	fdes;
+		int16_t	fdes;
 		char	*cbuf;
-		unsigned count;
+		uint16_t count;
 	} *uap = (struct a *)u.u_ap;
 	struct uio auio;
 	struct iovec aiov;
@@ -99,6 +109,7 @@ write()
 	rwuio(&auio);
 }
 
+#if UNUSED
 writev()
 {
 	register struct a {
@@ -122,13 +133,14 @@ writev()
 		return;
 	rwuio(&auio);
 }
+#endif /* UNUSED */
 
-static
+static void
 rwuio(uio)
 	register struct uio *uio;
 {
 	struct a {
-		int	fdes;
+		int16_t	fdes;
 	};
 	register struct file *fp;
 	register struct iovec *iov;
@@ -148,9 +160,10 @@ rwuio(uio)
 
 	uio->uio_resid = total;
 	if	(uio->uio_resid != total)	/* check wraparound */
-		return(u.u_error = EINVAL);
+		return(void)(u.u_error = EINVAL);
 
 	count = uio->uio_resid;
+#if UNUSED
 	if	(setjmp(&u.u_qsave))
 		{
 /*
@@ -166,10 +179,12 @@ rwuio(uio)
 			u.u_error = 0;
 		}
 	else
+#endif /* UNUSED */
 		u.u_error = (*Fops[fp->f_type]->fo_rw)(fp, uio);
 	u.u_r.r_val1 = count - uio->uio_resid;
 }
 
+#if UNUSED
 /*
  * Ioctl system call
  */
@@ -267,7 +282,9 @@ ioctl()
 		else
 			u.u_error = copyout(data, uap->cmarg, size);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 int	nselcoll;
 
 struct	pselect_args
@@ -279,7 +296,9 @@ struct	pselect_args
 	struct	timespec *ts;
 	sigset_t	*maskp;
 	};
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Select system call.
 */
@@ -301,7 +320,9 @@ select()
 	pselargs->maskp = 0;
 	return(u.u_error = select1(pselargs, 0));
 	}
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * pselect (posix select)
  *
@@ -315,7 +336,9 @@ pselect()
 
 	return(u.u_error = select1(uap, 1));
 	}
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Select helper function common to both select() and pselect()
  */
@@ -452,7 +475,9 @@ done:
 		}
 	return(error);
 	}
+#endif /* UNUSED */
 
+#if UNUSED
 selscan(ibits, obits, nfd, retval)
 	fd_set *ibits, *obits;
 	int nfd, *retval;
@@ -491,7 +516,9 @@ selscan(ibits, obits, nfd, retval)
 	*retval = n;
 	return(0);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*ARGSUSED*/
 seltrue(dev, flag)
 	dev_t dev;
@@ -500,7 +527,9 @@ seltrue(dev, flag)
 
 	return (1);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 selwakeup(p, coll)
 	register struct proc *p;
 	long coll;
@@ -525,7 +554,9 @@ selwakeup(p, coll)
 	}
 	restormap(map);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 sorw(fp, uio)
 	register struct file *fp;
 	register struct uio *uio;
@@ -538,7 +569,9 @@ sorw(fp, uio)
 	return (EOPNOTSUPP);
 #endif
 }
+#endif /* UNUSED */
 
+#if UNUSED
 soctl(fp, com, data)
 	struct file *fp;
 	u_int	com;
@@ -550,7 +583,9 @@ soctl(fp, com, data)
 	return (EOPNOTSUPP);
 #endif
 }
+#endif /* UNUSED */
 
+#if UNUSED
 sosel(fp, flag)
 	struct file *fp;
 	int	flag;
@@ -561,7 +596,9 @@ sosel(fp, flag)
 	return (EOPNOTSUPP);
 #endif
 }
+#endif /* UNUSED */
 
+#if UNUSED
 socls(fp)
 	register struct file *fp;
 {
@@ -576,3 +613,4 @@ socls(fp)
 #endif
 	return(error);
 }
+#endif /* UNUSED */

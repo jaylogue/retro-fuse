@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * Copyright (c) 1986 Regents of the University of California.
  * All rights reserved.  The Berkeley software License Agreement
@@ -6,42 +8,43 @@
  *	@(#)sys_inode.c	1.11 (2.11BSD) 1999/9/10
  */
 
-#include "param.h"
-#include "../machine/seg.h"
+#include "bsd211/h/param.h"
+#include "bsd211/machine/seg.h"
 
-#include "user.h"
-#include "proc.h"
-#include "signalvar.h"
-#include "inode.h"
-#include "buf.h"
-#include "fs.h"
-#include "file.h"
-#include "stat.h"
-#include "mount.h"
-#include "conf.h"
-#include "uio.h"
-#include "ioctl.h"
-#include "tty.h"
-#include "kernel.h"
-#include "systm.h"
-#include "syslog.h"
+#include "bsd211/h/user.h"
+#include "bsd211/h/proc.h"
+#include "bsd211/h/signalvar.h"
+#include "bsd211/h/inode.h"
+#include "bsd211/h/buf.h"
+#include "bsd211/h/fs.h"
+#include "bsd211/h/file.h"
+#include "bsd211/h/stat.h"
+#include "bsd211/h/mount.h"
+#include "bsd211/h/conf.h"
+#include "bsd211/h/uio.h"
+#include "bsd211/h/ioctl.h"
+/* UNUSED: #include "bsd211/h/tty.h" */
+#include "bsd211/h/kernel.h"
+#include "bsd211/h/systm.h"
+#include "bsd211/h/syslog.h"
 #ifdef QUOTA
 #include "quota.h"
 #endif
 
-extern	int	vn_closefile();
-int	ino_rw(), ino_ioctl(), ino_select();
+/* UNUSED: extern	int	vn_closefile(); */
+/* UNUSED: int	ino_rw(), ino_ioctl(), ino_select(); */
 
 struct 	fileops inodeops =
-	{ ino_rw, ino_ioctl, ino_select, vn_closefile };
+	{ ino_rw, NULL, NULL, vn_closefile };
 
+int16_t
 ino_rw(fp, uio)
 	struct file *fp;
 register struct uio *uio;
 {
 	register struct inode *ip = (struct inode *)fp->f_data;
 	u_int count, error;
-	int ioflag;
+	int16_t ioflag;
 
 	if ((ip->i_mode&IFMT) != IFCHR)
 		ILOCK(ip);
@@ -73,19 +76,20 @@ register struct uio *uio;
 	return (error);
 }
 
+int16_t
 rdwri(rw, ip, base, len, offset, segflg, ioflg, aresid)
 	enum uio_rw rw;
 	struct inode *ip;
 	caddr_t base;
-	int len;
+	int16_t len;
 	off_t offset;
 	enum uio_seg segflg;
-	int ioflg;
-register int *aresid;
+	int16_t ioflg;
+register int16_t *aresid;
 {
 	struct uio auio;
 	struct iovec aiov;
-register int error;
+register int16_t error;
 
 	auio.uio_iov = &aiov;
 	auio.uio_iovcnt = 1;
@@ -104,22 +108,24 @@ register int error;
 	return (error);
 }
 
+int16_t
 rwip(ip, uio, ioflag)
 	register struct inode *ip;
 	register struct uio *uio;
-	int ioflag;
+	int16_t ioflag;
 {
 	dev_t dev = (dev_t)ip->i_rdev;
 	register struct buf *bp;
 	off_t osize;
 	daddr_t lbn, bn;
-	int n, on, type, resid;
-	int error = 0;
-	int flags;
+	int16_t n, on, resid;
+	uint16_t type;
+	int16_t error = 0;
+	int16_t flags;
 
 	if	(uio->uio_offset < 0)
 		return (EINVAL);
-	type = ip->i_mode&IFMT;
+	type = (uint16_t)ip->i_mode&IFMT;
 /*
  * The write case below checks that i/o is done synchronously to directories
  * and that i/o to append only files takes place at the end of file.
@@ -234,7 +240,7 @@ rwip(ip, uio, ioflag)
 			else
 				bn = bmap(ip,lbn,B_WRITE,
 				       n == DEV_BSIZE ? flags : flags|B_CLRBUF);
-			if (u.u_error || uio->uio_rw == UIO_WRITE && (long)bn<0)
+			if (u.u_error || uio->uio_rw == UIO_WRITE && (int32_t)bn<0)
 				return (u.u_error);
 			if (uio->uio_rw == UIO_WRITE && uio->uio_offset + n > ip->i_size &&
 			   (type == IFDIR || type == IFREG || type == IFLNK))
@@ -244,7 +250,7 @@ rwip(ip, uio, ioflag)
 			rablock = bn + 1;
 		}
 		if (uio->uio_rw == UIO_READ) {
-			if ((long)bn<0) {
+			if ((int32_t)bn<0) {
 				bp = geteblk();
 				clrbuf(bp);
 			} else if (ip->i_lastr + 1 == lbn)
@@ -323,7 +329,7 @@ rwip(ip, uio, ioflag)
 	return (error);
 }
 
-
+#if UNUSED
 ino_ioctl(fp, com, data)
 	register struct file *fp;
 	register u_int com;
@@ -363,7 +369,9 @@ ino_ioctl(fp, com, data)
 		return((*cdevsw[major(dev)].d_ioctl)(dev,com,data,fp->f_flag));
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 ino_select(fp, which)
 	struct file *fp;
 	int which;
@@ -381,7 +389,9 @@ ino_select(fp, which)
 		return (*cdevsw[major(dev)].d_select)(dev, which);
 	}
 }
+#endif /* UNUSED */
 
+int16_t
 ino_stat(ip, sb)
 	register struct inode *ip;
 	register struct stat *sb;
@@ -437,6 +447,7 @@ ino_stat(ip, sb)
 	return (0);
 }
 
+#if UNUSED
 /*
  * This routine, like its counterpart openi(), calls the device driver for
  * special (IBLK, ICHR) files.  Normal files simply return early (the default
@@ -518,7 +529,9 @@ closei(ip, flag)
 		error = (*cfunc)(dev, flag, mode);
 	return(error);
 	}
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Place an advisory lock on an inode.
  * NOTE: callers of this routine must be prepared to deal with the pseudo
@@ -595,7 +608,9 @@ again:
 	}
 	return (0);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Unlock a file.
  */
@@ -627,7 +642,9 @@ ino_unlock(fp, kind)
 		fp->f_flag &= ~FEXLOCK;
 	}
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Openi called to allow handler of special files to initialize and
  * validate before actual IO.
@@ -697,7 +714,9 @@ openi(ip, mode)
 	}
 	return (0);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Revoke access the current tty by all processes.
  * Used only by the super-user in init
@@ -714,7 +733,9 @@ vhangup()
 	if ((u.u_ttyp->t_state) & TS_ISOPEN)
 		gsignal(u.u_ttyp->t_pgrp, SIGHUP);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 forceclose(dev)
 	register dev_t dev;
 {
@@ -736,3 +757,4 @@ forceclose(dev)
 		fp->f_flag &= ~(FREAD|FWRITE);
 	}
 }
+#endif /* UNUSED */

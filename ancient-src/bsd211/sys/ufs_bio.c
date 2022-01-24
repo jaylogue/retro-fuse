@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * Copyright (c) 1986 Regents of the University of California.
  * All rights reserved.  The Berkeley software License Agreement
@@ -6,17 +8,17 @@
  *	@(#)ufs_bio.c	2.2 (2.11BSD) 1996/9/13
  */
 
-#include "param.h"
-#include "buf.h"
-#include "user.h"
-#include "conf.h"
-#include "fs.h"
-#include "dk.h"
-#include "systm.h"
-#include "map.h"
-#include "uba.h"
-#include "trace.h"
-#include "ram.h"
+#include "bsd211/h/param.h"
+#include "bsd211/h/buf.h"
+#include "bsd211/h/user.h"
+#include "bsd211/h/conf.h"
+#include "bsd211/h/fs.h"
+#include "bsd211/h/dk.h"
+#include "bsd211/h/systm.h"
+/* UNUSED: #include "map.h" */
+/* UNUSED: #include "uba.h" */
+#include "bsd211/h/trace.h"
+/* UNUSED: #include "bsd211/h/ram.h" */
 
 /*
  * Read in (if necessary) the block and return a buffer pointer.
@@ -109,10 +111,11 @@ breada(dev, blkno, rablkno)
  * Write the buffer, waiting for completion.
  * Then release the buffer.
  */
+void
 bwrite(bp)
 	register struct buf *bp;
 {
-	register flag;
+	register int16_t flag;
 
 	flag = bp->b_flags;
 	bp->b_flags &= ~(B_READ | B_DONE | B_ERROR | B_DELWRI);
@@ -142,6 +145,7 @@ bwrite(bp)
  * This can't be done for magtape, since writes must be done
  * in the same order as requested.
  */
+void
 bdwrite(bp)
 	register struct buf *bp;
 {
@@ -160,11 +164,12 @@ bdwrite(bp)
 /*
  * Release the buffer, with no I/O implied.
  */
+void
 brelse(bp)
 	register struct buf *bp;
 {
 	register struct buf *flist;
-	register s;
+	register int16_t s;
 
 	trace(TR_BRELSE);
 	/*
@@ -208,6 +213,7 @@ brelse(bp)
  * See if the block is associated with some buffer
  * (mainly to avoid getting hung up on a wait in breada)
  */
+int16_t
 incore(dev, blkno)
 	register dev_t dev;
 	daddr_t blkno;
@@ -328,6 +334,7 @@ loop:
 		bawrite(bp);
 		goto loop;
 	}
+#if UNUSED
 	if(bp->b_flags & (B_RAMREMAP|B_PHYS)) {
 		register memaddr paddr;	/* click address of real buffer */
 		extern memaddr bpaddr;
@@ -340,6 +347,7 @@ loop:
 		bp->b_un.b_addr = (caddr_t)(paddr << 6);
 		bp->b_xmem = (paddr >> 10) & 077;
 	}
+#endif /* UNUSED */
 	trace(TR_BRELSE);
 	bp->b_flags = B_BUSY;
 	return (bp);
@@ -350,6 +358,7 @@ loop:
  * Wait for I/O completion on the buffer; return errors
  * to the user.
  */
+void
 biowait(bp)
 	register struct buf *bp;
 {
@@ -367,14 +376,17 @@ biowait(bp)
  * Mark I/O complete on a buffer.
  * Wake up anyone waiting for it.
  */
+void
 biodone(bp)
 	register struct buf *bp;
 {
 
 	if (bp->b_flags & B_DONE)
 		panic("dup biodone");
+#if UNUSED
 	if (bp->b_flags & (B_MAP|B_UBAREMAP))
 		mapfree(bp);
+#endif /* UNUSED */
 	bp->b_flags |= B_DONE;
 	if (bp->b_flags&B_ASYNC)
 		brelse(bp);
@@ -387,6 +399,7 @@ biodone(bp)
 /*
  * Insure that no part of a specified block is in an incore buffer.
  */
+void
 blkflush(dev, blkno)
 	register dev_t dev;
 	daddr_t blkno;
@@ -423,6 +436,7 @@ loop:
  * Make sure all write-behind blocks on dev are flushed out.
  * (from umount and sync)
  */
+void
 bflush(dev)
 	register dev_t dev;
 {
@@ -451,6 +465,7 @@ loop:
  * Pick up the device's error number and pass it to the user;
  * if there is an error but the number is 0 set a generalized code.
  */
+int16_t
 geterror(bp)
 	register struct buf *bp;
 {
@@ -473,6 +488,7 @@ geterror(bp)
  * properly flush the queues. Until that happy day, this suffices for
  * correctness.						... kre
  */
+void
 binval(dev)
 	register dev_t dev;
 {

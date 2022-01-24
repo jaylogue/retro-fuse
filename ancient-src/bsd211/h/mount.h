@@ -9,22 +9,22 @@
 /*
  * file system statistics
  */
-#include <sys/fs.h>
+#include <bsd211/h/fs.h>
 
 #define MNAMELEN 90	/* length of buffer for returned name */
 
 struct statfs {
-	short	f_type;			/* type of filesystem (see below) */
+	int16_t	f_type;			/* type of filesystem (see below) */
 	u_short	f_flags;		/* copy of mount flags */
-	short	f_bsize;		/* fundamental file system block size */
-	short	f_iosize;		/* optimal transfer block size */
+	int16_t	f_bsize;		/* fundamental file system block size */
+	int16_t	f_iosize;		/* optimal transfer block size */
 	daddr_t	f_blocks;		/* total data blocks in file system */
 	daddr_t	f_bfree;		/* free blocks in fs */
 	daddr_t	f_bavail;		/* free blocks avail to non-superuser */
 	ino_t	f_files;		/* total file nodes in file system */
 	ino_t	f_ffree;		/* free file nodes in fs */
-	long	f_fsid[2];		/* file system id */
-	long	f_spare[5];		/* spare for later */
+	int32_t	f_fsid[2];		/* file system id */
+	int32_t	f_spare[5];		/* spare for later */
 	char	f_mntonname[MNAMELEN];	/* directory on which mounted */
 	char	f_mntfromname[MNAMELEN];/* mounted filesystem */
 };
@@ -103,5 +103,5 @@ struct	xmount
 #define	MNT_NOWAIT	2
 
 #if defined(KERNEL) && !defined(SUPERVISOR)
-struct	mount mount[NMOUNT];
+extern struct	mount mount[NMOUNT];
 #endif

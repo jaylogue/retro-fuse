@@ -36,7 +36,7 @@
 #ifndef _SYS_SELECT_H_
 #define	_SYS_SELECT_H_
 
-#include <sys/types.h>
+#include <bsd211/h/types.h>
 
 /*
  * Select uses bit masks of file descriptors in longs.

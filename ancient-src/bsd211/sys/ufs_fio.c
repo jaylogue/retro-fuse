@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * Copyright (c) 1986 Regents of the University of California.
  * All rights reserved.  The Berkeley software License Agreement
@@ -6,15 +8,15 @@
  *	@(#)ufs_fio.c	1.6 (2.11BSD GTE) 1997/11/28
  */
 
-#include "param.h"
-#include "user.h"
-#include "fs.h"
-#include "inode.h"
-#include "mount.h"
-#include "namei.h"
-#include "systm.h"
-#include "acct.h"
-#include "stat.h"
+#include "bsd211/h/param.h"
+#include "bsd211/h/user.h"
+#include "bsd211/h/fs.h"
+#include "bsd211/h/inode.h"
+#include "bsd211/h/mount.h"
+#include "bsd211/h/namei.h"
+#include "bsd211/h/systm.h"
+/* UNUSED: #include "bsd211/h/acct.h" */
+#include "bsd211/h/stat.h"
 
 /*
  * Check mode permission on inode pointer.
@@ -29,11 +31,12 @@
  * The super user is granted all
  * permissions.
  */
+int16_t
 access(ip, mode)
 	register struct inode *ip;
-	int mode;
+	int16_t mode;
 {
-	register m;
+	register int16_t m;
 	register gid_t *gp;
 
 	m = mode;
@@ -101,6 +104,7 @@ found:
  * Test if the current user is the
  * super user.
  */
+int16_t
 suser()
 {
 
@@ -116,17 +120,17 @@ suser()
  * Set the attributes on a file.  This was placed here because ufs_syscalls
  * is too large already (it will probably be split into two files eventually).
 */
-
+int16_t
 ufs_setattr(ip, vap)
 	register struct inode *ip;
 	register struct vattr *vap;
 	{
-	int	error;
+	int16_t	error;
 	struct	timeval atimeval, mtimeval;
 
 	if	(ip->i_fs->fs_ronly)	/* can't change anything on a RO fs */
 		return(EROFS);
-	if	(vap->va_flags != VNOVAL)
+	if	(vap->va_flags != (u_short)VNOVAL)
 		{
 		if	(u.u_uid != ip->i_uid && !suser())
 			return(u.u_error);
@@ -185,6 +189,7 @@ ufs_setattr(ip, vap)
 	return(0);
 	}
 
+int16_t
 ufs_mountedon(dev)
 	dev_t dev;
 	{

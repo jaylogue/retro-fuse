@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -38,12 +40,12 @@
  *	@(#)vfs_vnops.c	8.14.4 (2.11BSD) 1999/9/13
  */
 
-#include <sys/param.h>
-#include <sys/file.h>
-#include <sys/user.h>
-#include <sys/namei.h>
-#include <sys/inode.h>
-#include <sys/stat.h>
+#include <bsd211/h/param.h>
+#include <bsd211/h/file.h>
+#include <bsd211/h/user.h>
+#include <bsd211/h/namei.h>
+#include <bsd211/h/inode.h>
+#include <bsd211/h/stat.h>
 
 /*
  * 2.11BSD does not have "vnodes", having instead only old fashioned "inodes".
@@ -62,12 +64,13 @@
  * Check permissions, and call the VOP_OPEN (openi for 2.11) or VOP_CREATE 
  * (maknode) routine.
  */
+int16_t
 vn_open(ndp, fmode, cmode)
 	register struct nameidata *ndp;
-	int fmode, cmode;
+	int16_t fmode, cmode;
 	{
 	register struct inode *ip;
-	register int error;
+	register int16_t error;
 
 	if	(fmode & O_CREAT)
 		{
@@ -145,6 +148,7 @@ vn_open(ndp, fmode, cmode)
  * 2.11 returns the inode unlocked (for now).
 */
 	iunlock(ip);		/* because namei returns a locked inode */
+#if UNUSED
 	if	(setjmp(&u.u_qsave))
 		{
 		error = EINTR;	/* opens are not restarted after signals */
@@ -152,7 +156,9 @@ vn_open(ndp, fmode, cmode)
 		}
 	if	(error = openi(ip, fmode))
 		goto lbad;
+#endif /* UNUSED */
 	return(0);
+#if UNUSED
 /*
  * Gratuitous lock but it does (correctly) implement the earlier behaviour of
  * copen (it also avoids a panic in iput).
@@ -160,6 +166,7 @@ vn_open(ndp, fmode, cmode)
 
 lbad:
 	ilock(ip);
+#endif /* UNUSED */
 
 bad:
 /*
@@ -172,6 +179,7 @@ retuerr:
 	return(u.u_error);	/* XXX - Bletch */
 	}
 
+#if UNUSED
 /*
  * Inode close call.  Pipes and sockets do NOT enter here.  This routine is
  * used by the kernel to close files it opened for itself (see kern_acct.c
@@ -193,6 +201,7 @@ vn_close(ip, flags)
 	irele(ip);			/* assumes inode is unlocked */
 	return(error);
 	}
+#endif /* UNUSED */
 
 /*
  * File table inode close routine.  This is called from 'closef()' via the
@@ -205,6 +214,7 @@ vn_close(ip, flags)
  * writecheck counting we can skip the overhead of nesting another level down
  * and call closei() and irele() ourself.
  */
+int16_t
 vn_closefile(fp)
 	register struct file *fp;
 	{
@@ -217,5 +227,5 @@ vn_closefile(fp)
 */
 	fp->f_data = (caddr_t)0;	/* XXX */
 	irele(ip);
-	return(closei(ip, fp->f_flag));
+	return(/* UNUSED: closei(ip, fp->f_flag)*/ 0);
 	}

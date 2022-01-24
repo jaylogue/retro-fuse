@@ -11,26 +11,26 @@
  */
 
 #ifdef SUPERVISOR
-long	startnet;			/* start of network data space */
+/* UNUSED: long	startnet;			/* start of network data space */
 #else
 memaddr	malloc();
 
 /* 1.1 */
-long	hostid;
-char	hostname[MAXHOSTNAMELEN];
-int	hostnamelen;
+/* UNUSED: long	hostid; */
+/* UNUSED: char	hostname[MAXHOSTNAMELEN]; */
+/* UNUSED: int	hostnamelen; */
 
 /* 1.2 */
-#include <sys/time.h>
+#include <bsd211/h/time.h>
 
-struct	timeval boottime;
-struct	timeval time;
-struct	timezone tz;			/* XXX */
-int	adjdelta;
-int	hz;
-int	mshz;				/* # milliseconds per hz */
-int	lbolt;				/* awoken once a second */
-int	realitexpire();
+/* UNUSED: struct	timeval boottime; */
+extern struct	timeval time;
+/* UNUSED: struct	timezone tz;			/* XXX */
+/* UNUSED: int	adjdelta; */
+/* UNUSED: int	hz; */
+/* UNUSED: int	mshz;				/* # milliseconds per hz */
+/* UNUSED: int	lbolt;				/* awoken once a second */
+/* UNUSED: int	realitexpire(); */
 
-short	avenrun[3];
+/* UNUSED: short	avenrun[3]; */
 #endif

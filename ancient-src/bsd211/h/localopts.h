@@ -6,4 +6,4 @@
  * only EXTERNALITIMES to be placed in localopts.h
  */
 
-#define EXTERNALITIMES 1
+/* UNUSED: #define EXTERNALITIMES 1 */

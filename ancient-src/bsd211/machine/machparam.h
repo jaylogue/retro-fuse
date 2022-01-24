@@ -28,7 +28,7 @@
 #define	htonl(x)	(x)
 #define	htons(x)	(x)
 #else
-#include <sys/types.h>
+#include <bsd211/h/types.h>
 u_short	ntohs(), htons();
 u_long	ntohl(), htonl();
 #endif
@@ -46,9 +46,9 @@ u_long	ntohl(), htonl();
 #define	SHRT_MAX	0x7fff
 #define	SHRT_MIN	0x8000
 #define	UCHAR_MAX	0xff
-#define	UINT_MAX	((unsigned int)0xffff)
+#define	UINT_MAX	((uint16_t)0xffff)
 #define	ULONG_MAX	0x7fffffff
-#define	USHRT_MAX	((unsigned short)0xffff)
+#define	USHRT_MAX	((uint16_t)0xffff)
 
 #define	NBPG		512		/* bytes/page */
 #define	PGOFSET		(NBPG-1)	/* byte offset into page */
@@ -129,15 +129,15 @@ u_long	ntohl(), htonl();
  * Treat ps as byte, to allow restoring value from mfps/movb.
  * (see splfix.*.sed)
  */
-#define	PS_LOBYTE	((char *)0177776)
-#define	splx(ops)	(*PS_LOBYTE = ((char)(ops)))
+/* UNUSED: #define	PS_LOBYTE	((char *)0177776) */
+/* UNUSED: #define	splx(ops)	(*PS_LOBYTE = ((char)(ops))) */
 
 /*
  * high int of a long
  * low int of a long
  */
-#define	hiint(long)	(((int *)&(long))[0])
-#define	loint(long)	(((int *)&(long))[1])
+/* UNUSED: #define	hiint(long)	(((int *)&(long))[0]) */
+/* UNUSED: #define	loint(long)	(((int *)&(long))[1]) */
 
 /*
  * SUPERADD is used to distinguish a supervisor-mode address from a

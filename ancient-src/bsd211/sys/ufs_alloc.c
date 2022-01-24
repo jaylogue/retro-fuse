@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * Copyright (c) 1986 Regents of the University of California.
  * All rights reserved.  The Berkeley software License Agreement
@@ -6,15 +8,15 @@
  *	@(#)ufs_alloc.c	1.5 (2.11BSD) 2019/12/17
  */
 
-#include "param.h"
-#include "../machine/seg.h"
-#include "fs.h"
-#include "dir.h"
-#include "inode.h"
-#include "buf.h"
-#include "user.h"
-#include "kernel.h"
-#include "mount.h"
+#include "bsd211/h/param.h"
+#include "bsd211/machine/seg.h"
+#include "bsd211/h/fs.h"
+#include "bsd211/h/dir.h"
+#include "bsd211/h/inode.h"
+#include "bsd211/h/buf.h"
+#include "bsd211/h/user.h"
+#include "bsd211/h/kernel.h"
+#include "bsd211/h/mount.h"
 #ifdef QUOTA
 #include "quota.h"
 #endif
@@ -32,11 +34,11 @@ typedef	struct fblk *FBLKP;
 struct buf *
 balloc(ip, flags)
 	struct inode *ip;
-	int flags;
+	int16_t flags;
 {
 	register struct fs *fs;
 	register struct buf *bp;
-	int	async, i;
+	int16_t	async /* UNUSED: , i */;
 	daddr_t bno;
 	char *fullerr = "file system full";
 
@@ -52,7 +54,7 @@ balloc(ip, flags)
 			fserr(fs, "bad free count");
 			goto nospace;
 		}
-		bno = fs->fs_free[--fs->fs_nfree];
+		bno = wswap_int32(fs->fs_free[--fs->fs_nfree]);
 		if (bno == 0)
 			goto nospace;
 	} while (badblock(fs, bno));
@@ -97,7 +99,7 @@ balloc(ip, flags)
 	if (flags & B_CLRBUF)
 		clrbuf(bp);
 	fs->fs_fmod = 1;
-	fs->fs_tfree--;
+	fs->fs_tfree = wswap_int32(wswap_int32(fs->fs_tfree) - 1);
 	return(bp);
 
 nospace:
@@ -109,9 +111,11 @@ nospace:
 	 * SHOULD RATHER SEND A SIGNAL AND SUSPEND THE PROCESS IN A
 	 * STATE FROM WHICH THE SYSTEM CALL WILL RESTART
 	 */
+#if UNUSED
 	uprintf("\n%s: %s\n", fs->fs_fsmnt, fullerr);
 	for (i = 0; i < 5; i++)
 		sleep((caddr_t)&lbolt, PRIBIO);
+#endif /* UNUSED */
 	u.u_error = ENOSPC;
 	return(NULL);
 }
@@ -131,13 +135,13 @@ ialloc(pip)
 	register struct fs *fs;
 	register struct buf *bp;
 	register struct inode *ip;
-	int i;
+	int16_t i;
 	struct dinode *dp;
 	ino_t ino;
 	daddr_t adr;
 	ino_t inobas;
-	int first;
-	struct inode *ifind();
+	int16_t first;
+/* UNUSED:	struct inode *ifind(); */
 	char	*emsg = "no inodes free";
 
 	fs = pip->i_fs;
@@ -241,6 +245,7 @@ fromtop:
  * Place the specified disk block back on the free list of the
  * specified device.
  */
+void
 free(ip, bno)
 	struct inode *ip;
 	daddr_t bno;
@@ -274,8 +279,8 @@ free(ip, bno)
 		fs->fs_flock = 0;
 		wakeup((caddr_t)&fs->fs_flock);
 	}
-	fs->fs_free[fs->fs_nfree++] = bno;
-	fs->fs_tfree++;
+	fs->fs_free[fs->fs_nfree++] = wswap_int32(bno);
+	fs->fs_tfree = wswap_int32(wswap_int32(fs->fs_tfree) + 1);
 	fs->fs_fmod = 1;
 }
 
@@ -285,6 +290,7 @@ free(ip, bno)
  * Free the specified I node on the specified device.  The algorithm
  * stores up to NICINOD I nodes in the super block and throws away any more.
  */
+void
 ifree(ip, ino)
 	struct inode *ip;
 	ino_t ino;
@@ -304,6 +310,7 @@ ifree(ip, ino)
 	fs->fs_fmod = 1;
 }
 
+#if UNUSED
 /*
  * Fserr prints the name of a file system with an error diagnostic.
  *
@@ -316,3 +323,4 @@ fserr(fp, cp)
 {
 	printf("%s: %s\n", fp->fs_fsmnt, cp);
 }
+#endif /* UNUSED */

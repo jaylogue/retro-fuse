@@ -155,24 +155,24 @@ struct dinode {
 	if (nextinodeid == 0) \
 		cacheinvalall();
 
-u_short	nextinodeid;		/* unique id generator */
+extern u_short	nextinodeid;		/* unique id generator */
 
 #ifdef EXTERNALITIMES
 memaddr	xitimes;
 u_int	xitdesc;
 #endif
-struct inode inode[];		/* the inode table itself */
-struct inode *inodeNINODE;	/* the end of the inode table */
-int	ninode;			/* the number of slots in the table */
+extern struct inode inode[];		/* the inode table itself */
+extern struct inode *inodeNINODE;	/* the end of the inode table */
+extern int16_t	ninode;			/* the number of slots in the table */
 
-struct	inode *rootdir;			/* pointer to inode of root directory */
+extern struct	inode *rootdir;			/* pointer to inode of root directory */
 
-struct	inode *getinode();
-struct	inode *ialloc();
-struct	inode *iget();
-struct	inode *owner();
-struct	inode *maknode();
-struct	inode *namei();
+/* UNUSED: struct	inode *getinode(); */
+/* UNUSED: struct	inode *ialloc(); */
+/* UNUSED: struct	inode *iget(); */
+/* UNUSED: struct	inode *owner(); */
+/* UNUSED: struct	inode *maknode(); */
+/* UNUSED: struct	inode *namei(); */
 #endif
 
 /* i_flag */
@@ -305,11 +305,11 @@ struct	inode *namei();
 	if ((ip)->i_flag&(IUPD|IACC|ICHG)) { \
 		(ip)->i_flag |= IMOD; \
 		if ((ip)->i_flag&IACC) \
-			(ip)->i_atime = (t1)->tv_sec; \
+			(ip)->i_atime = wswap_int32((t1)->tv_sec); \
 		if ((ip)->i_flag&IUPD) \
-			(ip)->i_mtime = (t2)->tv_sec; \
+			(ip)->i_mtime = wswap_int32((t2)->tv_sec); \
 		if ((ip)->i_flag&ICHG) \
-			(ip)->i_ctime = time.tv_sec; \
+			(ip)->i_ctime = wswap_int32(time.tv_sec); \
 		(ip)->i_flag &= ~(IACC|IUPD|ICHG); \
 	} \
 }

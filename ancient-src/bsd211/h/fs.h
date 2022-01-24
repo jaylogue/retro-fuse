@@ -47,9 +47,9 @@ struct	fs
 {
 	u_short	fs_isize;		/* first block after i-list */
 	daddr_t	fs_fsize;		/* size in blocks of entire volume */
-	short	fs_nfree;		/* number of addresses in fs_free */
+	int16_t	fs_nfree;		/* number of addresses in fs_free */
 	daddr_t	fs_free[NICFREE];	/* free block list */
-	short	fs_ninode;		/* number of inodes in fs_inode */
+	int16_t	fs_ninode;		/* number of inodes in fs_inode */
 	ino_t	fs_inode[NICINOD];	/* free inode list */
 	char	fs_flock;		/* lock during free list manipulation */
 	char	fs_fmod;		/* super block modified flag */
@@ -58,19 +58,19 @@ struct	fs
 	time_t	fs_time;		/* last super block update */
 	daddr_t	fs_tfree;		/* total free blocks */
 	ino_t	fs_tinode;		/* total free inodes */
-	short	fs_step;		/* optimal step in free list pattern */
-	short	fs_cyl;			/* number of blocks per pattern */
+	int16_t	fs_step;		/* optimal step in free list pattern */
+	int16_t	fs_cyl;			/* number of blocks per pattern */
 	char	fs_fsmnt[MAXMNTLEN];	/* ordinary file mounted on */
 	ino_t	fs_lasti;		/* start place for circular search */
 	ino_t	fs_nbehind;		/* est # free inodes before s_lasti */
 	u_short	fs_flags;		/* mount time flags */
 /* actually longer */
-};
+} __attribute__((packed));
 
 struct	fblk {
-	short	df_nfree;		/* number of addresses in df_free */
+	int16_t	df_nfree;		/* number of addresses in df_free */
 	daddr_t	df_free[NICFREE];	/* free block list */
-};
+} __attribute__((packed));
 
 /*
  * Turn file system block numbers into disk block addresses.
@@ -84,7 +84,7 @@ struct	fblk {
  *     inode number to file system block offset.
  *     inode number to file system block address.
  */
-#define	itoo(x)		((int)(((x) + 2 * INOPB - 1) % INOPB))
+#define	itoo(x)		((int16_t)(((x) + 2 * INOPB - 1) % INOPB))
 #define	itod(x)		((daddr_t)((((u_int)(x) + 2 * INOPB - 1) / INOPB)))
 
 /*
@@ -101,9 +101,11 @@ struct	fblk {
  * Determine the number of available blocks given a
  * percentage to hold in reserve
  */
+#if UNUSED
 #define freespace(fs, percentreserved) \
 	((fs)->fs_tfree - ((fs)->fs_fsize - \
 	(fs)->fs_isize) * (percentreserved) / 100)
+#endif /* UNUSED */
 
 /*
  * INOPB is the number of inodes in a secondary storage block.
@@ -129,7 +131,7 @@ struct	fblk {
 #define	MAXPIPSIZ	(NDADDR * MAXBSIZE)
 
 #if defined(KERNEL) && !defined(SUPERVISOR)
-struct	fs *getfs();
-struct	fs *mountfs();
+/* UNUSED: struct	fs *getfs(); */
+/* UNUSED: struct	fs *mountfs(); */
 #endif
 #endif /* _SYS_FS_H_ */

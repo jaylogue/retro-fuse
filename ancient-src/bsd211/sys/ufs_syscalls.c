@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * Copyright (c) 1986 Regents of the University of California.
  * All rights reserved.  The Berkeley software License Agreement
@@ -6,21 +8,22 @@
  *	@(#)ufs_syscalls.c	1.14 (2.11BSD) 2000/2/20
  */
 
-#include "param.h"
-#include "systm.h"
-#include "user.h"
-#include "inode.h"
-#include "namei.h"
-#include "fs.h"
-#include "file.h"
-#include "stat.h"
-#include "kernel.h"
+#include "bsd211/h/param.h"
+#include "bsd211/h/systm.h"
+#include "bsd211/h/user.h"
+#include "bsd211/h/inode.h"
+#include "bsd211/h/namei.h"
+#include "bsd211/h/fs.h"
+#include "bsd211/h/file.h"
+#include "bsd211/h/stat.h"
+#include "bsd211/h/kernel.h"
 #ifdef QUOTA
 #include "quota.h"
 #endif
 
-static	int	copen();
+static	int16_t	copen(int16_t mode, int16_t arg, caddr_t fname);
 
+#if UNUSED
 /*
  * Change current working directory (``.'').
  */
@@ -29,7 +32,9 @@ chdir()
 
 	chdirec(&u.u_cdir);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 fchdir()
 {
 	register struct	a {
@@ -55,7 +60,9 @@ bad:
 	iunlock(ip);
 	return;
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Change notion of root (``/'') directory.
  */
@@ -65,7 +72,9 @@ chroot()
 	if (suser())
 		chdirec(&u.u_rdir);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Common routine for chroot and chdir.
  */
@@ -98,16 +107,18 @@ chdirec(ipp)
 bad:
 	iput(ip);
 }
+#endif /* UNUSED */
 
 /*
  * Open system call.
  */
+void
 open()
 {
 	register struct a {
 		char	*fname;
-		int	mode;
-		int	crtmode;
+		int16_t	mode;
+		int16_t	crtmode;
 	} *uap = (struct a *) u.u_ap;
 
 	u.u_error = copen(uap->mode, uap->crtmode, uap->fname);
@@ -117,17 +128,17 @@ open()
  * Check permissions, allocate an open file structure,
  * and call the device open routine if any.
  */
-static int
+static int16_t
 copen(mode, arg, fname)
-	int mode;
-	int arg;
+	int16_t mode;
+	int16_t arg;
 	caddr_t fname;
 	{
 	register struct inode *ip;
 	register struct file *fp;
 	struct	nameidata nd;
 	register struct	nameidata *ndp = &nd;
-	int indx, type, flags, cmode, error;
+	int16_t indx, /* UNUSED: type,*/ flags, cmode, error;
 
 	fp = falloc();
 	if	(fp == NULL)
@@ -170,6 +181,7 @@ copen(mode, arg, fname)
 
 	fp->f_data = (caddr_t)ip;
 
+#if UNUSED
 	if	(flags & (O_EXLOCK | O_SHLOCK))
 		{
 		if	(flags & O_EXLOCK)
@@ -185,19 +197,21 @@ copen(mode, arg, fname)
 			u.u_ofile[indx] = NULL;
 			}
 		}
+#endif /* UNUSED */
 	return(error);
 	}
 
 /*
  * Mknod system call
  */
+void
 mknod()
 {
 	register struct inode *ip;
 	register struct a {
 		char	*fname;
-		int	fmode;
-		int	dev;
+		int16_t	fmode;
+		int16_t	dev;
 	} *uap = (struct a *)u.u_ap;
 	struct	nameidata nd;
 	register struct	nameidata *ndp = &nd;
@@ -237,6 +251,7 @@ out:
 /*
  * link system call
  */
+void
 link()
 {
 	register struct inode *ip, *xp;
@@ -291,6 +306,7 @@ out:
 /*
  * symlink -- make a symbolic link
  */
+void
 symlink()
 {
 	register struct a {
@@ -299,7 +315,7 @@ symlink()
 	} *uap = (struct a *)u.u_ap;
 	register struct inode *ip;
 	char *tp;
-	int c, nc;
+	int16_t c, nc;
 	struct	nameidata nd;
 	register struct	nameidata *ndp = &nd;
 
@@ -326,7 +342,7 @@ symlink()
 	if (ip == NULL)
 		return;
 	u.u_error = rdwri(UIO_WRITE, ip, uap->target, nc, (off_t)0,
-				UIO_USERSPACE, IO_UNIT, (int *)0);
+				UIO_USERSPACE, IO_UNIT, (int16_t *)0);
 	/* handle u.u_error != 0 */
 	iput(ip);
 }
@@ -336,6 +352,7 @@ symlink()
  * Hard to avoid races here, especially
  * in unlinking directories.
  */
+void
 unlink()
 {
 	register struct a {
@@ -380,6 +397,7 @@ out:
 /*
  * Access system call
  */
+void
 saccess()
 {
 	uid_t t_uid;
@@ -387,7 +405,7 @@ saccess()
 	register struct inode *ip;
 	register struct a {
 		char	*fname;
-		int	fmode;
+		int16_t	fmode;
 	} *uap = (struct a *)u.u_ap;
 	struct	nameidata nd;
 	register struct	nameidata *ndp = &nd;
@@ -412,6 +430,7 @@ done:
 	u.u_groups[0] = t_gid;
 }
 
+#if UNUSED
 /*
  * Stat system call.  This version follows links.
  */
@@ -420,7 +439,9 @@ stat()
 
 	stat1(FOLLOW);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Lstat system call.  This version does not follow links.
  */
@@ -429,9 +450,11 @@ lstat()
 
 	stat1(NOFOLLOW);
 }
+#endif /* UNUSED */
 
+void
 stat1(follow)
-	int follow;
+	int16_t follow;
 {
 	register struct inode *ip;
 	register struct a {
@@ -454,17 +477,18 @@ stat1(follow)
 /*
  * Return target name of a symbolic link
  */
+void
 readlink()
 {
 	register struct inode *ip;
 	register struct a {
 		char	*name;
 		char	*buf;
-		int	count;
+		int16_t	count;
 	} *uap = (struct a *)u.u_ap;
 	struct	nameidata nd;
 	register struct	nameidata *ndp = &nd;
-	int resid;
+	int16_t resid;
 
 	NDINIT(ndp, LOOKUP, NOFOLLOW, UIO_USERSPACE, uap->name);
 	ip = namei(ndp);
@@ -481,6 +505,7 @@ out:
 	u.u_r.r_val1 = uap->count - resid;
 }
 
+#if UNUSED
 /*
  * change flags of a file given pathname.
 */
@@ -500,7 +525,9 @@ chflags()
 	u.u_error = chflags1(ip, uap->flags);
 	iput(ip);
 	}
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * change flags of a file given file descriptor.
 */
@@ -518,7 +545,9 @@ fchflags()
 	u.u_error = chflags1(ip, uap->flags);
 	iunlock(ip);
 	}
+#endif /* UNUSED */
 
+#if UNUSED
 chflags1(ip, flags)
 	register struct inode *ip;
 	u_short flags;
@@ -529,16 +558,18 @@ chflags1(ip, flags)
 	vattr.va_flags = flags;
 	return(ufs_setattr(ip, &vattr));
 	}
+#endif /* UNUSED */
 
 /*
  * Change mode of a file given path name.
  */
+void
 chmod()
 {
 	register struct inode *ip;
 	register struct a {
 		char	*fname;
-		int	fmode;
+		int16_t	fmode;
 	} *uap = (struct a *)u.u_ap;
 	struct	vattr	vattr;
 	struct	nameidata nd;
@@ -554,6 +585,7 @@ chmod()
 	iput(ip);
 }
 
+#if UNUSED
 /*
  * Change mode of a file given a file descriptor.
  */
@@ -574,14 +606,16 @@ fchmod()
 	u.u_error = ufs_setattr(ip, &vattr);
 	iunlock(ip);
 }
+#endif /* UNUSED */
 
 /*
  * Change the mode on a file.  This routine is called from ufs_setattr.
  * Inode must be locked before calling.
  */
+int16_t
 chmod1(ip, mode)
 	register struct inode *ip;
-	register int mode;
+	register int16_t mode;
 {
 
 	if (u.u_uid != ip->i_uid && !suser())
@@ -600,16 +634,18 @@ chmod1(ip, mode)
 	return (0);
 }
 
+#if UNUSED
 /*
  * Set ownership given a path name.
  */
+void
 chown()
 {
 	register struct inode *ip;
 	register struct a {
 		char	*fname;
-		int	uid;
-		int	gid;
+		int16_t	uid;
+		int16_t	gid;
 	} *uap = (struct a *)u.u_ap;
 	struct	nameidata nd;
 	register struct	nameidata *ndp = &nd;
@@ -625,7 +661,9 @@ chown()
 	u.u_error = ufs_setattr(ip, &vattr);
 	iput(ip);
 }
+#endif /* UNUSED */
 
+#if UNUSED
 /*
  * Set ownership given a file descriptor.
  */
@@ -648,16 +686,19 @@ fchown()
 	u.u_error = ufs_setattr(ip, &vattr);
 	iunlock(ip);
 }
+#endif /* UNUSED */
 
+// TODO: UNUSED???
 /*
  * Perform chown operation on inode ip.  This routine called from ufs_setattr.
  * inode must be locked prior to call.
  */
+int16_t
 chown1(ip, uid, gid)
 	register struct inode *ip;
-	register int uid, gid;
+	register int16_t uid, gid;
 {
-	int ouid, ogid;
+	int16_t ouid, ogid;
 #ifdef QUOTA
 	struct	dquot	**xdq;
 	long change;
@@ -707,6 +748,7 @@ chown1(ip, uid, gid)
 /*
  * Truncate a file given its path name.
  */
+void
 truncate()
 {
 	register struct a {
@@ -734,10 +776,11 @@ bad:
 /*
  * Truncate a file given a file descriptor.
  */
+void
 ftruncate()
 {
 	register struct a {
-		int	fd;
+		int16_t	fd;
 		off_t	length;
 	} *uap = (struct a *)u.u_ap;
 	register struct inode *ip;
@@ -785,6 +828,7 @@ ftruncate()
  * Source and destination must either both be directories, or both
  * not be directories.  If target is a directory, it must be empty.
  */
+void
 rename()
 {
 	struct a {
@@ -793,10 +837,10 @@ rename()
 	} *uap = (struct a *)u.u_ap;
 	register struct inode *ip, *xp, *dp;
 	struct dirtemplate dirbuf;
-	int doingdirectory = 0, oldparent = 0, newparent = 0;
+	int16_t doingdirectory = 0, oldparent = 0, newparent = 0;
 	struct	nameidata nd;
 	register struct nameidata *ndp = &nd;
-	int error = 0;
+	int16_t error = 0;
 
 	NDINIT(ndp, DELETE, LOCKPARENT, UIO_USERSPACE, uap->from);
 	ip = namei(ndp);
@@ -1030,7 +1074,7 @@ rename()
 			dp->i_flag |= ICHG;
 			error = rdwri(UIO_READ, xp, (caddr_t)&dirbuf,
 					sizeof(struct dirtemplate), (off_t)0, 
-					UIO_SYSSPACE, IO_UNIT, (int *)0);
+					UIO_SYSSPACE, IO_UNIT, (int16_t *)0);
 
 			if (error == 0) {
 				if (dirbuf.dotdot_namlen != 2 ||
@@ -1043,7 +1087,7 @@ rename()
 						(caddr_t)&dirbuf,
 						sizeof(struct dirtemplate),
 						(off_t)0, UIO_SYSSPACE,
-						IO_UNIT|IO_SYNC, (int *)0);
+						IO_UNIT|IO_SYNC, (int16_t *)0);
 					cacheinval(dp);
 				}
 			}
@@ -1083,7 +1127,7 @@ out:
  */
 struct inode *
 maknode(mode, ndp)
-	int mode;
+	int16_t mode;
 register struct nameidata *ndp;
 {
 	register struct inode *ip;
@@ -1109,7 +1153,7 @@ register struct nameidata *ndp;
 	ip->i_mode = mode & ~u.u_cmask;
 	ip->i_nlink = 1;
 	ip->i_uid = u.u_uid;
-	ip->i_gid = pdir->i_gid;
+	ip->i_gid = pdir->i_gid; // TODO: implement sysv or BSD group ownership semantics based on OS
 	if (ip->i_mode & ISGID && !groupmember(ip->i_gid))
 		ip->i_mode &= ~ISGID;
 #ifdef QUOTA
@@ -1147,11 +1191,12 @@ struct dirtemplate mastertemplate = {
 /*
  * Mkdir system call
  */
+void
 mkdir()
 {
 	register struct a {
 		char	*name;
-		int	dmode;
+		int16_t	dmode;
 	} *uap = (struct a *)u.u_ap;
 	register struct inode *ip, *dp;
 	struct dirtemplate dirtemplate;
@@ -1221,7 +1266,7 @@ mkdir()
 	dirtemplate.dotdot_ino = dp->i_number;
 	u.u_error = rdwri(UIO_WRITE, ip, (caddr_t)&dirtemplate, 
 		sizeof (dirtemplate), (off_t)0, UIO_SYSSPACE, IO_UNIT|IO_SYNC,
-		(int *)0);
+		(int16_t *)0);
 	if (u.u_error) {
 		dp->i_nlink--;
 		dp->i_flag |= ICHG;
@@ -1261,6 +1306,7 @@ bad:
 /*
  * Rmdir system call.
  */
+void
 rmdir()
 {
 	struct a {
@@ -1344,11 +1390,11 @@ out:
 
 struct inode *
 getinode(fdes)
-	int fdes;
+	int16_t fdes;
 {
 	register struct file *fp;
 
-	if ((unsigned)fdes >= NOFILE || (fp = u.u_ofile[fdes]) == NULL) {
+	if ((uint16_t)fdes >= NOFILE || (fp = u.u_ofile[fdes]) == NULL) {
 		u.u_error = EBADF;
 		return ((struct inode *)0);
 	}

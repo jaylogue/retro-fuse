@@ -35,7 +35,7 @@
  * comes into existence when the kernel is loaded and hence cannot be
  * patched by a stalking hacker.
  */
-extern int securelevel;		/* system security level */
+extern int16_t securelevel;		/* system security level */
 
 extern	char version[];		/* system version */
 
@@ -43,53 +43,55 @@ extern	char version[];		/* system version */
  * Nblkdev is the number of entries (rows) in the block switch.
  * Used in bounds checking on major device numbers.
  */
-int	nblkdev;
+extern int16_t	nblkdev;
 
 /*
  * Number of character switch entries.
  */
-int	nchrdev;
+extern int16_t	nchrdev;
 
-int	mpid;			/* generic for unique process id's */
-char	runin;			/* scheduling flag */
-char	runout;			/* scheduling flag */
-int	runrun;			/* scheduling flag */
-char	curpri;			/* more scheduling */
+/* UNUSED: int	mpid;			/* generic for unique process id's */
+/* UNUSED: char	runin;			/* scheduling flag */
+/* UNUSED: char	runout;			/* scheduling flag */
+/* UNUSED: int	runrun;			/* scheduling flag */
+/* UNUSED: char	curpri;			/* more scheduling */
 
-u_int	maxmem;			/* actual max memory per process */
+/* UNUSED: u_int	maxmem;			/* actual max memory per process */
 
-u_int	nswap;			/* size of swap space */
-int	updlock;		/* lock for sync */
-daddr_t	rablock;		/* block to be read ahead */
-dev_t	rootdev;		/* device of the root */
-dev_t	dumpdev;		/* device to take dumps on */
-long	dumplo;			/* offset into dumpdev */
-dev_t	swapdev;		/* swapping device */
-dev_t	pipedev;		/* pipe device */
-int	nodev();		/* no device function used in bdevsw/cdevsw */
+/* UNUSED: u_int	nswap;			/* size of swap space */
+extern int16_t	updlock;		/* lock for sync */
+extern daddr_t	rablock;		/* block to be read ahead */
+extern dev_t	rootdev;		/* device of the root */
+/* UNUSED: dev_t	dumpdev;		/* device to take dumps on */
+/* UNUSED: long	dumplo;			/* offset into dumpdev */
+/* UNUSED: dev_t	swapdev;		/* swapping device */
+/* UNUSED: dev_t	pipedev;		/* pipe device */
+int16_t	nodev();		/* no device function used in bdevsw/cdevsw */
 
-extern	int icode[];		/* user init code */
-extern	int szicode;		/* its size */
+/* UNUSED: extern	int icode[];		/* user init code */
+/* UNUSED: extern	int szicode;		/* its size */
 
-daddr_t	bmap();
+/* UNUSED: daddr_t	bmap(); */
 
-ubadr_t	clstaddr;		/* UNIBUS virtual address of clists */
+/* UNUSED: ubadr_t	clstaddr;		/* UNIBUS virtual address of clists */
 
-extern int	cputype;	/* type of cpu = 40, 44, 45, 60, or 70 */
+/* UNUSED: extern int	cputype;	/* type of cpu = 40, 44, 45, 60, or 70 */
 
 /*
  * Structure of the system-entry table
  */
+#if UNUSED
 extern struct sysent
 {
 	char	sy_narg;		/* total number of arguments */
 	int	(*sy_call)();		/* handler */
 } sysent[];
+#endif
 
-int	noproc;			/* no one is running just now */
-char	*panicstr;
-int	boothowto;		/* reboot flags, from boot */
-int	selwait;
+/* UNUSED: int	noproc;			/* no one is running just now */
+/* UNUSED: char	*panicstr; */
+/* UNUSED: int	boothowto;		/* reboot flags, from boot */
+/* UNUSED: int	selwait; */
 
 /* casts to keep lint happy */
 #ifdef lint
@@ -97,6 +99,6 @@ int	selwait;
 #define	remque(q)	_remque((caddr_t)q)
 #endif
 
-extern	bool_t	sep_id;		/* separate I/D */
-extern	char	regloc[];	/* offsets of saved user registers (trap.c) */
+/* UNUSED: extern	bool_t	sep_id;		/* separate I/D */
+/* UNUSED: extern	char	regloc[];	/* offsets of saved user registers (trap.c) */
 #endif

@@ -44,23 +44,23 @@
 #define SIGUSR1 30	/* user defined signal 1 */
 #define SIGUSR2 31	/* user defined signal 2 */
 
-#define	SIG_ERR		(int (*)())-1
-#define	SIG_DFL		(int (*)())0
-#define	SIG_IGN		(int (*)())1
+#define	SIG_ERR		(int16_t (*)())-1
+#define	SIG_DFL		(int16_t (*)())0
+#define	SIG_IGN		(int16_t (*)())1
 
 #ifndef KERNEL
-int	(*signal())();
+int16_t	(*signal())();
 #endif
 
-typedef unsigned long sigset_t;
+typedef uint32_t sigset_t;
 
 /*
  * Signal vector "template" used in sigaction call.
  */
 struct	sigaction {
-	int	(*sa_handler)();	/* signal handler */
+	int16_t	(*sa_handler)();	/* signal handler */
 	sigset_t sa_mask;		/* signal mask to apply */
-	int	sa_flags;		/* see signal options below */
+	int16_t	sa_flags;		/* see signal options below */
 };
 
 #define SA_ONSTACK	0x0001	/* take signal on signal stack */
@@ -75,15 +75,15 @@ struct	sigaction {
 #define	SIG_UNBLOCK	2	/* unblock specified signal set */
 #define	SIG_SETMASK	3	/* set specified signal set */
 
-typedef	int (*sig_t)();		/* type of signal function */
+typedef	int16_t (*sig_t)();		/* type of signal function */
 
 /*
  * Structure used in sigaltstack call.
  */
 struct	sigaltstack {
 	char	*ss_base;		/* signal stack base */
-	int	ss_size;		/* signal stack length */
-	int	ss_flags;		/* SA_DISABLE and/or SA_ONSTACK */
+	int16_t	ss_size;		/* signal stack length */
+	int16_t	ss_flags;		/* SA_DISABLE and/or SA_ONSTACK */
 };
 #define	MINSIGSTKSZ	128			/* minimum allowable stack */
 #define	SIGSTKSZ	(MINSIGSTKSZ + 384)	/* recommended stack size */
@@ -93,9 +93,9 @@ struct	sigaltstack {
  * Signal vector "template" used in sigvec call.
  */
 struct	sigvec {
-	int	(*sv_handler)();	/* signal handler */
-	long	sv_mask;		/* signal mask to apply */
-	int	sv_flags;		/* see signal options below */
+	int16_t	(*sv_handler)();	/* signal handler */
+	int32_t	sv_mask;		/* signal mask to apply */
+	int16_t	sv_flags;		/* see signal options below */
 };
 #define SV_ONSTACK	SA_ONSTACK	/* take signal on signal stack */
 #define SV_INTERRUPT	SA_RESTART	/* same bit, opposite sense */
@@ -107,7 +107,7 @@ struct	sigvec {
  */
 struct	sigstack {
 	char	*ss_sp;			/* signal stack pointer */
-	int	ss_onstack;		/* current status */
+	int16_t	ss_onstack;		/* current status */
 };
 
 /*
@@ -118,15 +118,15 @@ struct	sigstack {
  * a non-standard exit is performed.
  */
 struct	sigcontext {
-	int	sc_onstack;		/* sigstack state to restore */
-	long	sc_mask;		/* signal mask to restore */
-	int	sc_sp;			/* sp to restore */
-	int	sc_fp;			/* fp to restore */
-	int	sc_r1;			/* r1 to restore */
-	int	sc_r0;			/* r0 to restore */
-	int	sc_pc;			/* pc to restore */
-	int	sc_ps;			/* psl to restore */
-	int	sc_ovno			/* overlay to restore */
+	int16_t	sc_onstack;		/* sigstack state to restore */
+	int32_t	sc_mask;		/* signal mask to restore */
+	int16_t	sc_sp;			/* sp to restore */
+	int16_t	sc_fp;			/* fp to restore */
+	int16_t	sc_r1;			/* r1 to restore */
+	int16_t	sc_r0;			/* r0 to restore */
+	int16_t	sc_pc;			/* pc to restore */
+	int16_t	sc_ps;			/* psl to restore */
+	int16_t	sc_ovno;			/* overlay to restore */
 };
 
 /*
@@ -136,12 +136,12 @@ struct	sigcontext {
 #define sigmask(m)		(1L << ((m)-1))
 #define sigaddset(set, signo)	(*(set) |= 1L << ((signo) - 1), 0)
 #define sigdelset(set, signo)	(*(set) &= ~(1L << ((signo) - 1)), 0)
-#define sigemptyset(set)	(*(set) = (sigset_t)0, (int)0)
-#define sigfillset(set)         (*(set) = ~(sigset_t)0, (int)0)
+#define sigemptyset(set)	(*(set) = (sigset_t)0, (int16_t)0)
+#define sigfillset(set)         (*(set) = ~(sigset_t)0, (int16_t)0)
 #define sigismember(set, signo) ((*(set) & (1L << ((signo) - 1))) != 0)
 
 #ifndef KERNEL
-extern long	sigblock(), sigsetmask();
+extern int32_t	sigblock(), sigsetmask();
 #define	BADSIG	SIG_ERR
 #endif
 

@@ -1,3 +1,5 @@
+#include "bsd211adapt.h"
+
 /*
  * Copyright (c) 1982 Regents of the University of California.
  * All rights reserved.  The Berkeley software License Agreement
@@ -5,20 +7,20 @@
  *
  *	@(#)ufs_namei.c	1.5 (2.11BSD GTE) 1997/1/30
  */
-#include "param.h"
-#include "../machine/seg.h"
+#include "bsd211/h/param.h"
+#include "bsd211/machine/seg.h"
 
-#include "systm.h"
-#include "dir.h"
-#include "inode.h"
-#include "fs.h"
-#include "mount.h"
-#include "user.h"
-#include "buf.h"
-#include "namei.h"
+#include "bsd211/h/systm.h"
+#include "bsd211/h/dir.h"
+#include "bsd211/h/inode.h"
+#include "bsd211/h/fs.h"
+#include "bsd211/h/mount.h"
+#include "bsd211/h/user.h"
+#include "bsd211/h/buf.h"
+#include "bsd211/h/namei.h"
 
-struct	buf *blkatoff();
-int	dirchk = 0;
+struct buf * blkatoff(struct inode *ip, off_t offset, char **res);
+int16_t	dirchk = 0;
 
 /*
  * Structures associated with name cacheing.
@@ -26,9 +28,9 @@ int	dirchk = 0;
 #define	NCHHASH		16	/* size of hash table */
 
 #if	((NCHHASH)&((NCHHASH)-1)) != 0
-#define	NHASH(h, i, d)	((unsigned)((h) + (i) + 13 * (int)(d)) % (NCHHASH))
+#define	NHASH(h, i, d)	((uint16_t)((h) + (i) + 13 * (int16_t)(d)) % (NCHHASH))
 #else
-#define	NHASH(h, i, d)	((unsigned)((h) + (i) + 13 * (int)(d)) & ((NCHHASH)-1))
+#define	NHASH(h, i, d)	((uint16_t)((h) + (i) + 13 * (int16_t)(d)) & ((NCHHASH)-1))
 #endif
 
 union nchash {
@@ -119,28 +121,28 @@ namei(ndp)
 	struct fs *fs;			/* file system that directory is in */
 	struct buf *bp = 0;		/* a buffer of directory entries */
 	struct direct *ep;		/* the current directory entry */
-	int  entryoffsetinblock;	/* offset of ep in bp's buffer */
+	int16_t  entryoffsetinblock;	/* offset of ep in bp's buffer */
 /* these variables hold information about the search for a slot */
 	enum {NONE, COMPACT, FOUND} slotstatus;
 	off_t slotoffset = -1;		/* offset of area with free space */
-	int slotsize;			/* size of area at slotoffset */
-	int slotfreespace;		/* amount of space free in slot */
-	int slotneeded;			/* size of the entry we're seeking */
+	int16_t slotsize;			/* size of area at slotoffset */
+	int16_t slotfreespace;		/* amount of space free in slot */
+	int16_t slotneeded;			/* size of the entry we're seeking */
 /* */
-	int numdirpasses;		/* strategy for directory search */
+	int16_t numdirpasses;		/* strategy for directory search */
 	off_t endsearch;		/* offset to end directory search */
 	off_t prevoff;			/* ndp->ni_offset of previous entry */
-	int nlink = 0;			/* number of symbolic links taken */
+	int16_t nlink = 0;			/* number of symbolic links taken */
 	struct inode *pdp;		/* saved dp during symlink work */
-register int i;
-	int error;
-	int lockparent;
-	int docache;			/* == 0 do not cache last component */
-	int makeentry;			/* != 0 if name to be added to cache */
+register int16_t i;
+	int16_t error;
+	int16_t lockparent;
+	int16_t docache;			/* == 0 do not cache last component */
+	int16_t makeentry;			/* != 0 if name to be added to cache */
 	unsigned hash;			/* value of name hash for entry */
 	union nchash *nhp;		/* cache chain head for entry */
-	int isdotdot;			/* != 0 if current name is ".." */
-	int flag;			/* op ie, LOOKUP, CREATE, or DELETE */
+	int16_t isdotdot;			/* != 0 if current name is ".." */
+	int16_t flag;			/* op ie, LOOKUP, CREATE, or DELETE */
 	off_t enduseful;		/* pointer past last used dir slot */
 	char	path[MAXPATHLEN];	/* current path */
 	segm	seg5;			/* save area for kernel seg5 */
@@ -449,7 +451,7 @@ searchloop:
 		 * compaction is viable.
 		 */
 		if (slotstatus != FOUND) {
-			int size = ep->d_reclen;
+			int16_t size = ep->d_reclen;
 
 			if (ep->d_ino != 0)
 				size -= DIRSIZ(ep);
@@ -844,6 +846,7 @@ retNULL:
 	return (NULL);
 }
 
+void
 dirbad(ip, offset, how)
 	struct inode *ip;
 	off_t offset;
@@ -862,11 +865,12 @@ dirbad(ip, offset, how)
  *	name is not longer than MAXNAMLEN
  *	name must be as long as advertised, and null terminated
  */
+int16_t
 dirbadentry(ep, entryoffsetinblock)
 	register struct direct *ep;
-	int entryoffsetinblock;
+	int16_t entryoffsetinblock;
 {
-	register int i;
+	register int16_t i;
 
 	if ((ep->d_reclen & 0x3) != 0 ||
 	    ep->d_reclen > DIRBLKSIZ - (entryoffsetinblock & (DIRBLKSIZ - 1)) ||
@@ -886,6 +890,7 @@ dirbadentry(ep, entryoffsetinblock)
  * namei.  Remaining parameters (ndp->ni_offset, ndp->ni_count) indicate
  * how the space for the new entry is to be gotten.
  */
+int16_t
 direnter(ip, ndp)
 	struct inode *ip;
 	register struct nameidata *ndp;
@@ -893,9 +898,9 @@ direnter(ip, ndp)
 	register struct direct *ep, *nep;
 	register struct inode *dp = ndp->ni_pdir;
 	struct buf *bp;
-	int loc, spacefree, error = 0;
+	int16_t loc, spacefree, error = 0;
 	u_int dsize;
-	int newentrysize;
+	int16_t newentrysize;
 	char *dirbuf;
 
 	ndp->ni_dent.d_ino = ip->i_number;
@@ -912,7 +917,7 @@ direnter(ip, ndp)
 		ndp->ni_dent.d_reclen = DIRBLKSIZ;
 		error = rdwri(UIO_WRITE, dp, (caddr_t)&ndp->ni_dent,
 		    		newentrysize, ndp->ni_offset, UIO_SYSSPACE, 
-				IO_UNIT|IO_SYNC, (int *)0);
+				IO_UNIT|IO_SYNC, (int16_t *)0);
 		dp->i_size = roundup(dp->i_size, DIRBLKSIZ);
 		iput(dp);
 		return (error);
@@ -1006,6 +1011,7 @@ direnter(ip, ndp)
  * the space of the now empty record by adding the record size
  * to the size of the previous entry.
  */
+int16_t
 dirremove(ndp)
 	register struct nameidata *ndp;
 {
@@ -1019,8 +1025,8 @@ dirremove(ndp)
 		 */
 		ndp->ni_dent.d_ino = 0;
 		(void) rdwri(UIO_WRITE, dp, (caddr_t)&ndp->ni_dent,
-		    		(int)DIRSIZ(&ndp->ni_dent), ndp->ni_offset,
-				UIO_SYSSPACE, IO_UNIT|IO_SYNC, (int *)0);
+		    		(int16_t)DIRSIZ(&ndp->ni_dent), ndp->ni_offset,
+				UIO_SYSSPACE, IO_UNIT|IO_SYNC, (int16_t *)0);
 	} else {
 		/*
 		 * Collapse new free space into previous entry.
@@ -1041,6 +1047,7 @@ dirremove(ndp)
  * supplied.  The parameters describing the directory entry are
  * set up by a call to namei.
  */
+void
 dirrewrite(dp, ip, ndp)
 	register struct inode *dp;
 	struct inode *ip;
@@ -1049,8 +1056,8 @@ dirrewrite(dp, ip, ndp)
 
 	ndp->ni_dent.d_ino = ip->i_number;
 	u.u_error = rdwri(UIO_WRITE, dp, (caddr_t)&ndp->ni_dent,
-			(int)DIRSIZ(&ndp->ni_dent), ndp->ni_offset,
-			UIO_SYSSPACE, IO_UNIT|IO_SYNC, (int *)0);
+			(int16_t)DIRSIZ(&ndp->ni_dent), ndp->ni_offset,
+			UIO_SYSSPACE, IO_UNIT|IO_SYNC, (int16_t *)0);
 	iput(dp);
 }
 
@@ -1069,7 +1076,7 @@ blkatoff(ip, offset, res)
 	off_t offset;
 	char **res;
 {
-	register struct fs *fs = ip->i_fs;
+	/* UNUSED: register struct fs *fs = ip->i_fs; */
 	daddr_t lbn = lblkno(offset);
 	register struct buf *bp;
 	daddr_t bn;
@@ -1102,6 +1109,7 @@ blkatoff(ip, offset, res)
  *
  * NB: does not handle corrupted directories.
  */
+int16_t
 dirempty(ip, parentino)
 	register struct inode *ip;
 	ino_t parentino;
@@ -1109,7 +1117,7 @@ dirempty(ip, parentino)
 	register off_t off;
 	struct dirtemplate dbuf;
 	register struct direct *dp = (struct direct *)&dbuf;
-	int error, count;
+	int16_t error, count;
 #define	MINDIRSIZ (sizeof (struct dirtemplate) / 2)
 
 	for (off = 0; off < ip->i_size; off += dp->d_reclen) {
@@ -1151,12 +1159,13 @@ dirempty(ip, parentino)
  * Target is supplied locked, source is unlocked.
  * The target is always iput() before returning.
  */
+int16_t
 checkpath(source, target)
 	struct inode *source, *target;
 {
 	struct dirtemplate dirbuf;
 	register struct inode *ip;
-	register int error = 0;
+	register int16_t error = 0;
 
 	ip = target;
 	if (ip->i_number == source->i_number) {
@@ -1173,7 +1182,7 @@ checkpath(source, target)
 		}
 		error = rdwri(UIO_READ, ip, (caddr_t)&dirbuf, 
 				sizeof(struct dirtemplate), (off_t)0,
-				UIO_SYSSPACE, IO_UNIT, (int *)0);
+				UIO_SYSSPACE, IO_UNIT, (int16_t *)0);
 		if (error != 0)
 			break;
 		if (dirbuf.dotdot_namlen != 2 ||
@@ -1207,6 +1216,7 @@ out:
 /*
  * Name cache initialization, from main() when we are booting
  */
+void
 nchinit()
 {
 	register union nchash *nchp;
@@ -1241,6 +1251,7 @@ nchinit()
  * if the cache lru chain is modified while we are dumping the
  * inode.  This makes the algorithm O(n^2), but do you think I care?
  */
+void
 nchinval(dev)
 	register dev_t dev;
 {
@@ -1283,6 +1294,7 @@ nchinval(dev)
 /*
  * Name cache invalidation of all entries.
  */
+void
 cacheinvalall()
 {
 	register struct namecache *ncp, *encp = &namecache[nchsize];

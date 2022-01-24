@@ -32,19 +32,19 @@
  */
 struct bufhd
 {
-	short	b_flags;		/* see defines below */
+	int16_t	b_flags;		/* see defines below */
 	struct	buf *b_forw, *b_back;	/* fwd/bkwd pointer in chain */
 };
 struct buf
 {
-	short	b_flags;		/* see defines below */
+	int16_t	b_flags;		/* see defines below */
 	struct	buf *b_forw, *b_back;	/* hash chain (2 way street) */
 	struct	buf *av_forw, *av_back;	/* position on free list if not BUSY */
 #define	b_actf	av_forw			/* alternate names for driver queue */
 #define	b_actl	av_back			/*    head - isn't history wonderful */
 	u_short	b_bcount;		/* transfer count */
 #define	b_active b_bcount		/* driver queue head: drive active */
-	char	b_error;		/* returned after I/O */
+	int16_t	b_error;		/* returned after I/O */
 	char	b_xmem;			/* high order core address */
 	dev_t	b_dev;			/* major+minor device name */
 	union {
@@ -74,22 +74,22 @@ struct buf
 
 #define	bawrite(bp)	{(bp)->b_flags |= B_ASYNC; bwrite(bp);}
 #define	bfree(bp)	(bp)->b_bcount = 0
-#define	bftopaddr(bp)	((u_int)(bp)->b_un.b_addr >> 6 | (bp)->b_xmem << 10)
+#define	bftopaddr(bp)	((bp)->b_un.b_addr)
 
 #if defined(KERNEL) && !defined(SUPERVISOR)
 #define	BUFHSZ	16	/* must be power of 2 */
-#define	BUFHASH(dev,blkno)	((struct buf *)&bufhash[((long)(dev) + blkno) & ((long)(BUFHSZ - 1))])
+#define	BUFHASH(dev,blkno)	((struct buf *)&bufhash[((int32_t)(dev) + blkno) & ((int32_t)(BUFHSZ - 1))])
 extern struct	buf buf[];		/* the buffer pool itself */
-extern int	nbuf;			/* number of buffer headers */
+extern int16_t	nbuf;			/* number of buffer headers */
 extern struct	bufhd bufhash[];	/* heads of hash lists */
 extern struct	buf bfreelist[];	/* heads of available lists */
 
-struct	buf *balloc();
-struct	buf *getblk();
-struct	buf *geteblk();
-struct	buf *getnewbuf();
-struct	buf *bread();
-struct	buf *breada();
+/* UNUSED: struct	buf *balloc(); */
+/* UNUSED: struct	buf *getblk(); */
+/* UNUSED: struct	buf *geteblk(); */
+/* UNUSED: struct	buf *getnewbuf(); */
+/* UNUSED: struct	buf *bread(); */
+/* UNUSED: struct	buf *breada(); */
 #endif
 
 /*
@@ -152,7 +152,7 @@ struct	buf *breada();
  * mark it as being use (B_BUSY) by a device.
  */
 #define	notavail(bp) { \
-	register int x = splbio(); \
+	register int16_t x = splbio(); \
 	bremfree(bp); \
 	(bp)->b_flags |= B_BUSY; \
 	splx(x); \
