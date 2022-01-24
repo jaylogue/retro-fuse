@@ -4,8 +4,8 @@ A user-space filesystem (FUSE) for accessing ancient Unix filesystems.
 
 *retro-fuse* provides a way to mount filesystems created by ancient Unix systems
 on modern OSes.  The current version of *retro-fuse* supports mounting filesystems
-created by fifth, sixth and seventh-edition research Unix, as well as 2.9BSD.
-It can also initialize such filesystems.
+created by fifth, sixth and seventh-edition research Unix, as well as 2.9BSD and
+2.11BSD. It can also initialize such filesystems.
 
 The design of *retro-fuse* is novel in that it incorprates original source code
 from the historic Unix kernels.  The ancient code has been "lightly modernized" to be
@@ -39,7 +39,7 @@ The current version of *retro-fuse* runs on Linux and MacOS.
 Building *retro-fuse* on Linux requires the libfuse-dev package, which can be installed on
 Ubuntu/debian-based systems as follows:
 
-[source,bash]
+[source,ShellSession]
 ----
 $ sudo apt install libfuse-dev
 ----
@@ -50,7 +50,7 @@ can be downloaded from the https://osxfuse.github.io[macFUSE] website.
 After the prerequisites have been installed, run make to build the filesystem handler
 programs:
 
-[source,bash]
+[source,ShellSession]
 ----
 $ make
 ----
@@ -70,21 +70,21 @@ https://github.com/pexpect/pexpect[Pexpect] python module, which must be install
 
 simh can be installed on Ubuntu/debian-based systems as follows:
 
-[source,bash]
+[source,ShellSession]
 ----
 $ sudo apt install simh
 ----
 
 The Pexpect python module can be installed using pip:
 
-[source,bash]
+[source,ShellSession]
 ----
 $ pip3 install --user pexpect
 ----
 
 To run the functionality tests, use the `test` make target:
 
-[source,bash]
+[source,ShellSession]
 ----
 $ make test
 ----
@@ -93,11 +93,10 @@ Individual filesystem handlers can be tested by directly running the `retro-fuse
 driver script and passing a path to the handler program.  Pass the `-v` option to see
 details about the tests being performed:
 
-[source,bash]
+[source,ShellSession]
 ----
 $ ./test/retro-fuse-test.py -v ./bsd29fs
 ----
-
 
 
 ## Usage
@@ -107,25 +106,27 @@ The build process produces the following filesystem handler programs:
 * `v6fs` -- Supports fifth and sixth edition filesystems
 * `v7fs` -- Supports seventh-edition filesystems
 * `bsd29fs` -- Supports 2.9BSD filesystems
+* `bsd211fs` -- Supports 2.11BSD filesystems
 
 The filesystem handler programs can be run directly from the command line, or they
-can be installed into ``/usr/local/sbin``, making it possible to mount filesystems using
+can be installed into `/usr/local/sbin`, making it possible to mount filesystems using
 the standard mount(8) command.
 
 To mount an ancient Unix filesystem, run the appropriate filesystem handler
 program, supplying the name of the block or image file containing
 the filesystem, and the desired mount point:
 
-``__<handler>__ [_<options>_] __<device-or-image-file>__ _<mount-point>_``
+`__<handler>__ [_<options>_] __<device-or-image-file>__ _<mount-point>_`
 
-Alternatively, if the handler programs have been installed in ``/sbin``
-or ``/usr/local/sbin``, you can use the mount command:
+Alternatively, if the handler programs have been installed in `/sbin`
+or `/usr/local/sbin`, you can use the mount command:
 
-``sudo mount -t fuse.__<handler>__ [_<options>_] _<device-or-image-file>_ _<mount-point>_``
+`sudo mount -t fuse.__<handler>__ [_<options>_] _<device-or-image-file>_ _<mount-point>_`
 
 When executed directly, the filesystem handlers can be run by a non-root
 user. This is often more convenient than using the mount command, which
 must always be run as root.
+
 
 ### _Filesystem Location_
 
@@ -134,7 +135,7 @@ storage location of the filesystem.  This can be a regular file containing
 an image of the filesystem, or a standard Unix block device.
 
 In the case of a block device, it may be useful to specify an offset to
-the start of the filesystem using the ``-o fsoffset=__x__`` option. If
+the start of the filesystem using the `-o fsoffset=__x__` option. If
 not specified, the filesystem is assumed to start at the beginning of the
 block device.
 
@@ -158,15 +159,15 @@ Mount the filesystem in read-only mode.
 
 Mount the filesystem in read-write mode.  This is the default.
 
-``**-o allow_root**``;;
+`**-o allow_root**`;;
 
 Allow the root user to access the filesystem, in addition to the
-mounting user.  Mutually exclusive with the ``allow_other`` option.
+mounting user.  Mutually exclusive with the `allow_other` option.
 
-``**-o allow_other**``;;
+`**-o allow_other**`;;
 
 Allow any user to access the filesystem, including root and the mounting
-user.  Mutually exclusive with the ``allow_root`` option.
+user.  Mutually exclusive with the `allow_root` option.
 
 `**-o mapuid=__<host-uid>__:__<fs-uid>__ **`;;
 `**-o mapgid=__<host-gid>__:__<fs-gid>__ **`;;
@@ -185,7 +186,7 @@ Multiple mapping options may be given, up to a limit of 100.
 
 `**-o fssize=__<blocks>__**`;;
 
-The size of the filesystem, in  blocks. This is used to limit the range
+The size of the filesystem, in blocks. This is used to limit the range
 of I/O on the underlying device/image file.  This can be useful to prevent
 malformed filesystems from accessing blocks outside of the intended area.
 It is also necessary when initializing a new filesystem using an image
@@ -199,116 +200,166 @@ The size of a block varies by filesystem type:
 |v6    |512
 |v7    |512
 |2.9BSD    |1024
+|2.11BSD    |1024
 |=======================
 +
 For an existing filesystem, the `fssize` value defaults to the size given
 in the filesystem superblock.
 
-``**-o fsoffset=__<blocks>__**``;;
+`**-o fsoffset=__<blocks>__**`;;
 
 Offset into the device/image file at which the filesystem starts, in 
 blocks.  Defaults to 0.
 
-``**-o initfs**``;;
-``**-o initfs=__<params>__**``;;
+`**-o initfs**`;;
+`**-o initfs=__<params>__**`;;
 
 Create an empty filesystem on the underlying device/image file before
 mounting.  When using the `initfs` option on an image file, the desired
-size of the filesystem must be specified using the ``fssize`` option.
+size of the filesystem must be specified using the `fssize` option.
 +
 __params__ is a set of initialization parameters which control the layout
 and configuration of the new filesystem. The interpretation of these
 parameters varies by filesystem type. Details on the syntax can be
 found in the help output of the associated filesystem handler (e.g. by
-running ``v6fs --help``).
+running `v6fs --help`).
 +
 If __params__ is not specified, the filesystem is initialized using
 the default parameters as used by the original Unix mkfs(8) command.
 
-``**-o overwrite**``;;
+`**-o overwrite**`;;
 
 When used with the `initfs` option, instructs the filesystem handler
 to overwrite any existing filesystem image file. Without this option,
 the `initfs` option will fail with an error if an image file exists.
 
-``**-f**``;;
-``**--foreground**``;;
+`**-f**`;;
+`**--foreground**`;;
 
 Run in foreground (useful for debugging).
 
-``**-d**``;;
-``**--debug**``;;
+`**-d**`;;
+`**--debug**`;;
 
 Enable debug output to stderr (implies -f)
 
-``**-V**``;;
-``**--version**``;;
+`**-V**`;;
+`**--version**`;;
 
 Print version information
 
-``**-h**``;;
-``**--help**``;;
+`**-h**`;;
+`**--help**`;;
 
 Print usage information.
 
+
+### 2.11BSD and disklabels
+
+2.11BSD makes use of https://en.wikipedia.org/wiki/BSD_disklabel[BSD disklables] to
+describe the location and size of filesystem partitions on a disk.
+Currently, the `bsd211fs` handler does _not_ have the
+ability to read or create BSD disklabels.  As a result, one must typically specify the
+block offset of the filesystem when mounting a filesystem on an existing disk.
+
+For example, to mount the /usr filesystem on an RD54 using the standard
+BSD partition layout (as described in /etc/disktab) one would use the following command:
+
+[source,ShellSession]
+----
+$ bsd211fs -o fsoffset=16302 system-rd54.dsk /mnt/tmp
+----
+
+Note that the value of the `-o fsoffset` option is specified in 1K-byte blocks.  This
+differs from the values in /etc/disktab, which are given 512-byte sectors.
+
+Because `bsd211fs` does not support creating disklabels, in many cases it will be
+necessary use the disklabel(8) program within a running 2.11BSD system to setup the
+desired partition layout prior to initializing the filesystems.  In these situations,
+given that one is already working within a running 2.11BSD system, it is often easier
+to simply use the native newfs command, rather running `bsd211fs -o initfs` on a
+modern host.
+
+As a special case, when creating disks that contain a single filesystem positioned at
+the start of the disk, it is possible to skip the disk labelling process and simply initialize
+the filesystem directly without writing a disklabel. This works because the BSD kernel 
+will automatically presume a default partition (partition 'a') covering the entire disk
+for any disk found without a disklabel.
+
+Conveniently, this feature makes it possible to initialize such disks from a modern host using
+the `bsd211fs` command alone.  For example, to create a new filesystem on a disk image matching
+the size of an RD54, one can use the following command:
+
+[source,ShellSession]
+----
+$ bsd211fs -o initfs,fssize=155600 data-rd54.dsk /mnt/tmp
+----
+
+Assuming this image appears as device rd1 on the BSD system, the filesystem can then be mounted
+as follows:
+
+[source,ShellSession]
+----
+$ mount /dev/rd1a /mnt
+----
 
 
 ## Examples
 
 **Mount an image file containing a v6 filesystem**
 
-[source,bash]
+[source,ShellSession]
 ----
 $ v6fs root.dsk /mnt/tmp
 ----
 
 **Mount a v7 filesystem occupying a particular offset and size on a host block device**
 
-[source,bash]
+[source,ShellSession]
 ----
 $ v7fs -o fssize=4872,fsoffset=4194304 /dev/sdc /mnt/tmp
 ----
 
 **Mount a 2.9BSD filesystem, mapping the host's user id 1000 to uid 33 on the filesystem**
 
-[source,bash]
+[source,ShellSession]
 ----
 $ bsd29fs -o mapuid=1000:33 root.dsk /mnt/tmp
 ----
 
 **Mount a v6 filesystem as root, allowing other users to access it**
 
-[source,bash]
+[source,ShellSession]
 ----
 $ sudo v6fs -oallow_other root.dsk /mnt/tmp
 ----
 
 **Initialize and mount a new v6 filesystem having the same size as a DEC RK05 disk**
 
-[source,bash]
+[source,ShellSession]
 ----
 $ v6fs -o initfs,fssize=4872 scratch.dsk /mnt/tmp
 ----
-__NOTE -- When using the ``initfs`` option with an image file, the file
+__NOTE -- When using the `initfs` option with an image file, the file
 must **not** exist when the command is invoked.__
 
 **Initialize and mount a new v7 filesystem with a specific number of inode blocks**
 
-[source,bash]
+[source,ShellSession]
 ----
 $ v7fs -o initfs=200,fssize=4872 scratch.dsk /mnt/tmp
 ----
 
 **Unmount a filesystem that has been mounted by the active (non-root) user**
 
-[source,bash]
+[source,ShellSession]
 ----
 $ fusermount -u /mnt/tmp
 ----
 
 **Unmount a filesystem that has been mounted by root or another user**
 
-[source,bash]
+[source,ShellSession]
 ----
 $ sudo umount /mnt/tmp
 ----
@@ -368,7 +419,6 @@ for testing filesystem integrity.
 
 *ancient cksum code* (test/ancient-cksum/+*+.c) -- Implementations of POSIX-compliant
 cksum command for use on ancient Unix systems.
-
 
 
 
