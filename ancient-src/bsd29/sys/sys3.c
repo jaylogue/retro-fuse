@@ -364,9 +364,9 @@ readlink()
 	u.u_count = uap->count;
 	u.u_segflg = 0;
 	readi(ip);
+	u.u_r.r_val1 = uap->count - u.u_count; /* fix uninitialized use error */
 out:
 	iput(ip);
-	u.u_r.r_val1 = uap->count - u.u_count;
 }
 
 /*
@@ -403,7 +403,7 @@ symlink()
 	}
 	if (u.u_error)
 		return;
-	ip = maknode(IFLNK | 0777);
+	ip = maknode((int16_t)IFLNK | 0777);
 	if (ip == NULL)
 		return;
 	u.u_base = uap->target;

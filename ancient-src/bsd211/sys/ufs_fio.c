@@ -32,12 +32,10 @@
  * permissions.
  */
 int16_t
-access(ip, mode)
-	register struct inode *ip;
-	int16_t mode;
+access(struct inode *ip, int16_t mode)
 {
 	register int16_t m;
-	register gid_t *gp;
+	/* UNUSED: register gid_t *gp; */
 
 	m = mode;
 	if (m == IWRITE) {
@@ -85,10 +83,14 @@ access(ip, mode)
 	 */
 	if (u.u_uid != ip->i_uid) {
 		m >>= 3;
+#if UNUSED
 		gp = u.u_groups;
 		for (; gp < &u.u_groups[NGROUPS] && *gp != NOGROUP; gp++)
 			if (ip->i_gid == *gp)
 				goto found;
+#endif
+		if (groupmember(ip->i_gid))
+			goto found;
 		m >>= 3;
 found:
 		;
@@ -121,9 +123,7 @@ suser()
  * is too large already (it will probably be split into two files eventually).
 */
 int16_t
-ufs_setattr(ip, vap)
-	register struct inode *ip;
-	register struct vattr *vap;
+ufs_setattr(struct inode *ip, struct vattr *vap)
 	{
 	int16_t	error;
 	struct	timeval atimeval, mtimeval;
@@ -190,8 +190,7 @@ ufs_setattr(ip, vap)
 	}
 
 int16_t
-ufs_mountedon(dev)
-	dev_t dev;
+ufs_mountedon(dev_t dev)
 	{
 	register struct mount *mp;
 

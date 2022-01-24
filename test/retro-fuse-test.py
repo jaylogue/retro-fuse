@@ -24,6 +24,7 @@ import os
 import sys
 import unittest
 import argparse
+import shutil
 
 scriptName = os.path.basename(__file__)
 scriptDirName = os.path.dirname(os.path.abspath(os.path.realpath(__file__)))
@@ -79,7 +80,7 @@ class TestResult(unittest.TestResult):
 
 # Parse command line arguments
 argParser = argparse.ArgumentParser()
-argParser.add_argument('-s', '--simh', dest='simhCmd', default='pdp11',
+argParser.add_argument('-s', '--simh', dest='simhCmd',
                         help='Path to pdp11 simh executable')
 argParser.add_argument('-v', '--verbose', dest='verbosity', action='store_const', const=2, default=1,
                         help='Verbose output')
@@ -102,6 +103,19 @@ if not os.access(testOpts.fsHandler, os.F_OK):
     sys.exit(1)
 if not os.access(testOpts.fsHandler, os.X_OK):
     print(f'{scriptName}: Unable to execute filesystem handler: {testOpts.fsHandler}', file=sys.stderr)
+    sys.exit(1)
+
+# search for simh command if not specified...
+if testOpts.simhCmd is None:
+    for cmd in ('pdp11', 'simh-pdp11'):
+        testOpts.simhCmd = shutil.which(cmd)
+        if testOpts.simhCmd is not None:
+            break
+    else:
+        print(f'{scriptName}: Unable to locate simh pdp11 exectuable', file=sys.stderr)
+        sys.exit(1)
+if not os.access(testOpts.simhCmd, os.X_OK):
+    print(f'{scriptName}: Unable to execute simh pdp11: {testOpts.simhCmd}', file=sys.stderr)
     sys.exit(1)
 
 # Load the appropriate test cases

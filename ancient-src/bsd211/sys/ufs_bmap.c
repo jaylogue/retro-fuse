@@ -30,10 +30,7 @@
  * for use in read-ahead.
  */
 daddr_t
-bmap(ip, bn, rwflg, flags)
-	register struct inode *ip;
-	daddr_t bn;
-	int16_t rwflg, flags;
+bmap(struct inode *ip, daddr_t bn, int16_t rwflg, int16_t flags)
 {
 	register int16_t i;
 	register struct buf *bp;

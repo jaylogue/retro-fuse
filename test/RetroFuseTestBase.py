@@ -22,6 +22,7 @@
 
 import os
 import sys
+import platform
 import subprocess
 import tempfile
 
@@ -61,7 +62,10 @@ class RetroFuseTestBase:
     @classmethod
     def unmountFS(cls):
         if cls.fsMounted:
-            args = [ '/bin/fusermount', '-u', cls.mountDir ]
+            if platform.system() == 'Linux':
+                args = [ '/bin/fusermount', '-u', cls.mountDir ]
+            else:
+                args = [ '/sbin/umount', cls.mountDir ]
             if testOpts.verbosity >= 2:
                 print('Unmounting filesystem: %s' % ' '.join(args), file=sys.stderr)
             res = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

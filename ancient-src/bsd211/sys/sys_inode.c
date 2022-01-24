@@ -38,9 +38,7 @@ struct 	fileops inodeops =
 	{ ino_rw, NULL, NULL, vn_closefile };
 
 int16_t
-ino_rw(fp, uio)
-	struct file *fp;
-register struct uio *uio;
+ino_rw(struct file *fp, struct uio *uio)
 {
 	register struct inode *ip = (struct inode *)fp->f_data;
 	u_int count, error;
@@ -77,15 +75,7 @@ register struct uio *uio;
 }
 
 int16_t
-rdwri(rw, ip, base, len, offset, segflg, ioflg, aresid)
-	enum uio_rw rw;
-	struct inode *ip;
-	caddr_t base;
-	int16_t len;
-	off_t offset;
-	enum uio_seg segflg;
-	int16_t ioflg;
-register int16_t *aresid;
+rdwri(enum uio_rw rw, struct inode *ip, caddr_t base, int16_t len, off_t offset, enum uio_seg segflg, int16_t ioflg, int16_t *aresid)
 {
 	struct uio auio;
 	struct iovec aiov;
@@ -109,10 +99,7 @@ register int16_t error;
 }
 
 int16_t
-rwip(ip, uio, ioflag)
-	register struct inode *ip;
-	register struct uio *uio;
-	int16_t ioflag;
+rwip(struct inode *ip, struct uio *uio, int16_t ioflag)
 {
 	dev_t dev = (dev_t)ip->i_rdev;
 	register struct buf *bp;
@@ -392,9 +379,7 @@ ino_select(fp, which)
 #endif /* UNUSED */
 
 int16_t
-ino_stat(ip, sb)
-	register struct inode *ip;
-	register struct stat *sb;
+ino_stat(struct inode *ip, struct stat *sb)
 {
 	register struct icommon2 *ic2;
 

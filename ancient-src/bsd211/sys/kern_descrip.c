@@ -293,8 +293,7 @@ fstat()
  * Allocate a user file descriptor.
  */
 int16_t
-ufalloc(i)
-	register int16_t i;
+ufalloc(int16_t i)
 {
 
 	for (; i < NOFILE; i++)
@@ -352,8 +351,7 @@ slot:
  * consideration.
  */
 struct file *
-getf(f)
-	register int16_t f;
+getf(int16_t f)
 {
 	register struct file *fp;
 
@@ -369,8 +367,7 @@ getf(f)
  * Decrement reference count on file structure.
  */
 int16_t
-closef(fp)
-	register struct file *fp;
+closef(struct file *fp)
 {
 	int16_t	error;
 
@@ -459,10 +456,7 @@ fdopen(dev, mode, type)
  * Duplicate the specified descriptor to a free descriptor.
  */
 int16_t
-dupfdopen(indx, dfd, mode, error)
-	register int16_t indx, dfd;
-	int16_t mode;
-	int16_t error;
+dupfdopen(int16_t indx, int16_t dfd, int16_t mode, int16_t error)
 	{
 	register struct file *wfp;
 	struct file *fp;

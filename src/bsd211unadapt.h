@@ -96,6 +96,12 @@ enum {
 static inline size_t BSD211_DIRSIZ(struct bsd211_direct *dp) { return DIRSIZ(dp); }
 #endif /* _DIR_ */
 
+#ifdef _SYS_RESOURCE_H_
+enum {
+    BSD211_RLIM_INFINITY = RLIM_INFINITY
+};
+#endif /* _SYS_RESOURCE_H_ */
+
 
 /* Undefine name mapping macros
  */
@@ -130,6 +136,7 @@ static inline size_t BSD211_DIRSIZ(struct bsd211_direct *dp) { return DIRSIZ(dp)
 #undef chmod1
 #undef chown1
 #undef clean
+#undef clockinfo
 #undef close
 #undef closef
 #undef clrbuf
@@ -160,7 +167,6 @@ static inline size_t BSD211_DIRSIZ(struct bsd211_direct *dp) { return DIRSIZ(dp)
 #undef free
 #undef fs
 #undef fserr
-#undef fstat
 #undef fsync
 #undef ftruncate
 #undef fubyte
@@ -243,18 +249,23 @@ static inline size_t BSD211_DIRSIZ(struct bsd211_direct *dp) { return DIRSIZ(dp)
 #undef readlink
 #undef remque
 #undef rename
+#undef rlimit
 #undef rmdir
 #undef rootdev
 #undef rootdir
+#undef rusage
 #undef rwip
 #undef rwuio
 #undef saccess
 #undef securelevel
 #undef SEG5
 #undef segm
+#undef sig_t
 #undef sigaction
 #undef sigaltstack
 #undef sigset_t
+#undef sigstack
+#undef sigvec
 #undef size_t
 #undef sleep
 #undef ssize_t
@@ -263,7 +274,6 @@ static inline size_t BSD211_DIRSIZ(struct bsd211_direct *dp) { return DIRSIZ(dp)
 #undef strlen
 #undef suser
 #undef symlink
-#undef sync
 #undef syncinodes
 #undef syncip
 #undef tablefull
@@ -411,6 +421,8 @@ static inline size_t BSD211_DIRSIZ(struct bsd211_direct *dp) { return DIRSIZ(dp)
 #pragma pop_macro("ITIMER_REAL")
 #pragma pop_macro("ITIMER_VIRTUAL")
 #pragma pop_macro("ITIMER_PROF")
+#pragma pop_macro("F_GETOWN")
+#pragma pop_macro("F_SETOWN")
 #pragma pop_macro("NFDBITS")
 #pragma pop_macro("timercmp")
 #pragma pop_macro("timerclear")
@@ -422,5 +434,38 @@ static inline size_t BSD211_DIRSIZ(struct bsd211_direct *dp) { return DIRSIZ(dp)
 #pragma pop_macro("L_SET")
 #pragma pop_macro("L_INCR")
 #pragma pop_macro("L_XTND")
+#pragma pop_macro("bzero")
+#pragma pop_macro("NBBY")
+#pragma pop_macro("ntohs")
+#pragma pop_macro("htons")
+#pragma pop_macro("ntohl")
+#pragma pop_macro("htonl")
+#pragma pop_macro("NSIG")
+#pragma pop_macro("sa_handler")
+#pragma pop_macro("_SYS_RESOURCE_H_")
+#pragma pop_macro("_SYS_TIME_H_")
+#pragma pop_macro("SIG_ERR")
+#pragma pop_macro("SIG_DFL")
+#pragma pop_macro("SIG_IGN")
+#pragma pop_macro("SIGSTKSZ")
+#pragma pop_macro("sigmask")
+#pragma pop_macro("RLIMIT_RSS")
+#pragma pop_macro("RLIM_NLIMITS")
+#pragma pop_macro("RLIM_INFINITY")
+#pragma pop_macro("ELAST")
+#pragma pop_macro("O_SHLOCK")
+#pragma pop_macro("O_SHLOCK")
+#pragma pop_macro("SIGIOT")
+#pragma pop_macro("UF_SETTABLE")
+#pragma pop_macro("UF_NODUMP")
+#pragma pop_macro("UF_IMMUTABLE")
+#pragma pop_macro("UF_APPEND")
+#pragma pop_macro("SF_SETTABLE")
+#pragma pop_macro("SF_ARCHIVED")
+#pragma pop_macro("SF_IMMUTABLE")
+#pragma pop_macro("SF_APPEND")
+#pragma pop_macro("SIGABRT")
+#pragma pop_macro("MINSIGSTKSZ")
+#pragma pop_macro("O_EXLOCK")
 
 #endif /* __BSD211UNADAPT_H__ */

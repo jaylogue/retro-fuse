@@ -113,8 +113,7 @@ fsclean()
  *	date with recent mods to the cooked device.
  */
 void
-syncip(ip)
-	struct inode *ip;
+syncip(struct inode *ip)
 {
 	register struct buf *bp;
 	register struct buf *lastbufp;
@@ -155,9 +154,7 @@ syncip(ip)
  * Check that a specified block number is in range.
  */
 int16_t
-badblock(fp, bn)
-	register struct fs *fp;
-	daddr_t bn;
+badblock(struct fs *fp, daddr_t bn)
 {
 
 	if (bn < fp->fs_isize || bn >= wswap_int32(fp->fs_fsize)) {
@@ -178,8 +175,7 @@ badblock(fp, bn)
  *	this "cannot happen"
  */
 struct fs *
-getfs(dev)
-	dev_t dev;
+getfs(dev_t dev)
 {
 	register struct mount *mp;
 	register struct fs *fs;

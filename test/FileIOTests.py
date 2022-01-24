@@ -24,6 +24,7 @@ import os
 import stat
 import math
 import random
+import grp
 from cksum import cksumFile, cksumStream
 from ShadowedFile import ShadowedFile
 from FileList import FileList, FileListEntry
@@ -205,7 +206,7 @@ class FileIOTests:
             fn = os.path.join(self.targetDir, 'f06-%d' % (i+1))
             with open(fn, "w+") as f:
                 pass
-            os.chown(fn, -1, os.getresgid()[1]) # make sure the file's group is our effective gid
+            os.chown(fn, -1, os.getegid()) # make sure the file's group is our effective gid
             os.chmod(fn, mode)
             statRes = os.stat(fn)
             self.assertEqual(stat.S_IMODE(statRes.st_mode), mode)
@@ -225,14 +226,23 @@ class FileIOTests:
 
     def test_08_ChangeFileGroup(self):
         '''Change File Group'''
+        try:
+            gid = grp.getgrnam('users').gr_gid
+        except KeyError:
+            gid = None
+        if gid not in os.getgroups():
+            try:
+                gid = grp.getgrnam('everyone').gr_gid
+            except KeyError:
+                gid = None
+            if gid not in os.getgroups():
+                self.skipTest("Suitable group not found")
         fn = os.path.join(self.targetDir, 'f08-1')
         with open(fn, "w+") as f:
             pass
-        for gid in os.getgroups():
-            if gid < 128:
-                os.chown(fn, -1, gid)
-                statRes = os.stat(fn)
-                self.assertEqual(statRes.st_gid, gid)
+        os.chown(fn, -1, gid)
+        statRes = os.stat(fn)
+        self.assertEqual(statRes.st_gid, gid)
         self.fileList.append(FileListEntry(fn, 'f', size=0, mode=statRes.st_mode, linkCount=1))
 
     # ---------- File Read/Write Tests ----------

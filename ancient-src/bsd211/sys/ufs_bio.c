@@ -24,9 +24,7 @@
  * Read in (if necessary) the block and return a buffer pointer.
  */
 struct buf *
-bread(dev, blkno)
-	dev_t dev;
-	daddr_t blkno;
+bread(dev_t dev, daddr_t blkno)
 {
 	register struct buf *bp;
 
@@ -49,10 +47,7 @@ bread(dev, blkno)
  * read-ahead block (which is not allocated to the caller)
  */
 struct buf *
-breada(dev, blkno, rablkno)
-	register dev_t dev;
-	daddr_t blkno;
-	daddr_t rablkno;
+breada(dev_t dev, daddr_t blkno, daddr_t rablkno)
 {
 	register struct buf *bp, *rabp;
 
@@ -112,8 +107,7 @@ breada(dev, blkno, rablkno)
  * Then release the buffer.
  */
 void
-bwrite(bp)
-	register struct buf *bp;
+bwrite(struct buf *bp)
 {
 	register int16_t flag;
 
@@ -146,8 +140,7 @@ bwrite(bp)
  * in the same order as requested.
  */
 void
-bdwrite(bp)
-	register struct buf *bp;
+bdwrite(struct buf *bp)
 {
 
 	if ((bp->b_flags&B_DELWRI) == 0)
@@ -165,8 +158,7 @@ bdwrite(bp)
  * Release the buffer, with no I/O implied.
  */
 void
-brelse(bp)
-	register struct buf *bp;
+brelse(struct buf *bp)
 {
 	register struct buf *flist;
 	register int16_t s;
@@ -214,9 +206,7 @@ brelse(bp)
  * (mainly to avoid getting hung up on a wait in breada)
  */
 int16_t
-incore(dev, blkno)
-	register dev_t dev;
-	daddr_t blkno;
+incore(dev_t dev, daddr_t blkno)
 {
 	register struct buf *bp;
 	register struct buf *dp;
@@ -240,9 +230,7 @@ incore(dev, blkno)
  * want to lower the ipl back to 0.
  */
 struct buf *
-getblk(dev, blkno)
-	register dev_t dev;
-	daddr_t blkno;
+getblk(dev_t dev, daddr_t blkno)
 {
 	register struct buf *bp, *dp;
 	daddr_t dblkno;
@@ -359,8 +347,7 @@ loop:
  * to the user.
  */
 void
-biowait(bp)
-	register struct buf *bp;
+biowait(struct buf *bp)
 {
 	register int s;
 
@@ -377,8 +364,7 @@ biowait(bp)
  * Wake up anyone waiting for it.
  */
 void
-biodone(bp)
-	register struct buf *bp;
+biodone(struct buf *bp)
 {
 
 	if (bp->b_flags & B_DONE)
@@ -400,9 +386,7 @@ biodone(bp)
  * Insure that no part of a specified block is in an incore buffer.
  */
 void
-blkflush(dev, blkno)
-	register dev_t dev;
-	daddr_t blkno;
+blkflush(dev_t dev, daddr_t blkno)
 {
 	register struct buf *ep;
 	struct buf *dp;
@@ -437,8 +421,7 @@ loop:
  * (from umount and sync)
  */
 void
-bflush(dev)
-	register dev_t dev;
+bflush(dev_t dev)
 {
 	register struct buf *bp;
 	register struct buf *flist;
@@ -466,8 +449,7 @@ loop:
  * if there is an error but the number is 0 set a generalized code.
  */
 int16_t
-geterror(bp)
-	register struct buf *bp;
+geterror(struct buf *bp)
 {
 	register int error = 0;
 
@@ -489,8 +471,7 @@ geterror(bp)
  * correctness.						... kre
  */
 void
-binval(dev)
-	register dev_t dev;
+binval(dev_t dev)
 {
 	register struct buf *bp;
 	register struct bufhd *hp;

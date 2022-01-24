@@ -137,8 +137,7 @@ getfsstat()
 */
 
 int16_t
-ufs_sync(mp)
-	register struct mount *mp;
+ufs_sync(struct mount *mp)
 	{
 	register struct fs *fs;
 	struct	buf *bp;
@@ -179,8 +178,7 @@ ufs_sync(mp)
  * which only happens every 30 seconds.
 */
 void
-syncinodes(fs)
-	struct	fs *fs;
+syncinodes(struct	fs *fs)
 	{
 	register struct inode *ip;
 

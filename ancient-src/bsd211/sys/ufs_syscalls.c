@@ -129,10 +129,7 @@ open()
  * and call the device open routine if any.
  */
 static int16_t
-copen(mode, arg, fname)
-	int16_t mode;
-	int16_t arg;
-	caddr_t fname;
+copen(int16_t mode, int16_t arg, caddr_t fname)
 	{
 	register struct inode *ip;
 	register struct file *fp;
@@ -338,7 +335,7 @@ symlink()
 	}
 	if (u.u_error)
 		return;
-	ip = maknode(IFLNK | 0777, ndp);
+	ip = maknode((int16_t)IFLNK | 0777, ndp);
 	if (ip == NULL)
 		return;
 	u.u_error = rdwri(UIO_WRITE, ip, uap->target, nc, (off_t)0,
@@ -453,8 +450,7 @@ lstat()
 #endif /* UNUSED */
 
 void
-stat1(follow)
-	int16_t follow;
+stat1(int16_t follow)
 {
 	register struct inode *ip;
 	register struct a {
@@ -496,6 +492,7 @@ readlink()
 		return;
 	if ((ip->i_mode&IFMT) != IFLNK) {
 		u.u_error = EINVAL;
+		resid = uap->count; /* fix for used uninitialized error */
 		goto out;
 	}
 	u.u_error = rdwri(UIO_READ, ip, uap->buf, uap->count, (off_t)0,
@@ -613,9 +610,7 @@ fchmod()
  * Inode must be locked before calling.
  */
 int16_t
-chmod1(ip, mode)
-	register struct inode *ip;
-	register int16_t mode;
+chmod1(struct inode *ip, int16_t mode)
 {
 
 	if (u.u_uid != ip->i_uid && !suser())
@@ -694,9 +689,7 @@ fchown()
  * inode must be locked prior to call.
  */
 int16_t
-chown1(ip, uid, gid)
-	register struct inode *ip;
-	register int16_t uid, gid;
+chown1(struct inode *ip, int16_t uid, int16_t gid)
 {
 	int16_t ouid, ogid;
 #ifdef QUOTA
@@ -1126,9 +1119,7 @@ out:
  * Make a new file.
  */
 struct inode *
-maknode(mode, ndp)
-	int16_t mode;
-register struct nameidata *ndp;
+maknode(int16_t mode, struct nameidata *ndp)
 {
 	register struct inode *ip;
 	register struct inode *pdir = ndp->ni_pdir;
@@ -1389,8 +1380,7 @@ out:
 }
 
 struct inode *
-getinode(fdes)
-	int16_t fdes;
+getinode(int16_t fdes)
 {
 	register struct file *fp;
 

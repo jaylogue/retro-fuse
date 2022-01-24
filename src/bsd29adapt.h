@@ -29,6 +29,84 @@
 #error Unsupported platform
 #endif
 
+/* Allow 2.9BSD code to use certain names that collide with modern
+ * preprocessor definitions, while still allowing the modern
+ * definitions to be recovered if need be.
+ */
+#pragma push_macro("NULL")
+#undef NULL
+#pragma push_macro("EAGAIN")
+#undef EAGAIN
+#pragma push_macro("ELOOP")
+#undef ELOOP
+#pragma push_macro("FREAD")
+#undef FREAD
+#pragma push_macro("FWRITE")
+#undef FWRITE
+#pragma push_macro("F_OK")
+#undef F_OK
+#pragma push_macro("X_OK")
+#undef X_OK
+#pragma push_macro("W_OK")
+#undef W_OK
+#pragma push_macro("R_OK")
+#undef R_OK
+#pragma push_macro("O_RDONLY")
+#undef O_RDONLY
+#pragma push_macro("O_WRONLY")
+#undef O_WRONLY
+#pragma push_macro("O_RDWR")
+#undef O_RDWR
+#pragma push_macro("major")
+#undef major
+#pragma push_macro("minor")
+#undef minor
+#pragma push_macro("makedev")
+#undef makedev
+#pragma push_macro("st_atime")
+#undef st_atime
+#define st_atime bsd29_st_atime
+#pragma push_macro("st_mtime")
+#undef st_mtime
+#define st_mtime bsd29_st_mtime
+#pragma push_macro("st_ctime")
+#undef st_ctime
+#define st_ctime bsd29_st_ctime
+#pragma push_macro("S_IFMT")
+#undef S_IFMT
+#pragma push_macro("S_IFDIR")
+#undef S_IFDIR
+#pragma push_macro("S_IFCHR")
+#undef S_IFCHR
+#pragma push_macro("S_IFBLK")
+#undef S_IFBLK
+#pragma push_macro("S_IFREG")
+#undef S_IFREG
+#pragma push_macro("S_IFLNK")
+#undef S_IFLNK
+#pragma push_macro("S_ISUID")
+#undef S_ISUID
+#pragma push_macro("S_ISGID")
+#undef S_ISGID
+#pragma push_macro("S_ISVTX")
+#undef S_ISVTX
+#pragma push_macro("S_IREAD")
+#undef S_IREAD
+#pragma push_macro("S_IWRITE")
+#undef S_IWRITE
+#pragma push_macro("S_IEXEC")
+#undef S_IEXEC
+#pragma push_macro("bcopy")
+#undef bcopy
+#pragma push_macro("L_SET")
+#undef L_SET
+#pragma push_macro("L_INCR")
+#undef L_INCR
+#pragma push_macro("L_XTND")
+#undef L_XTND
+#pragma push_macro("NSIG")
+#undef NSIG
+
 /* General 2.9BSD Configuration Options */
 #define KERNEL
 #define NSIG 1              /* Number of signals; unused in FUSE code, but necessary for compilation */
@@ -195,82 +273,6 @@ static inline int32_t wswap_int32(int32_t v)
     uint32_t uv = (uint32_t)v;
     return (int32_t)((uv << 16) | (uv >> 16));
 }
-
-/* Allow 2.9BSD code to use certain names that collide with modern
- * preprocessor definitions, while still allowing the modern
- * definitions to be recovered if need be.
- */
-#pragma push_macro("NULL")
-#undef NULL
-#pragma push_macro("EAGAIN")
-#undef EAGAIN
-#pragma push_macro("ELOOP")
-#undef ELOOP
-#pragma push_macro("FREAD")
-#undef FREAD
-#pragma push_macro("FWRITE")
-#undef FWRITE
-#pragma push_macro("F_OK")
-#undef F_OK
-#pragma push_macro("X_OK")
-#undef X_OK
-#pragma push_macro("W_OK")
-#undef W_OK
-#pragma push_macro("R_OK")
-#undef R_OK
-#pragma push_macro("O_RDONLY")
-#undef O_RDONLY
-#pragma push_macro("O_WRONLY")
-#undef O_WRONLY
-#pragma push_macro("O_RDWR")
-#undef O_RDWR
-#pragma push_macro("major")
-#undef major
-#pragma push_macro("minor")
-#undef minor
-#pragma push_macro("makedev")
-#undef makedev
-#pragma push_macro("st_atime")
-#undef st_atime
-#define st_atime bsd29_st_atime
-#pragma push_macro("st_mtime")
-#undef st_mtime
-#define st_mtime bsd29_st_mtime
-#pragma push_macro("st_ctime")
-#undef st_ctime
-#define st_ctime bsd29_st_ctime
-#pragma push_macro("S_IFMT")
-#undef S_IFMT
-#pragma push_macro("S_IFDIR")
-#undef S_IFDIR
-#pragma push_macro("S_IFCHR")
-#undef S_IFCHR
-#pragma push_macro("S_IFBLK")
-#undef S_IFBLK
-#pragma push_macro("S_IFREG")
-#undef S_IFREG
-#pragma push_macro("S_IFLNK")
-#undef S_IFLNK
-#pragma push_macro("S_ISUID")
-#undef S_ISUID
-#pragma push_macro("S_ISGID")
-#undef S_ISGID
-#pragma push_macro("S_ISVTX")
-#undef S_ISVTX
-#pragma push_macro("S_IREAD")
-#undef S_IREAD
-#pragma push_macro("S_IWRITE")
-#undef S_IWRITE
-#pragma push_macro("S_IEXEC")
-#undef S_IEXEC
-#pragma push_macro("bcopy")
-#undef bcopy
-#pragma push_macro("L_SET")
-#undef L_SET
-#pragma push_macro("L_INCR")
-#undef L_INCR
-#pragma push_macro("L_XTND")
-#undef L_XTND
 
 /* Map various names used by BSD code to avoid any conflicts with modern code
  */

@@ -165,7 +165,7 @@ int bsd211fs_init(int readonly)
     for (int i = 0; i < NGROUPS; i++)
         bsd211_u.u_groups[i] = NOGROUP;
     for (int i = 0; i < sizeof(bsd211_u.u_rlimit)/sizeof(bsd211_u.u_rlimit[0]); i++)
-        bsd211_u.u_rlimit[i].rlim_cur = bsd211_u.u_rlimit[i].rlim_max = RLIM_INFINITY;
+        bsd211_u.u_rlimit[i].rlim_cur = bsd211_u.u_rlimit[i].rlim_max = BSD211_RLIM_INFINITY;
 
     bsd211fs_initialized = 1;
 
@@ -996,6 +996,19 @@ int bsd211fs_setgroups(size_t size, const gid_t *list)
             bsd211_u.u_groups[i] = NOGROUP;
     }
     return 0;
+}
+
+/** Called by 2.11BSD kernel to refresh supplementary groups before an access check.
+ * 
+ * This function is intended to be overriden by users of the bsd211fs API as needed.
+ * The design allows the API user to delay the loading of user supplementary groups
+ * until the point they are needed by kernel, thereby avoiding the potentially expensive
+ * operation of enumerating a user's groups for operations that don't require it.
+ */
+extern void bsd211fs_refreshgroups() __attribute__((weak));
+void bsd211fs_refreshgroups()
+{
+    /* do nothing by default */
 }
 
 /** Add an entry to the uid mapping table.

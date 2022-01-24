@@ -67,7 +67,7 @@ class FileListEntry:
 
     def __init__(self, name, type, **kwargs):
         self.name = name
-        self.type = 'f' if type is '-' else type
+        self.type = 'f' if type == '-' else type
         self.mode = kwargs.get('mode', None)
         if self.mode is not None:
             if not isinstance(self.mode, int):

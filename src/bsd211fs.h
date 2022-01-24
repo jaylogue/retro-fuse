@@ -119,6 +119,7 @@ extern int bsd211fs_statfs(const char *pathname, struct statvfs *buf);
 extern int bsd211fs_setreuid(uid_t ruid, uid_t euid);
 extern int bsd211fs_setregid(gid_t rgid, gid_t egid);
 extern int bsd211fs_setgroups(size_t size, const gid_t *list);
+extern void bsd211fs_refreshgroups();
 extern int bsd211fs_adduidmap(uid_t hostuid, uint32_t fsuid);
 extern int bsd211fs_addgidmap(uid_t hostgid, uint32_t fsgid);
 

@@ -65,9 +65,7 @@
  * (maknode) routine.
  */
 int16_t
-vn_open(ndp, fmode, cmode)
-	register struct nameidata *ndp;
-	int16_t fmode, cmode;
+vn_open(struct nameidata *ndp, int16_t fmode, int16_t cmode)
 	{
 	register struct inode *ip;
 	register int16_t error;
@@ -215,8 +213,7 @@ vn_close(ip, flags)
  * and call closei() and irele() ourself.
  */
 int16_t
-vn_closefile(fp)
-	register struct file *fp;
+vn_closefile(struct file *fp)
 	{
 	register struct inode *ip = (struct inode *)fp->f_data;
 

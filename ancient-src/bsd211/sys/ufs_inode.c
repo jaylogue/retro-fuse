@@ -72,9 +72,7 @@ ihinit()
  * Find an inode if it is incore.
  */
 struct inode *
-ifind(dev, ino)
-	register dev_t dev;
-	register ino_t ino;
+ifind(dev_t dev, ino_t ino)
 {
 	register struct inode *ip;
 	union ihead *ih;
@@ -102,10 +100,7 @@ ifind(dev, ino)
  *	"cannot happen"
  */
 struct inode *
-iget(dev, fs, ino)
-	dev_t dev;
-	register struct fs *fs;
-	ino_t ino;
+iget(dev_t dev, struct fs *fs, ino_t ino)
 {
 	register struct inode *ip;
 	union ihead *ih;
@@ -272,8 +267,7 @@ loop:
  * the inode pointer is valid.
  */
 void
-igrab(ip)
-	register struct inode *ip;
+igrab(struct inode *ip)
 {
 	while ((ip->i_flag&ILOCKED) != 0) {
 		ip->i_flag |= IWANT;
@@ -302,8 +296,7 @@ igrab(ip)
  * truncate and deallocate the file.
  */
 void
-iput(ip)
-	register struct inode *ip;
+iput(struct inode *ip)
 {
 
 #ifdef notnow
@@ -320,8 +313,7 @@ iput(ip)
 }
 
 void
-irele(ip)
-	register struct inode *ip;
+irele(struct inode *ip)
 {
 	if (ip->i_count == 1) {
 		ip->i_flag |= ILOCKED;
@@ -375,10 +367,7 @@ irele(ip)
  * i/o order so wait for the write to complete.
  */
 void
-iupdat(ip, ta, tm, waitfor)
-	struct inode *ip;
-	struct timeval *ta, *tm;
-	int16_t waitfor;
+iupdat(struct inode *ip, struct timeval *ta, struct timeval *tm, int16_t waitfor)
 {
 	register struct buf *bp;
 	register struct dinode *dp;
@@ -450,10 +439,7 @@ iupdat(ip, ta, tm, waitfor)
  * NB: triple indirect blocks are untested.
  */
 void
-itrunc(oip,length, ioflags)
-	register struct inode *oip;
-	u_long length;
-	int16_t	ioflags;
+itrunc(struct inode *oip, u_long length, int16_t ioflags)
 {
 	daddr_t lastblock;
 	register int16_t i;
@@ -616,11 +602,7 @@ updret:
  * NB: triple indirect blocks are untested.
  */
 void
-indirtrunc(ip, bn, lastbn, level, aflags)
-	struct inode *ip;
-	daddr_t bn, lastbn;
-	int16_t level;
-	int16_t aflags;
+indirtrunc(struct inode *ip, daddr_t bn, daddr_t lastbn, int16_t level, int16_t aflags)
 {
 	register struct buf *bp;
 	daddr_t nb, last;
@@ -719,11 +701,7 @@ indirtrunc(ip, bn, lastbn, level, aflags)
 }
 
 static void
-trsingle(ip, bp,last, aflags)
-	register struct inode *ip;
-	caddr_t bp;
-	daddr_t last;
-	int16_t aflags;
+trsingle(struct inode *ip, caddr_t bp, daddr_t last, int16_t aflags)
 {
 	register daddr_t *bstart, *bstop;
 	daddr_t blarray[NINDIR];
@@ -755,9 +733,8 @@ int16_t
 iflush(dev, iq)
 	struct inode *iq;
 #else
-iflush(dev)
+iflush(dev_t dev)
 #endif
-	dev_t dev;
 {
 	register struct inode *ip;
 	register int16_t open = 0;
@@ -801,8 +778,7 @@ iflush(dev)
  * Lock an inode. If its already locked, set the WANT bit and sleep.
  */
 void
-ilock(ip)
-	register struct inode *ip;
+ilock(struct inode *ip)
 {
 
 	ILOCK(ip);
@@ -812,8 +788,7 @@ ilock(ip)
  * Unlock an inode.  If WANT bit is on, wakeup.
  */
 void
-iunlock(ip)
-	register struct inode *ip;
+iunlock(struct inode *ip)
 {
 
 	IUNLOCK(ip);

@@ -244,29 +244,76 @@ off_t retrofuse_dskblktofsblk(off_t dskblk)
 static inline void setfscontext()
 {
     struct fuse_context *context = fuse_get_context();
-    gid_t gids[BSD211FS_NGROUPS_MAX];
-    int res;
 
     /* Set the real and effective uid/gid for filesystem operations
        to the values from the FUSE client process.  */
     bsd211fs_setreuid(context->uid, context->uid);
     bsd211fs_setregid(context->gid, context->gid);
+}
 
-    /* Set the supplementary group ids to the values from the client
-       process */
-    res = fuse_getgroups(BSD211FS_NGROUPS_MAX, gids);
+void bsd211fs_refreshgroups()
+{
+    int res;
+
+    /* query the fuse request context for the number of supplementary group ids */
+    res = fuse_getgroups(0, NULL);
+    res = -ENOSYS;
     if (res >= 0) {
+        gid_t gids[res];
+
+        /* fetch the supplementary group ids from the fuse context */
+        res = fuse_getgroups(res, gids);
+        if (res < 0) {
+            fprintf(stderr, "%s: ERROR: fuse_getgroups() failed: %s\n", retrofuse_cmdname, strerror(-res));
+            res = 0;
+        }
+
+        /* set the group list in the 2.11BSD user struct, up to the max allowed groups. */
         if (res > BSD211FS_NGROUPS_MAX)
             res = BSD211FS_NGROUPS_MAX;
         bsd211fs_setgroups(res, gids);
     }
-    else {
+
+    /* in some FUSE contexts (e.g. during a release() call), fuse_getgroups()
+       will return EIO. presumably this means the supplementary groups are
+       unavailable (and unnecessary) in this context, in which case we simply
+       ignore the error and set no groups. */
+    else if (res == -EIO) {
         bsd211fs_setgroups(0, NULL);
-        /* in some FUSE contexts (e.g. during a release() call), fuse_getgroups()
-           will return EIO. presumably this means the supplementary groups are
-           unavailable in this context, in which case we simply ignore the error. */
-        if (res != -EIO)
-            fprintf(stderr, "%s: ERROR: fuse_getgroups() failed: %s\n", retrofuse_cmdname, strerror(-res));
+    }
+
+    /* fuse on macOS does not implement the fuse_getgroups() function. so in this case,
+       we fall back to the groups associated with the effective user of the retro-fuse
+       process. */
+    else if (res == -ENOSYS) {
+
+        /* query the number of supplementary group ids for the process */
+        res = getgroups(0, NULL);
+
+        if (res >= 0) {
+            gid_t gids[res];
+
+            /* fetch the supplementary group ids for the process */
+            res = getgroups(res, gids);
+
+            /* if successful, set the group list in the 2.11BSD user struct, up to the
+               max allowed groups. */
+            if (res >= 0) {
+                if (res > BSD211FS_NGROUPS_MAX)
+                    res = BSD211FS_NGROUPS_MAX;
+                bsd211fs_setgroups(res, gids);
+            }
+        }
+
+        if (res < 0) {
+            fprintf(stderr, "%s: ERROR: getgroups() failed: %s\n", retrofuse_cmdname, strerror(errno));
+            bsd211fs_setgroups(0, NULL);
+        }
+    }
+
+    else {
+        fprintf(stderr, "%s: ERROR: fuse_getgroups() failed: %s\n", retrofuse_cmdname, strerror(-res));
+        bsd211fs_setgroups(0, NULL);
     }
 }
 

@@ -136,8 +136,7 @@ writev()
 #endif /* UNUSED */
 
 static void
-rwuio(uio)
-	register struct uio *uio;
+rwuio(struct uio *uio)
 {
 	struct a {
 		int16_t	fdes;

@@ -32,9 +32,7 @@ typedef	struct fblk *FBLKP;
  * obtain NICFREE more...
  */
 struct buf *
-balloc(ip, flags)
-	struct inode *ip;
-	int16_t flags;
+balloc(struct inode *ip, int16_t flags)
 {
 	register struct fs *fs;
 	register struct buf *bp;
@@ -129,8 +127,7 @@ nospace:
  * is instituted to pick up NICINOD more.
  */
 struct inode *
-ialloc(pip)
-	struct inode *pip;
+ialloc(struct inode *pip)
 {
 	register struct fs *fs;
 	register struct buf *bp;
@@ -246,9 +243,7 @@ fromtop:
  * specified device.
  */
 void
-free(ip, bno)
-	struct inode *ip;
-	daddr_t bno;
+free(struct inode *ip, daddr_t bno)
 {
 	register struct fs *fs;
 	register struct buf *bp;
@@ -291,9 +286,7 @@ free(ip, bno)
  * stores up to NICINOD I nodes in the super block and throws away any more.
  */
 void
-ifree(ip, ino)
-	struct inode *ip;
-	ino_t ino;
+ifree(struct inode *ip, ino_t ino)
 {
 	register struct fs *fs;
 

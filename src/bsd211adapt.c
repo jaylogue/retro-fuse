@@ -50,6 +50,8 @@
 #include "bsd211/h/uio.h"
 #include "bsd211/h/kernel.h"
 
+extern void bsd211fs_refreshgroups();
+
 static int16_t bsd211_dsk_strategy(struct buf *bp);
 
 
@@ -211,6 +213,9 @@ void bsd211_insque(void * _elem, void * _pred)
 int16_t bsd211_groupmember(bsd211_gid_t gid)
 {
     bsd211_gid_t *gp;
+
+    /* allow the API user update the list of user groups before checking */
+    bsd211fs_refreshgroups();
 
     for (gp = bsd211_u.u_groups; gp < &bsd211_u.u_groups[NGROUPS] && *gp != NOGROUP; gp++)
         if (*gp == gid)

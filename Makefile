@@ -18,10 +18,15 @@
 ########### GENERAL SETTINGS ###########
 
 .DEFAULT_GOAL := all
-CC = gcc
+CC = cc
 CPPFLAGS = -MMD -MP -I./src
 CFLAGS = -std=c11 -g -Wall -O0 -fno-common
 LIBS = -lfuse
+OS := $(shell uname -s)
+LD_MAP_FLAG = -Wl,-Map=$@.map 
+ifeq ($(OS),Darwin)
+	LD_MAP_FLAG = -Wl,-map -Wl,$@.map
+endif
 
 vpath %.c $(dir $(MAKEFILE_LIST))
 
@@ -61,7 +66,7 @@ $(V6_DEPS) src/v6fs.d src/v6adapt.d : CPPFLAGS += -I./ancient-src/v6
 -include $(V6_DEPS) $(V6FS_DEPS)
  
 $(V6FS_PROG) : $(V6FS_OBJS) $(V6_OBJS)
-	$(CC) -o $@ -Wl,-Map=$@.map $^ $(LIBS)
+	$(CC) -o $@ $(LD_MAP_FLAG) $^ $(LIBS)
 
 ALL_PROGS += $(V6FS_PROG)
 ALL_OUTPUTS += $(V6FS_PROG) $(V6FS_PROG).map $(V6FS_OBJS) $(V6_OBJS) $(V6FS_DEPS) $(V6_DEPS)
@@ -103,7 +108,7 @@ $(V7_DEPS) src/v7fs.d src/v7adapt.d : CPPFLAGS += -I./ancient-src/v7
 -include $(V7_DEPS) $(V7FS_DEPS)
 
 $(V7FS_PROG) : $(V7FS_OBJS) $(V7_OBJS)
-	$(CC) -o $@ -Wl,-Map=$@.map $^ $(LIBS)
+	$(CC) -o $@ $(LD_MAP_FLAG) $^ $(LIBS)
 
 ALL_PROGS += $(V7FS_PROG)
 ALL_OUTPUTS += $(V7FS_PROG) $(V7FS_PROG).map $(V7FS_OBJS) $(V7_OBJS) $(V7FS_DEPS) $(V7_DEPS)
@@ -146,7 +151,7 @@ $(BSD29_DEPS) src/bsd29fs.d src/bsd29adapt.d : CPPFLAGS += -Wno-comment -Wno-end
 -include $(BSD29_DEPS) $(BSD29FS_DEPS)
 
 $(BSD29FS_PROG) : $(BSD29FS_OBJS) $(BSD29_OBJS)
-	$(CC) -o $@ -Wl,-Map=$@.map $^ $(LIBS)
+	$(CC) -o $@ $(LD_MAP_FLAG) $^ $(LIBS)
 
 ALL_PROGS += $(BSD29FS_PROG)
 ALL_OUTPUTS += $(BSD29FS_PROG) $(BSD29FS_PROG).map $(BSD29FS_OBJS) $(BSD29_OBJS) $(BSD29FS_DEPS) $(BSD29_DEPS)
@@ -191,7 +196,7 @@ $(BSD211_DEPS) src/bsd211fs.d src/bsd211adapt.d : CPPFLAGS += -Wno-comment -Wno-
 -include $(BSD211_DEPS) $(BSD211FS_DEPS)
 
 $(BSD211FS_PROG) : $(BSD211FS_OBJS) $(BSD211_OBJS)
-	$(CC) -o $@ -Wl,-Map=$@.map $^ $(LIBS)
+	$(CC) -o $@ $(LD_MAP_FLAG) $^ $(LIBS)
 
 ALL_PROGS += $(BSD211FS_PROG)
 ALL_OUTPUTS += $(BSD211FS_PROG) $(BSD211FS_PROG).map $(BSD211FS_OBJS) $(BSD211_OBJS) $(BSD211FS_DEPS) $(BSD211_DEPS)
