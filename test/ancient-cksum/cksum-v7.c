@@ -17,7 +17,7 @@
 /**
  * @file  POSIX-compliant cksum command for Unix v7.
  * 
- * NOTE: This also builds and runs on 2.9BSD.
+ * NOTE: This also builds and runs on 2.9BSD and 2.11BSD.
  */
 
 #include <stdio.h>
