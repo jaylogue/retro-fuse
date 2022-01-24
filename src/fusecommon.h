@@ -48,6 +48,7 @@ struct retrofuse_config {
      * fields may not be used. */
     struct {
         uint32_t isize;
+        uint32_t iratio;
         uint16_t m;
         uint16_t n;
     } initfsparams;

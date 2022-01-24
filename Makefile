@@ -25,6 +25,7 @@ LIBS = -lfuse
 
 vpath %.c $(dir $(MAKEFILE_LIST))
 
+
 ############### UNIX V6 ################
 
 V6FS_PROG = v6fs
@@ -61,6 +62,9 @@ $(V6_DEPS) src/v6fs.d src/v6adapt.d : CPPFLAGS += -I./ancient-src/v6
  
 $(V6FS_PROG) : $(V6FS_OBJS) $(V6_OBJS)
 	$(CC) -o $@ -Wl,-Map=$@.map $^ $(LIBS)
+
+ALL_PROGS += $(V6FS_PROG)
+ALL_OUTPUTS += $(V6FS_PROG) $(V6FS_PROG).map $(V6FS_OBJS) $(V6_OBJS) $(V6FS_DEPS) $(V6_DEPS)
 
 
 ############### UNIX V7 ################
@@ -100,6 +104,9 @@ $(V7_DEPS) src/v7fs.d src/v7adapt.d : CPPFLAGS += -I./ancient-src/v7
 
 $(V7FS_PROG) : $(V7FS_OBJS) $(V7_OBJS)
 	$(CC) -o $@ -Wl,-Map=$@.map $^ $(LIBS)
+
+ALL_PROGS += $(V7FS_PROG)
+ALL_OUTPUTS += $(V7FS_PROG) $(V7FS_PROG).map $(V7FS_OBJS) $(V7_OBJS) $(V7FS_DEPS) $(V7_DEPS)
 
 
 ############### 2.9 BSD ################
@@ -141,10 +148,56 @@ $(BSD29_DEPS) src/bsd29fs.d src/bsd29adapt.d : CPPFLAGS += -Wno-comment -Wno-end
 $(BSD29FS_PROG) : $(BSD29FS_OBJS) $(BSD29_OBJS)
 	$(CC) -o $@ -Wl,-Map=$@.map $^ $(LIBS)
 
+ALL_PROGS += $(BSD29FS_PROG)
+ALL_OUTPUTS += $(BSD29FS_PROG) $(BSD29FS_PROG).map $(BSD29FS_OBJS) $(BSD29_OBJS) $(BSD29FS_DEPS) $(BSD29_DEPS)
+
+
+############### 2.11 BSD ################
+
+BSD211FS_PROG = bsd211fs
+
+BSD211_SRC = \
+	ancient-src/bsd211/sys/kern_descrip.c \
+	ancient-src/bsd211/sys/sys_generic.c \
+	ancient-src/bsd211/sys/sys_inode.c \
+	ancient-src/bsd211/sys/ufs_alloc.c \
+	ancient-src/bsd211/sys/ufs_bio.c \
+	ancient-src/bsd211/sys/ufs_bmap.c \
+	ancient-src/bsd211/sys/ufs_fio.c \
+	ancient-src/bsd211/sys/ufs_inode.c \
+	ancient-src/bsd211/sys/ufs_namei.c \
+	ancient-src/bsd211/sys/ufs_subr.c \
+	ancient-src/bsd211/sys/ufs_syscalls.c \
+	ancient-src/bsd211/sys/ufs_syscalls2.c \
+	ancient-src/bsd211/sys/vfs_vnops.c
+
+BSD211_OBJS = $(BSD211_SRC:.c=.o)
+BSD211_DEPS = $(BSD211_SRC:.c=.d)
+
+BSD211FS_SRC = \
+	src/fusecommon.c \
+	src/bsd211fuse.c \
+	src/bsd211adapt.c \
+	src/bsd211fs.c \
+	src/idmap.c \
+	src/dskio.c
+
+BSD211FS_OBJS = $(BSD211FS_SRC:.c=.o)
+BSD211FS_DEPS = $(BSD211FS_SRC:.c=.d)
+
+$(BSD211_OBJS) src/bsd211fs.o src/bsd211adapt.o : CFLAGS += -Wno-comment -Wno-endif-labels -Wno-dangling-else -Wno-parentheses -Wno-char-subscripts -I./ancient-src
+$(BSD211_DEPS) src/bsd211fs.d src/bsd211adapt.d : CPPFLAGS += -Wno-comment -Wno-endif-labels -Wno-dangling-else -Wno-parentheses -Wno-char-subscripts -I./ancient-src
+
+-include $(BSD211_DEPS) $(BSD211FS_DEPS)
+
+$(BSD211FS_PROG) : $(BSD211FS_OBJS) $(BSD211_OBJS)
+	$(CC) -o $@ -Wl,-Map=$@.map $^ $(LIBS)
+
+ALL_PROGS += $(BSD211FS_PROG)
+ALL_OUTPUTS += $(BSD211FS_PROG) $(BSD211FS_PROG).map $(BSD211FS_OBJS) $(BSD211_OBJS) $(BSD211FS_DEPS) $(BSD211_DEPS)
+
 
 ########### GENERAL TARGETS ############
-
-ALL_PROGS = $(V6FS_PROG) $(V7FS_PROG) $(BSD29FS_PROG)
 
 all : $(ALL_PROGS)
 
@@ -154,6 +207,4 @@ test-% : %
 	./test/retro-fuse-test.py $*
 
 clean :
-	rm -f $(V6FS_PROG) $(V6FS_PROG).map $(V6FS_OBJS) $(V6_OBJS) $(V6FS_DEPS) $(V6_DEPS)
-	rm -f $(V7FS_PROG) $(V7FS_PROG).map $(V7FS_OBJS) $(V7_OBJS) $(V7FS_DEPS) $(V7_DEPS)
-	rm -f $(BSD29FS_PROG) $(BSD29FS_PROG).map $(BSD29FS_OBJS) $(BSD29_OBJS) $(BSD29FS_DEPS) $(BSD29_DEPS)
+	rm -f $(ALL_OUTPUTS)
