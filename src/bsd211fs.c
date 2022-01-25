@@ -611,8 +611,6 @@ int bsd211fs_stat(const char *pathname, struct stat *statbuf)
     return 0;
 }
 
-// TODO: fstat???
-
 /** Delete a directory entry.
  */
 int bsd211fs_unlink(const char *pathname)
@@ -767,8 +765,6 @@ int bsd211fs_access(const char *pathname, int mode)
         const char *fname;
         int16_t fmode;
     } uap;
-
-    // TODO: verify group member checks
 
     uap.fname = pathname;
     uap.fmode = (int16_t)mode;
@@ -934,6 +930,24 @@ int bsd211fs_sync()
     syncRes = -bsd211_ufs_sync(&bsd211_mount[0]);
     flushRes = dsk_flush();
     return (syncRes != 0) ? syncRes : flushRes;
+}
+
+/** Synchronize a file's in-core state to disk.
+ */
+int bsd211fs_fsync(int fd)
+{
+	struct a {
+		int16_t	fd;
+	} uap;
+
+    if (fd < 0 || fd > INT16_MAX)
+        return -EINVAL;
+    uap.fd = fd;
+    bsd211_u.u_ap = &uap;
+    bsd211_u.u_error = 0;
+    bsd211_refreshclock();
+    bsd211_fsync();
+    return -bsd211_u.u_error;
 }
 
 /** Get filesystem statistics.

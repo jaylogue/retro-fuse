@@ -1225,6 +1225,7 @@ nchinit()
 	restorseg5(seg5);
 }
 
+#if UNUSED
 /*
  * Cache flush, called when filesys is umounted to
  * remove entries that would now be invalid
@@ -1233,8 +1234,8 @@ nchinit()
  * if the cache lru chain is modified while we are dumping the
  * inode.  This makes the algorithm O(n^2), but do you think I care?
  */
-void
-nchinval(dev_t dev)
+nchinval(dev)
+	register dev_t dev;
 {
 	register struct namecache *ncp, *nxtcp;
 	segm	seg5;
@@ -1271,6 +1272,7 @@ nchinval(dev_t dev)
 	}
 	restorseg5(seg5);
 }
+#endif /* UNUSED */
 
 /*
  * Name cache invalidation of all entries.

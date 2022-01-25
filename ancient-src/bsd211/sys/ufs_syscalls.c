@@ -683,7 +683,6 @@ fchown()
 }
 #endif /* UNUSED */
 
-// TODO: UNUSED???
 /*
  * Perform chown operation on inode ip.  This routine called from ufs_setattr.
  * inode must be locked prior to call.

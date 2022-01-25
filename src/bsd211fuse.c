@@ -398,9 +398,8 @@ static int retrofuse_flush(const char *pathname, struct fuse_file_info *fi)
 
 static int retrofuse_fsync(const char *pathname, int datasync, struct fuse_file_info *fi)
 {
-    // TODO: fix this
     setfscontext();
-    bsd211fs_sync();
+    bsd211fs_fsync((int)fi->fh);
     return 0;
 }
 

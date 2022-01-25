@@ -29,21 +29,19 @@ struct statvfs;
 
 enum {
 
-    // TODO: verify these
-
     /** Filesystem block size
      */
     BSD211FS_BLOCK_SIZE         = 1024,
 
     /** Maximum filesystem size, in blocks.
-     *  Limited to 2^24-1 due to 3-byte block numbers used in on-disk inode structure.
+     *  Limited to 2^31-1 due to int32_t daddr_t.
      */
-    BSD211FS_MAX_FS_SIZE        = 16777215,
+    BSD211FS_MAX_FS_SIZE        = 2147483647,
 
     /** Minimum filesystem size, in blocks.
-     *  (boot block + superblock + inode block + root directory block + 1 block for file data)
+     *  (boot block + superblock + inode block + root directory block + lost+found directory block + 1 block for file data)
      */
-    BSD211FS_MIN_FS_SIZE        = 5,
+    BSD211FS_MIN_FS_SIZE        = 6,
 
     /** Number of inodes per block.
      */
@@ -72,11 +70,11 @@ enum {
 
     /** Maximum value for freelist interleave parameter n (modulus)
      */
-    BSD211FS_MAX_FN              = 750,
+    BSD211FS_MAX_FN             = 750,
 
     /** Maximum number of supplementary group ids (not counting the effective group id)
      */
-    BSD211FS_NGROUPS_MAX         = 15,
+    BSD211FS_NGROUPS_MAX        = 15,
 };
 
 /** Free list interleave parameters */
@@ -115,6 +113,7 @@ extern int bsd211fs_mkdir(const char *pathname, mode_t mode);
 extern int bsd211fs_rmdir(const char *pathname);
 extern int bsd211fs_enumdir(const char *pathname, bsd211fs_enum_dir_funct enum_funct, void *context);
 extern int bsd211fs_sync();
+extern int bsd211fs_fsync(int fd);
 extern int bsd211fs_statfs(const char *pathname, struct statvfs *buf);
 extern int bsd211fs_setreuid(uid_t ruid, uid_t euid);
 extern int bsd211fs_setregid(gid_t rgid, gid_t egid);

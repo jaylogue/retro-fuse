@@ -525,12 +525,10 @@ extern void bsd211_dirrewrite(struct bsd211_inode *dp, struct bsd211_inode *ip, 
 extern int16_t bsd211_dirempty(struct bsd211_inode *ip, bsd211_ino_t parentino);
 extern int16_t bsd211_checkpath(struct bsd211_inode *source, struct bsd211_inode *target);
 extern void bsd211_nchinit();
-extern void bsd211_nchinval(bsd211_dev_t dev); // TODO: not sure if this will be used
-extern void bsd211_cacheinvalall(); // TODO: not sure if this will be used
+extern void bsd211_cacheinvalall();
 
 /****** ufs_subr.c ******/
 extern void bsd211_syncip(struct bsd211_inode *ip);
-extern void bsd211_clean(); // TODO: not sure if this will be used
 extern int16_t bsd211_badblock(struct bsd211_fs *fp, bsd211_daddr_t bn);
 extern struct bsd211_fs * bsd211_getfs(bsd211_dev_t dev);
 
@@ -550,58 +548,20 @@ extern void bsd211_truncate();
 extern void bsd211_ftruncate();
 extern void bsd211_rename();
 extern struct bsd211_inode * bsd211_maknode(int16_t mode, struct bsd211_nameidata *ndp);
-extern void bsd211_mkdir(); // TODO: not sure if this will be used
-extern void bsd211_rmdir(); // TODO: not sure if this will be used
+extern void bsd211_mkdir();
+extern void bsd211_rmdir();
 extern struct bsd211_inode * bsd211_getinode(int16_t fdes);
 
 /****** ufs_syscalls2.c ******/
 extern int16_t bsd211_ufs_sync(struct bsd211_mount *mp);
-extern void bsd211_syncinodes(struct bsd211_fs *fs); // TODO: not sure if this will be used
-extern void bsd211_fsync(); // TODO: not sure if this will be used
-extern void bsd211_utimes(); // TODO: not sure if this will be used
+extern void bsd211_syncinodes(struct bsd211_fs *fs);
+extern void bsd211_fsync();
+extern void bsd211_utimes();
 
 /****** vfs_vnops.c ******/
 extern int16_t bsd211_vn_open(struct bsd211_nameidata *ndp, int16_t fmode, int16_t cmode);
 extern int16_t bsd211_vn_closefile(struct bsd211_file *fp);
 
-// TODO: remove
-#if UNUSED
-
-/* main.c */
-// TODO: not needed: extern void bsd211_iinit();
-// TODO: not needed: extern void bsd211_binit();
-
-/* rdwri.c */
-extern void bsd211_readi(struct bsd211_inode *aip);
-extern void bsd211_writei(struct bsd211_inode *aip);
-extern void bsd211_iomove(bsd211_caddr_t cp, int16_t n, int16_t flag);
-
-/* nami.c */
-extern int16_t bsd211_schar();
-extern int16_t bsd211_uchar();
-extern int16_t bsd211_symchar();
-
-/* fio.c */
-extern struct bsd211_file * bsd211_getf(int16_t f);
-extern void bsd211_closef(struct bsd211_file *fp);
-extern struct bsd211_inode * bsd211_owner(int16_t follow);
-extern int16_t bsd211_own();
-extern int16_t bsd211_ufalloc();
-extern struct bsd211_file * bsd211_falloc();
-
-/* sys2.c */
-extern void bsd211_rdwr(int16_t mode);
-extern void bsd211_open1(struct bsd211_inode *ip, int16_t mode, int16_t trf);
-extern void bsd211_close();
-
-/* sys3.c */
-
-/* sys4.c */
-
-/* text.c */
-extern void bsd211_xrele(struct bsd211_inode *ip);
-
-#endif
 
 /*
  * Replacements for select definitions in types.h
