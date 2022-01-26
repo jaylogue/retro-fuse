@@ -7,7 +7,7 @@ on modern OSes.  The current version of *retro-fuse* supports mounting filesyste
 created by fifth, sixth and seventh-edition research Unix, as well as 2.9BSD and
 2.11BSD. It can also initialize such filesystems.
 
-The design of *retro-fuse* is novel in that it incorprates original source code
+The design of *retro-fuse* is novel in that it incorporates original source code
 from the historic Unix kernels.  The ancient code has been "lightly modernized" to be
 palatable to current compilers and adapted to run in userspace.  This approach (made
 possible by Caldera's generous open source license for ancient Unix) allows *retro-fuse*
@@ -376,7 +376,7 @@ image::doc/retro-fuse-architecture.png[align="center"]
 
 *Unix kernel* (ancient-src/v6/+*+, ancient-src/v7/+*+, etc.) -- Modernized
 ancient Unix source code.  Modifications to the original kernel code are
-purposefully minimal, and consist mostly of syntatical and type compatibility
+purposefully minimal, and consist mostly of syntactical and type compatibility
 changes. Additionally, a series of #defines and selective hand editing is
 used to add a prefix for functions and global variables (e.g. "v6_"), so
 as to avoid conflicts with similarly named modern constructs.
