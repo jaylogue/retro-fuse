@@ -25,10 +25,6 @@
  * are independent of FUSE code and thus could be used in other contexts.
  */
 
-#define _XOPEN_SOURCE 700
-#define _ATFILE_SOURCE 
-#define _DARWIN_C_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -1503,7 +1499,7 @@ static int v7fs_reparentdir(const char *pathname)
         /* rewrite the ".." directory entry to contain the inode of
          * the new parent directory. */
         direntry.d_ino = newparentip->i_number;
-        res = v7fs_seek(fd, -sizeof(struct v7_direct), SEEK_CUR);
+        res = v7fs_seek(fd, -((off_t)sizeof(struct v7_direct)), SEEK_CUR);
         if (res < 0)
             goto exit;
         res = v7fs_write(fd, &direntry, sizeof(struct v7_direct));

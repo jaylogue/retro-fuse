@@ -18,9 +18,6 @@
  * @file  Functions for accessing the underlying device/image file.
  */
 
-#define _XOPEN_SOURCE 700
-#define _DARWIN_C_SOURCE
-
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>

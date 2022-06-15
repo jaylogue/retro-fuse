@@ -35,7 +35,7 @@ class SimhDriver:
     '''A base class for running and interacting with the simh system
        simulator as a child process.'''
 
-    def __init__(self, simhCmd=None, cwd=None, debugStream=None, timeout=30):
+    def __init__(self, simhCmd=None, cwd=None, debugStream=None, timeout=60):
         self.simhCmd = simhCmd if simhCmd is not None else "pdp11"
         self.debugStream = debugStream
         self.simh = None
@@ -91,7 +91,7 @@ class V6SimhDriver(SimhDriver):
 
     defaultSystemDiskImage = os.path.join(sysImagesDirName, 'v6-test-system-rk05.dsk.gz')
 
-    def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=30):
+    def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=60):
         super().__init__(simhCmd=simhCmd, cwd=cwd, debugStream=debugStream, timeout=timeout)
         self.systemDiskImage = systemDiskImage if systemDiskImage is not None else type(self).defaultSystemDiskImage
         self.testDiskImage = testDiskImage
@@ -231,7 +231,7 @@ class V7SimhDriver(SimhDriver):
 
     defaultSystemDiskImage = os.path.join(sysImagesDirName, 'v7-test-system-rp04.dsk.gz')
 
-    def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=30):
+    def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=60):
         super().__init__(simhCmd=simhCmd, cwd=cwd, debugStream=debugStream, timeout=timeout)
         self.systemDiskImage = systemDiskImage if systemDiskImage is not None else type(self).defaultSystemDiskImage
         self.testDiskImage = testDiskImage
@@ -370,7 +370,7 @@ class BSD29SimhDriver(SimhDriver):
 
     defaultSystemDiskImage = os.path.join(sysImagesDirName, 'bsd29-test-system-rl02.dsk.gz')
 
-    def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=30):
+    def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=60):
         super().__init__(simhCmd=simhCmd, cwd=cwd, debugStream=debugStream, timeout=timeout)
         self.systemDiskImage = systemDiskImage if systemDiskImage is not None else type(self).defaultSystemDiskImage
         self.testDiskImage = testDiskImage
@@ -529,7 +529,7 @@ class BSD211SimhDriver(SimhDriver):
 
     defaultSystemDiskImage = os.path.join(sysImagesDirName, 'bsd211-test-system-mscp.dsk.gz')
 
-    def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=30):
+    def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=60):
         super().__init__(simhCmd=simhCmd, cwd=cwd, debugStream=debugStream, timeout=timeout)
         self.systemDiskImage = systemDiskImage if systemDiskImage is not None else type(self).defaultSystemDiskImage
         self.testDiskImage = testDiskImage

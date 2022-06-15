@@ -25,11 +25,6 @@
  * are independent of FUSE code and thus could be used in other contexts.
  */
 
-#define _XOPEN_SOURCE 700
-#define _ATFILE_SOURCE 
-#define _DARWIN_C_SOURCE
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -1629,7 +1624,7 @@ static int bsd29fs_reparentdir(const char *pathname)
         /* rewrite the ".." directory entry to contain the inode of
          * the new parent directory. */
         direntry.d_ino = newparentip->i_number;
-        res = bsd29fs_seek(fd, -sizeof(struct bsd29_direct), SEEK_CUR);
+        res = bsd29fs_seek(fd, -((off_t)sizeof(struct bsd29_direct)), SEEK_CUR);
         if (res < 0)
             goto exit;
         res = bsd29fs_write(fd, &direntry, sizeof(struct bsd29_direct));

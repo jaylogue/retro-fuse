@@ -25,11 +25,6 @@
  * are independent of FUSE code and thus could be used in other contexts.
  */
 
-#define _XOPEN_SOURCE 700
-#define _ATFILE_SOURCE 
-#define _DARWIN_C_SOURCE
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>

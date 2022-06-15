@@ -20,13 +20,20 @@
 .DEFAULT_GOAL := all
 CC = cc
 CPPFLAGS = -MMD -MP -I./src
-CFLAGS = -std=c11 -g -Wall -O0 -fno-common
+CFLAGS = -std=c11 -g -Wall -O0 -fno-common $(DEFS)
 LIBS = -lfuse
 OS := $(shell uname -s)
 LD_MAP_FLAG = -Wl,-Map=$@.map 
 ifeq ($(OS),Darwin)
 	LD_MAP_FLAG = -Wl,-map -Wl,$@.map
 endif
+DEFS = \
+	-DFUSE_USE_VERSION=26 \
+	-D_FILE_OFFSET_BITS=64 \
+	-D_GNU_SOURCE \
+	-D_XOPEN_SOURCE=700 \
+	-D_ATFILE_SOURCE \
+	-D_DARWIN_C_SOURCE
 
 vpath %.c $(dir $(MAKEFILE_LIST))
 
