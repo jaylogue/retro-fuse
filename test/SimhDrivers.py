@@ -199,7 +199,8 @@ attach rk0 system.dsk
     # and, for files, a checksum of their contents.
     #
     # Note that this depends on a POSIX-compatible cksum command having been installed in
-    # the test system image.  The source for this command is located in ancient-src/v6/extra.
+    # the test system image.  Source code and a prebuilt executable for this is located
+    # in test/ancient-cksum.
     #
     _fileListCmd = '/usr/bin/find %s -exec /bin/ls -ild {} \\; -o \\( -type -f -a -exec /usr/bin/cksum {} \\; \\) -o \\( \\! -type -f -a -exec echo - \\; \\)'
 
@@ -337,7 +338,8 @@ attach rp0 system.dsk
     # and, for files, a checksum of their contents.
     #
     # Note that this depends on a POSIX-compatible cksum command having been installed in
-    # the test system image.  The source for this command is located in ancient-src/v7/extra.
+    # the test system image.  Source code and a prebuilt executable for this is located
+    # in test/ancient-cksum.
     #
     _fileListCmd = '/bin/find %s -exec /bin/ls -ild {} \\; -a \\( -type f -a -exec /bin/cksum {} \\; \\) -o \\( \\! -type f -a -exec echo - \\; \\)'
 

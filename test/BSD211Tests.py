@@ -70,7 +70,7 @@ class BSD211FileIOTests(RetroFuseTestBase, FileIOTests, unittest.TestCase):
         self.fileList.append(FileListEntry('/mnt/lost+found', type='d'))
 
         # Launch a simulated 2.11BSD system with the test filesystem image attached to
-        # /dev/rl2 and perform the following actions...
+        # /dev/ra1 and perform the following actions...
         debugStream = sys.stderr if testOpts.verbosity >= 2 else None
         with BSD211SimhDriver(simhCmd=testOpts.simhCmd,
                               cwd=self.tempDir,
