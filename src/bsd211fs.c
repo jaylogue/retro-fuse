@@ -954,8 +954,8 @@ int bsd211fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
 	statvfsbuf->f_bsize = MAXBSIZE;
 	statvfsbuf->f_frsize = MAXBSIZE;
 	statvfsbuf->f_blocks = wswap_int32(bsd211_mount[0].m_filsys.fs_fsize);
-	statvfsbuf->f_bfree = bsd211_mount[0].m_filsys.fs_tfree;
-	statvfsbuf->f_bavail = bsd211_mount[0].m_filsys.fs_tfree;
+	statvfsbuf->f_bfree = wswap_int32(bsd211_mount[0].m_filsys.fs_tfree);
+	statvfsbuf->f_bavail = statvfsbuf->f_bfree;
 	statvfsbuf->f_files = (bsd211_mount[0].m_filsys.fs_isize - 2) * INOPB;
 	statvfsbuf->f_ffree = bsd211_mount[0].m_filsys.fs_tinode;
     statvfsbuf->f_favail = bsd211_mount[0].m_filsys.fs_tinode;
