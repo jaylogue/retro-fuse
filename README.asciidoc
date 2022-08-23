@@ -432,6 +432,8 @@ Code derived from ancient Unix source is licensed under xref:Caldera-license.pdf
 
 ## Release Notes
 
+**Version 8 / 2022/08/23** -- Support for 32-bit rPI OS, minor bug fixes.
+
 **Version 7 / 2022/01/25** -- Added support for initializing and mounting 2.11BSD
 filesystems. Fixed various bugs, big and small, in v6, v7 and 2.9BSD support.
 Improved functionality tests. Improved support for macOS.
