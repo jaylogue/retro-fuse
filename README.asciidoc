@@ -29,14 +29,14 @@ The current version of *retro-fuse* runs on Linux and MacOS.
 <<License>> +
 <<Release Notes>>
 
-Information on how to use resto-fuse can be found on the project's link:../../wiki/Usage[Usage] page.
+Information on how to use retro-fuse can be found on the project's link:../../wiki/Usage[Usage] page.
 
-Practical examples on how to use resto-fuse for common tasks are shown on the
+Practical examples on how to use retro-fuse for common tasks are shown on the
 project's link:../../wiki/Examples[Examples] page.
 
 To understand the retro-fuse architecture and code structure, see the link:../../wiki/Design[Design] page.
 
-For latest information on resto-fuse development, see the project's link:../../wiki/Development-Blog[Development Blog]
+For latest information on retro-fuse development, see the project's link:../../wiki/Development-Blog[Development Blog]
 
 '''
 
