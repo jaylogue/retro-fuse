@@ -100,7 +100,7 @@ iexpand(struct inode *ip, struct dinode *dp)
 	ip->i_nlink = dp->di_nlink;
 	ip->i_uid = dp->di_uid;
 	ip->i_gid = dp->di_gid;
-	ip->i_size = wswap_int32(dp->di_size);
+	ip->i_size = v7_htofs_i32(dp->di_size);
 	p1 = (daddr_t *)ip->i_un.i_addr;
 	p2 = (uint8_t *)dp->di_addr;
 	for(i=0; i<NADDR; i++) {
@@ -167,7 +167,7 @@ iupdat(struct inode *ip, time_t *ta, time_t *tm)
 		dp->di_nlink = ip->i_nlink;
 		dp->di_uid = ip->i_uid;
 		dp->di_gid = ip->i_gid;
-		dp->di_size = wswap_int32(ip->i_size);
+		dp->di_size = v7_htofs_i32(ip->i_size);
 		p1 = (uint8_t *)dp->di_addr;
 		p2 = (daddr_t *)ip->i_un.i_addr;
 		for(i=0; i<NADDR; i++) {
@@ -179,11 +179,11 @@ iupdat(struct inode *ip, time_t *ta, time_t *tm)
 			*p1++ = (uint8_t)(*p2++ >> 8);
 		}
 		if(ip->i_flag&IACC)
-			dp->di_atime = wswap_int32(*ta);
+			dp->di_atime = v7_htofs_i32(*ta);
 		if(ip->i_flag&IUPD)
-			dp->di_mtime = wswap_int32(*tm);
+			dp->di_mtime = v7_htofs_i32(*tm);
 		if(ip->i_flag&ICHG)
-			dp->di_ctime = wswap_int32(time);
+			dp->di_ctime = v7_htofs_i32(time);
 		ip->i_flag &= ~(IUPD|IACC|ICHG);
 		bdwrite(bp);
 	}
@@ -255,7 +255,7 @@ tloop(dev_t dev, daddr_t bn, int16_t f1, int16_t f2)
 			}
 			bap = bp->b_un.b_daddr;
 		}
-		nb = wswap_int32(bap[i]);
+		nb = v7_htofs_i32(bap[i]);
 		if(nb == (daddr_t)0)
 			continue;
 		if(f1) {

@@ -97,7 +97,7 @@ bmap(struct inode *ip, daddr_t bn, int16_t rwflg)
 		bap = bp->b_un.b_daddr;
 		sh -= NSHIFT;
 		i = (bn>>sh) & NMASK;
-		nb = wswap_int32(bap[i]);
+		nb = v7_htofs_i32(bap[i]);
 		if(nb == 0) {
 			if(rwflg==B_READ || (nbp = alloc(dev))==NULL) {
 				brelse(bp);
@@ -105,7 +105,7 @@ bmap(struct inode *ip, daddr_t bn, int16_t rwflg)
 			}
 			nb = nbp->b_blkno;
 			bdwrite(nbp);
-			bap[i] = wswap_int32(nb);
+			bap[i] = v7_htofs_i32(nb);
 			bdwrite(bp);
 		} else
 			brelse(bp);
@@ -115,7 +115,7 @@ bmap(struct inode *ip, daddr_t bn, int16_t rwflg)
 	 * calculate read-ahead.
 	 */
 	if(i < NINDIR-1)
-		rablock = wswap_int32(bap[i+1]);
+		rablock = v7_htofs_i32(bap[i+1]);
 	return(nb);
 }
 

@@ -41,7 +41,7 @@ alloc(dev_t dev)
 			prdev("Bad free count", dev);
 			goto nospace;
 		}
-		bno = wswap_int32(fp->s_free[--fp->s_nfree]);
+		bno = fp->s_free[--fp->s_nfree];
 		if(bno == 0)
 			goto nospace;
 	} while (badblock(fp, bno, dev));
@@ -104,7 +104,7 @@ free(dev_t dev, daddr_t bno)
 		fp->s_flock = 0;
 		wakeup((caddr_t)&fp->s_flock);
 	}
-	fp->s_free[fp->s_nfree++] = wswap_int32(bno);
+	fp->s_free[fp->s_nfree++] = bno;
 	fp->s_fmod = 1;
 }
 
@@ -121,7 +121,7 @@ int16_t
 badblock(struct filsys *fp, daddr_t bn, dev_t dev)
 {
 
-	if (bn < fp->s_isize || bn >= wswap_int32(fp->s_fsize)) {
+	if (bn < fp->s_isize || bn >= fp->s_fsize) {
 		prdev("bad block", dev);
 		return(1);
 	}
@@ -299,8 +299,8 @@ update()
 			if (bp->b_flags & B_ERROR)
 				continue;
 			fp->s_fmod = 0;
-			fp->s_time = wswap_int32(time);
-			bcopy((caddr_t)fp, bp->b_un.b_addr, BSIZE);
+			fp->s_time = time;
+			v7_encodesuperblock(fp, bp->b_un.b_addr);
 			bwrite(bp);
 		}
 	for(ip = &inode[0]; ip < &inode[NINODE]; ip++)

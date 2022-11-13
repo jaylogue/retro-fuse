@@ -72,14 +72,14 @@
  */
 
 #define	NBPW	sizeof(int16_t)	/* number of bytes in an integer */
-#define	BSIZE	512		/* size of secondary block (bytes) */
+#define	BSIZE	v7_fsconfig.blocksize		/* size of secondary block (bytes) */
 /* BSLOP can be 0 unless you have a TIU/Spider */
-#define	BSLOP	2		/* In case some device needs bigger buffers */
+/* UNUSED: #define	BSLOP	2 */		/* In case some device needs bigger buffers */
 #define	NINDIR	(BSIZE/sizeof(v7_daddr_t))
-#define	BMASK	0777		/* BSIZE-1 */
-#define	BSHIFT	9		/* LOG2(BSIZE) */
-#define	NMASK	0177		/* NINDIR-1 */
-#define	NSHIFT	7		/* LOG2(NINDIR) */
+#define	BMASK	(BSIZE-1)		/* BSIZE-1 */
+#define	BSHIFT	((BSIZE == 1024) ? 10 : 9)		/* LOG2(BSIZE) */
+#define	NMASK	(NINDIR-1)		/* NINDIR-1 */
+#define	NSHIFT	(BSHIFT-2)		/* LOG2(NINDIR) */
 #define	USIZE	16		/* size of user block (*64) */
 #define	UBASE	0140000		/* abs. addr of user block */
 #define	NULL	0
@@ -88,11 +88,15 @@
 #define	ROOTINO	((v7_ino_t)2)	/* i number of all roots */
 #define	SUPERB	((v7_daddr_t)1)	/* block number of the super block */
 #define	DIRSIZ	14		/* max characters per directory */
-#define	NICINOD	100		/* number of superblock inodes */
-#define	NICFREE	50		/* number of superblock free blocks */
+#define	NICINOD	v7_fsconfig.nicinod		/* number of superblock inodes */
+#define	NICFREE	v7_fsconfig.nicfree		/* number of superblock free blocks */
 #define	INFSIZE	138		/* size of per-proc info for users */
 #define	CBSIZE	14		/* number of chars in a clist block */
 #define	CROUND	017		/* clist rounding: sizeof(int *) + CBSIZE - 1*/
+
+#define MAX_BSIZE 1024  /* Maximum supported size of a disk block */
+#define MAX_NICINOD 100 /* Maximum supported number of superblock inodes */
+#define MAX_NICFREE 100 /* Maximum supported number of superblock free blocks */
 
 /*
  * Some macros for units conversion

@@ -62,11 +62,6 @@
 #include "h/conf.h"
 #include "v7unadapt.h"
 
-enum {
-    NIPB = (BSIZE/sizeof(struct v7_dinode)), /* from mkfs.c, same as INOPB */
-    NDIRECT = (BSIZE/sizeof(struct v7_direct))
-};
-
 static int v7fs_initialized = 0;
 
 static struct idmap v7fs_uidmap = {
@@ -108,6 +103,12 @@ int v7fs_init(int readonly)
     /* zero kernel data structures and globals */
     v7_zerocore();
 
+    v7_fsconfig.fstype = fs_type_v7;
+    v7_fsconfig.byteorder = fs_byteorder_pdp;
+    v7_fsconfig.blocksize = 512;
+    v7_fsconfig.nicfree = V7_NICFREE;
+    v7_fsconfig.nicinod = V7_NICINOD;
+
     /* set the device id for the root device. */
     v7_rootdev = v7_makedev(0, 0);
 
@@ -129,7 +130,7 @@ int v7fs_init(int readonly)
        is smaller than the size declared in the filesystem superblock
        set the virtual disk size to the size from the superblock. */
     off_t dsksize = dsk_getsize();
-    v7_daddr_t fsize = wswap_int32(fs->s_fsize);
+    v7_daddr_t fsize = fs->s_fsize;
     if (dsksize == 0 || dsksize > fsize)
         dsk_setsize((off_t)fsize);
 
@@ -166,7 +167,7 @@ int v7fs_shutdown()
 
 /** Initialize a new filesystem.
  * 
- * Thus function is effectly a simplified re-implementation of the
+ * Thus function is effectively a simplified re-implementation of the
  * v7 mkfs command.
  */
 int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flparams)
@@ -179,6 +180,14 @@ int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flpar
 
     if (v7fs_initialized)
         return -EBUSY;
+
+    v7_fsconfig.fstype = fs_type_v7;
+    v7_fsconfig.byteorder = fs_byteorder_pdp;
+    v7_fsconfig.blocksize = 512;
+    v7_fsconfig.nicfree = V7_NICFREE;
+    v7_fsconfig.nicinod = V7_NICINOD;
+
+    uint32_t NIPB = v7_fsconfig.blocksize / sizeof(struct v7_dinode);
 
     /* enforce min/max filesystem size.  v7 filesystems are limited to a max of
      * 2^24-1 blocks due to 3 byte block numbers stored in inodes. */
@@ -235,14 +244,14 @@ int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flpar
      */
     bp = v7_getblk(v7_rootdev, -1);
     v7_clrbuf(bp);
-    fp = (struct v7_filsys *)bp->b_un.b_addr;
+    fp = (struct v7_filsys *)bp->b_un.b_filsys;
     fp->s_isize = isize + 2; /* adjusted to point to the block beyond the i-list */
-    fp->s_fsize = wswap_int32(fssize);
+    fp->s_fsize = fssize;
     fp->s_n = (int16_t)fn;
     fp->s_m = (int16_t)fm;
     fp->s_tfree = 0;
     fp->s_tinode = 0;
-    fp->s_time = wswap_int32(v7_time);
+    fp->s_time = v7_time;
     fp->s_fmod = 1;
 
     /* create the mount for the root device. */
@@ -283,18 +292,18 @@ int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flpar
             ip->di_uid = 0;
             ip->di_gid = 0;
             ip->di_size = 0;
-            ip->di_atime = ip->di_mtime = ip->di_ctime = wswap_int32(v7_time);
+            ip->di_atime = ip->di_mtime = ip->di_ctime = fs_htopdp_i32(v7_time);
             /* root directory */
             ip++;
             ip->di_mode = (int16_t)(IFDIR|0777);
             ip->di_nlink = 2;
             ip->di_uid = v7_u.u_uid;
             ip->di_gid = v7_u.u_gid;
-            ip->di_size = wswap_int32(2*sizeof(struct v7_direct)); /* size of 2 directory entries */
+            ip->di_size = fs_htopdp_i32(2*sizeof(struct v7_direct)); /* size of 2 directory entries */
             ip->di_addr[0] = (char)(rootdirblkno >> 16);
             ip->di_addr[1] = (char)(rootdirblkno);
             ip->di_addr[2] = (char)(rootdirblkno >> 8);
-            ip->di_atime = ip->di_mtime = ip->di_ctime = wswap_int32(v7_time);
+            ip->di_atime = ip->di_mtime = ip->di_ctime = fs_htopdp_i32(v7_time);
         }
         v7_bwrite(bp);
         if ((bp->b_flags & B_ERROR) != 0)
@@ -1199,7 +1208,7 @@ int v7fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
 
     statvfsbuf->f_bsize = 512;
     statvfsbuf->f_frsize = 512;
-    statvfsbuf->f_blocks = wswap_int32(fp->s_fsize);
+    statvfsbuf->f_blocks = fp->s_fsize;
     statvfsbuf->f_files = (fp->s_isize - 2) * INOPB;
     statvfsbuf->f_namemax = DIRSIZ;
 
@@ -1236,7 +1245,7 @@ int v7fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
      */
     {
         int16_t nfree = fp->s_nfree;
-        v7_daddr_t nextfblk = wswap_int32(fp->s_free[0]);
+        v7_daddr_t nextfblk = fp->s_free[0];
         v7_daddr_t freelistlen = 0;
         while (1) {
             if (nfree < 0 || nfree > NICFREE) {
@@ -1249,7 +1258,7 @@ int v7fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
             if (nfree == 0 || nextfblk == 0)
                 break;
             freelistlen++;
-            if (freelistlen > wswap_int32(fp->s_fsize)) {
+            if (freelistlen > fp->s_fsize) {
                 fprintf(stderr, "V7FS ERROR: loop detected in free list\n");
                 return -EIO;
             }
@@ -1263,7 +1272,7 @@ int v7fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
                 return -v7_u.u_error;
             struct v7_fblk * fb = (struct v7_fblk *)bp->b_un.b_addr;
             nfree = fb->df_nfree;
-            nextfblk = wswap_int32(fb->df_free[0]);
+            nextfblk = fs_htopdp_i32(fb->df_free[0]);
             v7_brelse(bp);
         }
     }
@@ -1350,13 +1359,13 @@ static void v7fs_initfreelist(struct v7_filsys *fp, uint16_t n, uint16_t m)
         i = (i+m)%n;
     }
 
-    d = wswap_int32(fp->s_fsize)-1;
+    d = fp->s_fsize-1;
     while (d%n)
         d++;
     for (; d > 0; d -= n)
         for (i=0; i<n; i++) {
             f = d - adr[i];
-            if (f < wswap_int32(fp->s_fsize) && f >= fp->s_isize)
+            if (f < fp->s_fsize && f >= fp->s_isize)
                 v7_free(v7_rootdev, f);
         }
 }
