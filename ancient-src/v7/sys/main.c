@@ -102,7 +102,7 @@ iinit()
 	cp = geteblk();
 	if(u.u_error)
 		panic("iinit");
-	bcopy(bp->b_un.b_addr, cp->b_un.b_addr, sizeof(struct filsys));
+	v7_decodesuperblock(bp->b_un.b_addr, cp->b_un.b_filsys);
 	brelse(bp);
 	mount[0].m_bufp = cp;
 	mount[0].m_dev = rootdev;
@@ -110,7 +110,7 @@ iinit()
 	fp->s_flock = 0;
 	fp->s_ilock = 0;
 	fp->s_ronly = 0;
-	time = wswap_int32(fp->s_time);
+	time = fp->s_time;
 }
 
 /*
@@ -121,7 +121,7 @@ iinit()
  * I/O to be done-- e.g. swbuf for
  * swapping.
  */
-char	buffers[NBUF][BSIZE+BSLOP] __attribute__((aligned(4)));
+char	buffers[NBUF][MAX_BSIZE] __attribute__((aligned(4)));
 
 /*
  * Initialize the buffer I/O system by freeing

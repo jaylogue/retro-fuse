@@ -51,6 +51,8 @@ static int16_t v7_dsk_open(dev_t dev, int16_t flag);
 static int16_t v7_dsk_close(dev_t dev, int16_t flag);
 static int16_t v7_dsk_strategy(struct buf *bp);
 
+/* Global values describing the v7-based filesystem being accessed */
+struct v7_fsconfig v7_fsconfig;
 
 /* Unix v7 global structures and values. */
 
@@ -261,6 +263,117 @@ void v7_zerocore()
     v7_rootdir = NULL;
     v7_updlock = 0;
     v7_rablock = 0;
+}
+
+/** Decode the on-disk form of the filesystem's superblock
+ */
+void v7_decodesuperblock(v7_caddr_t srcbuf, struct v7_filsys * dest)
+{
+    if (v7_fsconfig.fstype == fs_type_v7) {
+        struct v7_superblock * src = (struct v7_superblock *)srcbuf;
+        memset(src, 0, sizeof(struct v7_superblock));
+        dest->s_isize = fs_htopdp_u16(src->s_isize);
+        dest->s_fsize = fs_htopdp_i32(src->s_fsize);
+        dest->s_nfree = fs_htopdp_i16(src->s_nfree);
+        for (int i = 0; i < V7_NICFREE; i++)
+            dest->s_free[i] = fs_htopdp_i32(src->s_free[i]);
+        dest->s_ninode = fs_htopdp_i16(src->s_ninode);
+        for (int i = 0; i < V7_NICINOD; i++)
+            dest->s_inode[i] = fs_htopdp_u16(src->s_inode[i]);
+        dest->s_flock = src->s_flock;
+        dest->s_ilock = src->s_ilock;
+        dest->s_fmod = src->s_fmod;
+        dest->s_ronly = src->s_ronly;
+        dest->s_time = fs_htopdp_i32(src->s_time);
+        dest->s_tfree = fs_htopdp_i32(src->s_tfree);
+        dest->s_tinode = fs_htopdp_u16(src->s_tinode);
+        dest->s_m = fs_htopdp_i16(src->s_m);
+        dest->s_n = fs_htopdp_i16(src->s_n);
+        memcpy(dest->s_fname, src->s_fname, sizeof(src->s_fname));
+        memcpy(dest->s_fpack, src->s_fpack, sizeof(src->s_fpack));
+    }
+    else {
+        /* v7_fsconfig.fstype set incorrectly */
+        abort();
+    }
+}
+
+/** Encode the on-disk form of the filesystem's superblock
+ */
+void v7_encodesuperblock(struct v7_filsys * src, v7_caddr_t destbuf)
+{
+    if (v7_fsconfig.fstype == fs_type_v7) {
+        struct v7_superblock * dest = (struct v7_superblock *)destbuf;
+        memset(dest, 0, sizeof(struct v7_superblock));
+        dest->s_isize = fs_htopdp_u16(src->s_isize);
+        dest->s_fsize = fs_htopdp_i32(src->s_fsize);
+        dest->s_nfree = fs_htopdp_i16(src->s_nfree);
+        for (int i = 0; i < V7_NICFREE; i++)
+            dest->s_free[i] = fs_htopdp_i32(src->s_free[i]);
+        dest->s_ninode = fs_htopdp_i16(src->s_ninode);
+        for (int i = 0; i < V7_NICINOD; i++)
+            dest->s_inode[i] = fs_htopdp_u16(src->s_inode[i]);
+        dest->s_flock = src->s_flock;
+        dest->s_ilock = src->s_ilock;
+        dest->s_fmod = src->s_fmod;
+        dest->s_ronly = src->s_ronly;
+        dest->s_time = fs_htopdp_i32(src->s_time);
+        dest->s_tfree = fs_htopdp_i32(src->s_tfree);
+        dest->s_tinode = fs_htopdp_u16(src->s_tinode);
+        dest->s_m = fs_htopdp_i16(src->s_m);
+        dest->s_n = fs_htopdp_i16(src->s_n);
+        memcpy(dest->s_fname, src->s_fname, sizeof(dest->s_fname));
+        memcpy(dest->s_fpack, src->s_fpack, sizeof(dest->s_fpack));
+    }
+    else {
+        /* v7_fsconfig.fstype set incorrectly */
+        abort();
+    }
+}
+
+int16_t v7_htofs_i16(int16_t v)
+{
+    switch (v7_fsconfig.byteorder) {
+    case fs_byteorder_le:
+        return fs_htole_i16(v);
+    case fs_byteorder_be:
+        return fs_htobe_i16(v);
+    case fs_byteorder_pdp:
+        return fs_htopdp_i16(v);
+    default:
+        /* v7_fsconfig.byteorder set incorrectly */
+        abort();
+    }
+}
+
+uint16_t v7_htofs_u16(uint16_t v)
+{
+    switch (v7_fsconfig.byteorder) {
+    case fs_byteorder_le:
+        return fs_htole_u16(v);
+    case fs_byteorder_be:
+        return fs_htobe_u16(v);
+    case fs_byteorder_pdp:
+        return fs_htopdp_u16(v);
+    default:
+        /* v7_fsconfig.byteorder set incorrectly */
+        abort();
+    }
+}
+
+int32_t v7_htofs_i32(int32_t v)
+{
+    switch (v7_fsconfig.byteorder) {
+    case fs_byteorder_le:
+        return fs_htole_i32(v);
+    case fs_byteorder_be:
+        return fs_htobe_i32(v);
+    case fs_byteorder_pdp:
+        return fs_htopdp_i32(v);
+    default:
+        /* v7_fsconfig.byteorder set incorrectly */
+        abort();
+    }
 }
 
 #undef time

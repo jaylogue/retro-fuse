@@ -23,13 +23,22 @@
 #define __V7ADAPT_H__
 
 #include "stdint.h"
+#include "fstype.h"
 
-/* Don't even think about trying to use this code on a big-endian machine. */
-#if !defined(__LITTLE_ENDIAN__) && (!defined(__BYTE_ORDER__) || __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
-#error Unsupported platform
-#endif
+/** Information about the type of v7-based filesystem being accessed.
+ */
+struct v7_fsconfig {
+    int fstype;                     /* Filesystem type (values from fs_type enum) */
+    int byteorder;                  /* Byte ordering on disk (values from fs_byteorder enum) */
+    int16_t blocksize;              /* Filesystem block size */
+    int16_t nicfree;                /* Size of the free block list table in the superblock */
+    int16_t nicinod;                /* Size of the free i-node list table in the superblock */
+};
+
+extern struct v7_fsconfig v7_fsconfig;
 
 /* Forward declarations of v7 types, suitably name-mangled */
+
 struct v7_buf;
 struct v7_filsys;
 struct v7_inode;
@@ -49,15 +58,14 @@ typedef int32_t v7_time_t;
 typedef int32_t v7_off_t;
 
 /* Utility functions */
-extern void v7_zerocore();
-extern void v7_refreshclock();
 
-/* Convert between little-endian and pdp11-endian byte-ordering */
-static inline int32_t wswap_int32(int32_t v)
-{
-    uint32_t uv = (uint32_t)v;
-    return (int32_t)((uv << 16) | (uv >> 16));
-}
+extern void v7_zerocore();
+extern void v7_decodesuperblock(v7_caddr_t srcbuf, struct v7_filsys * dest);
+extern void v7_encodesuperblock(struct v7_filsys * src, v7_caddr_t destbuf);
+extern int16_t v7_htofs_i16(int16_t v);
+extern uint16_t v7_htofs_u16(uint16_t v);
+extern int32_t v7_htofs_i32(int32_t v);
+extern void v7_refreshclock();
 
 /* Forward declarations of name-mangled v7 functions */
 

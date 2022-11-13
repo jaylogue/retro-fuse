@@ -14,7 +14,7 @@ struct dinode
 	time_t	di_mtime;   	/* time last modified */
 	time_t	di_ctime;   	/* time created */
 };
-#define	INOPB	8	/* 8 inodes per block */
+#define	INOPB	(BSIZE/sizeof(struct v7_dinode))	/* inodes per block */
 /*
  * the 40 address bytes:
  *	39 used; 13 addresses

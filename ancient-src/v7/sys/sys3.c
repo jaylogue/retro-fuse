@@ -84,9 +84,9 @@ stat1(struct inode *ip, struct stat *ub, off_t pipeadj)
 	bp = bread(ip->i_dev, itod(ip->i_number));
 	dp = bp->b_un.b_dino;
 	dp += itoo(ip->i_number);
-	ds.st_atime = wswap_int32(dp->di_atime);
-	ds.st_mtime = wswap_int32(dp->di_mtime);
-	ds.st_ctime = wswap_int32(dp->di_ctime);
+	ds.st_atime = v7_htofs_i32(dp->di_atime);
+	ds.st_mtime = v7_htofs_i32(dp->di_mtime);
+	ds.st_ctime = v7_htofs_i32(dp->di_ctime);
 	brelse(bp);
 	if (copyout((caddr_t)&ds, (caddr_t)ub, sizeof(ds)) < 0)
 		u.u_error = EFAULT;
