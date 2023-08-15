@@ -205,8 +205,7 @@ attach rk0 system.dsk
     _fileListCmd = '/usr/bin/find %s -exec /bin/ls -ild {} \\; -o \\( -type -f -a -exec /usr/bin/cksum {} \\; \\) -o \\( \\! -type -f -a -exec echo - \\; \\)'
 
     # Regex pattern to parse output from the above command.
-    _fileListPattern = r'''
-                        (?mx)
+    _fileListPattern = r'''(?mx)
                         ^
                         \s* (?P<inode> \d+)
                         \s+ (?P<type> [bcd-]) (?P<mode> [rwsStTx-]{9}t?)
@@ -344,8 +343,7 @@ attach rp0 system.dsk
     _fileListCmd = '/bin/find %s -exec /bin/ls -ild {} \\; -a \\( -type f -a -exec /bin/cksum {} \\; \\) -o \\( \\! -type f -a -exec echo - \\; \\)'
 
     # Regex pattern to parse output from the above command.
-    _fileListPattern = r'''
-                        (?mx)
+    _fileListPattern = r'''(?mx)
                         ^
                         \s* (?P<inode> \d+)
                         \s+ (?P<type> [bcd-]) (?P<mode> [rwsStTx-]{9}t?)
@@ -492,9 +490,8 @@ attach rl1 swap.dsk
     _fileListCmd = '/bin/find %s -exec /usr/ucb/ls -ildn {} \\; \\( -type f -exec /bin/cksum {} \\; \\) -o -exec echo - \\;'
 
     # Regex pattern to parse output from the above command.
-    _fileListPattern = r'''
+    _fileListPattern = r'''(?mx)
                         ^
-                        (?mx)
                         \s* (?P<inode> \d+)
                         \s+ (?P<type> [bcd-]) (?P<mode> [rwsStTx-]{9})
                         \s* (?P<linkCount> \d+)
@@ -646,9 +643,8 @@ attach rq0 system.dsk
     _fileListCmd = '/usr/bin/find %s -exec /bin/ls -ildg {} \\; \\( -type f -exec /bin/cksum {} \\; \\) -o -exec echo - \\;'
 
     # Regex pattern to parse output from the above command.
-    _fileListPattern = r'''
+    _fileListPattern = r'''(?mx)
                         ^
-                        (?mx)
                         \s* (?P<inode> \d+)
                         \s+ (?P<type> [bcd-]) (?P<mode> [rwsStTx-]{9})
                         \s* (?P<linkCount> \d+)
