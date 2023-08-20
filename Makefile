@@ -34,6 +34,13 @@ DEFS = \
 	-D_XOPEN_SOURCE=700 \
 	-D_ATFILE_SOURCE \
 	-D_DARWIN_C_SOURCE
+INSTALL ?= install
+INSTALL_PROGRAM ?= $(INSTALL) -s -m 755 -p
+MKINSTALLDIRS ?= $(INSTALL) -d
+DESTDIR ?=
+prefix ?= /usr/local
+exec_prefix ?= $(prefix)
+bindir ?= $(exec_prefix)/bin
 
 vpath %.c $(dir $(MAKEFILE_LIST))
 
@@ -217,6 +224,12 @@ test : $(addprefix test-, $(ALL_PROGS))
 
 test-% : %
 	./test/retro-fuse-test.py $*
+
+install : installdirs $(ALL_PROGS)
+	$(INSTALL_PROGRAM) $(ALL_PROGS) $(DESTDIR)$(bindir)
+
+installdirs :
+	$(MKINSTALLDIRS) $(DESTDIR)$(bindir)
 
 clean :
 	rm -f $(ALL_OUTPUTS)
