@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 
     memset(&cfg, 0, sizeof(cfg));
 
-    retrofuse_cmdname = rindex(argv[0], '/');
+    retrofuse_cmdname = strrchr(argv[0], '/');
     if (retrofuse_cmdname == NULL)
         retrofuse_cmdname = argv[0];
     else
