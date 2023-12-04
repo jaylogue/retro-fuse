@@ -96,17 +96,17 @@ iexpand(struct inode *ip, struct dinode *dp)
 	uint8_t *p2;
 	int16_t i;
 
-	ip->i_mode = dp->di_mode;
-	ip->i_nlink = dp->di_nlink;
-	ip->i_uid = dp->di_uid;
-	ip->i_gid = dp->di_gid;
+	ip->i_mode = v7_htofs_u16(dp->di_mode);
+	ip->i_nlink = v7_htofs_i16(dp->di_nlink);
+	ip->i_uid = v7_htofs_i16(dp->di_uid);
+	ip->i_gid = v7_htofs_i16(dp->di_gid);
 	ip->i_size = v7_htofs_i32(dp->di_size);
 	p1 = (daddr_t *)ip->i_un.i_addr;
 	p2 = (uint8_t *)dp->di_addr;
 	for(i=0; i<NADDR; i++) {
-		*p1    = ((daddr_t)*p2++) << 16;
-		*p1   |= ((daddr_t)*p2++);
-		*p1++ |= ((daddr_t)*p2++) << 8;
+		*p1 = v7_fstoh_diaddr(p2);
+		p1++;
+		p2 += 3;
 	}
 }
 
@@ -163,20 +163,20 @@ iupdat(struct inode *ip, time_t *ta, time_t *tm)
 		}
 		dp = bp->b_un.b_dino;
 		dp += itoo(ip->i_number);
-		dp->di_mode = ip->i_mode;
-		dp->di_nlink = ip->i_nlink;
-		dp->di_uid = ip->i_uid;
-		dp->di_gid = ip->i_gid;
+		dp->di_mode = v7_htofs_u16(ip->i_mode);
+		dp->di_nlink = v7_htofs_i16(ip->i_nlink);
+		dp->di_uid = v7_htofs_i16(ip->i_uid);
+		dp->di_gid = v7_htofs_i16(ip->i_gid);
 		dp->di_size = v7_htofs_i32(ip->i_size);
 		p1 = (uint8_t *)dp->di_addr;
 		p2 = (daddr_t *)ip->i_un.i_addr;
 		for(i=0; i<NADDR; i++) {
-			*p1++ = (uint8_t)(*p2 >> 16);
 			if((*p2 >> 24) != 0 && (ip->i_mode&IFMT)!=IFMPC
 			   && (ip->i_mode&IFMT)!=IFMPB)
 				printf("iaddress > 2^24\n");
-			*p1++ = (uint8_t)(*p2);
-			*p1++ = (uint8_t)(*p2++ >> 8);
+			v7_htofs_diaddr(*p2, p1);
+			p1 += 3;
+			p2++;
 		}
 		if(ip->i_flag&IACC)
 			dp->di_atime = v7_htofs_i32(*ta);
@@ -314,12 +314,13 @@ wdir(struct inode *ip)
 		u.u_error = ENOTDIR;
 		goto out;
 	}
-	u.u_dent.d_ino = ip->i_number;
+	u.u_dent.d_ino = v7_htofs_u16(ip->i_number);
 	bcopy((caddr_t)u.u_dbuf, (caddr_t)u.u_dent.d_name, DIRSIZ);
 	u.u_count = sizeof(struct direct);
 	u.u_segflg = 1;
 	u.u_base = (caddr_t)&u.u_dent;
 	writei(u.u_pdir);
+	u.u_dent.d_ino = v7_htofs_u16(u.u_dent.d_ino);
 out:
 	iput(u.u_pdir);
 }

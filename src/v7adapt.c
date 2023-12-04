@@ -271,7 +271,7 @@ void v7_decodesuperblock(v7_caddr_t srcbuf, struct v7_filsys * dest)
 {
     if (v7_fsconfig.fstype == fs_type_v7) {
         struct v7_superblock * src = (struct v7_superblock *)srcbuf;
-        memset(src, 0, sizeof(struct v7_superblock));
+        memset(dest, 0, sizeof(struct v7_filsys));
         dest->s_isize = fs_htopdp_u16(src->s_isize);
         dest->s_fsize = fs_htopdp_i32(src->s_fsize);
         dest->s_nfree = fs_htopdp_i16(src->s_nfree);
@@ -291,6 +291,30 @@ void v7_decodesuperblock(v7_caddr_t srcbuf, struct v7_filsys * dest)
         dest->s_n = fs_htopdp_i16(src->s_n);
         memcpy(dest->s_fname, src->s_fname, sizeof(src->s_fname));
         memcpy(dest->s_fpack, src->s_fpack, sizeof(src->s_fpack));
+    }
+    else if (v7_fsconfig.fstype == fs_type_msxenix2_be) {
+        struct v7_superblock_xenix2 * src = (struct v7_superblock_xenix2 *)srcbuf;
+        memset(dest, 0, sizeof(struct v7_filsys));
+        dest->s_isize = fs_htobe_u16(src->s_isize);
+        dest->s_fsize = fs_htobe_i32(src->s_fsize);
+        dest->s_nfree = fs_htobe_i16(src->s_nfree);
+        for (int i = 0; i < V7_NICFREE; i++)
+            dest->s_free[i] = fs_htobe_i32(src->s_free[i]);
+        dest->s_ninode = fs_htobe_i16(src->s_ninode);
+        for (int i = 0; i < V7_NICINOD; i++)
+            dest->s_inode[i] = fs_htobe_u16(src->s_inode[i]);
+        dest->s_flock = src->s_flock;
+        dest->s_ilock = src->s_ilock;
+        dest->s_fmod = src->s_fmod;
+        dest->s_ronly = src->s_ronly;
+        dest->s_time = fs_htobe_i32(src->s_time);
+        dest->s_tfree = fs_htobe_i32(src->s_tfree);
+        dest->s_tinode = fs_htobe_u16(src->s_tinode);
+        dest->s_m = fs_htobe_i16(src->s_m);
+        dest->s_n = fs_htobe_i16(src->s_n);
+        memcpy(dest->s_fname, src->s_fname, sizeof(src->s_fname));
+        memcpy(dest->s_fpack, src->s_fpack, sizeof(src->s_fpack));
+        // TODO: handle s_clean
     }
     else {
         /* v7_fsconfig.fstype set incorrectly */
@@ -325,12 +349,37 @@ void v7_encodesuperblock(struct v7_filsys * src, v7_caddr_t destbuf)
         memcpy(dest->s_fname, src->s_fname, sizeof(dest->s_fname));
         memcpy(dest->s_fpack, src->s_fpack, sizeof(dest->s_fpack));
     }
+    else if (v7_fsconfig.fstype == fs_type_msxenix2_be) {
+        struct v7_superblock * dest = (struct v7_superblock *)destbuf;
+        memset(dest, 0, sizeof(struct v7_superblock));
+        dest->s_isize = fs_htobe_u16(src->s_isize);
+        dest->s_fsize = fs_htobe_i32(src->s_fsize);
+        dest->s_nfree = fs_htobe_i16(src->s_nfree);
+        for (int i = 0; i < V7_NICFREE; i++)
+            dest->s_free[i] = fs_htobe_i32(src->s_free[i]);
+        dest->s_ninode = fs_htobe_i16(src->s_ninode);
+        for (int i = 0; i < V7_NICINOD; i++)
+            dest->s_inode[i] = fs_htobe_u16(src->s_inode[i]);
+        dest->s_flock = src->s_flock;
+        dest->s_ilock = src->s_ilock;
+        dest->s_fmod = src->s_fmod;
+        dest->s_ronly = src->s_ronly;
+        dest->s_time = fs_htobe_i32(src->s_time);
+        dest->s_tfree = fs_htobe_i32(src->s_tfree);
+        dest->s_tinode = fs_htobe_u16(src->s_tinode);
+        dest->s_m = fs_htobe_i16(src->s_m);
+        dest->s_n = fs_htobe_i16(src->s_n);
+        memcpy(dest->s_fname, src->s_fname, sizeof(dest->s_fname));
+        memcpy(dest->s_fpack, src->s_fpack, sizeof(dest->s_fpack));
+        // TODO: handle s_clean
+    }
     else {
         /* v7_fsconfig.fstype set incorrectly */
         abort();
     }
 }
 
+/* Convert int16 between host and filesystem byte orders */
 int16_t v7_htofs_i16(int16_t v)
 {
     switch (v7_fsconfig.byteorder) {
@@ -346,6 +395,7 @@ int16_t v7_htofs_i16(int16_t v)
     }
 }
 
+/* Convert uint16 between host and filesystem byte orders */
 uint16_t v7_htofs_u16(uint16_t v)
 {
     switch (v7_fsconfig.byteorder) {
@@ -361,6 +411,7 @@ uint16_t v7_htofs_u16(uint16_t v)
     }
 }
 
+/* Convert int32 between host and filesystem byte orders */
 int32_t v7_htofs_i32(int32_t v)
 {
     switch (v7_fsconfig.byteorder) {
@@ -370,6 +421,53 @@ int32_t v7_htofs_i32(int32_t v)
         return fs_htobe_i32(v);
     case fs_byteorder_pdp:
         return fs_htopdp_i32(v);
+    default:
+        /* v7_fsconfig.byteorder set incorrectly */
+        abort();
+    }
+}
+
+/* Encode 3-byte disk address (as used in inode di_addr table) in filesystem byte order */
+void v7_htofs_diaddr(v7_daddr_t v, uint8_t * b)
+{
+    switch (v7_fsconfig.byteorder) {
+    case fs_byteorder_le:
+        b[0] = (uint8_t)(v >> 0);
+        b[1] = (uint8_t)(v >> 8);
+        b[2] = (uint8_t)(v >> 16);
+        break;
+    case fs_byteorder_be:
+        b[0] = (uint8_t)(v >> 16);
+        b[1] = (uint8_t)(v >> 8);
+        b[2] = (uint8_t)(v >> 0);
+        break;
+    case fs_byteorder_pdp:
+        b[0] = (uint8_t)(v >> 16);
+        b[1] = (uint8_t)(v >> 0);
+        b[2] = (uint8_t)(v >> 8);
+        break;
+    default:
+        /* v7_fsconfig.byteorder set incorrectly */
+        abort();
+    }
+}
+
+/* Decode 3-byte disk address (as used in inode di_addr table) in filesystem byte order */
+v7_daddr_t v7_fstoh_diaddr(const uint8_t * b)
+{
+    switch (v7_fsconfig.byteorder) {
+    case fs_byteorder_le:
+        return   (((v7_daddr_t)b[0]) << 0)
+               | (((v7_daddr_t)b[1]) << 8)
+               | (((v7_daddr_t)b[2]) << 16);
+    case fs_byteorder_be:
+        return   (((v7_daddr_t)b[2]) << 0)
+               | (((v7_daddr_t)b[1]) << 8)
+               | (((v7_daddr_t)b[0]) << 16);
+    case fs_byteorder_pdp:
+        return   (((v7_daddr_t)b[1]) << 0)
+               | (((v7_daddr_t)b[2]) << 8)
+               | (((v7_daddr_t)b[0]) << 16);
     default:
         /* v7_fsconfig.byteorder set incorrectly */
         abort();

@@ -103,11 +103,19 @@ int v7fs_init(int readonly)
     /* zero kernel data structures and globals */
     v7_zerocore();
 
+#if TEST_TRS_XENIX
+    v7_fsconfig.fstype = fs_type_msxenix2_be;
+    v7_fsconfig.byteorder = fs_byteorder_be;
+    v7_fsconfig.blocksize = 512;
+    v7_fsconfig.nicfree = V7_XENIX2_NICFREE;
+    v7_fsconfig.nicinod = V7_XENIX2_NICINOD;
+#else
     v7_fsconfig.fstype = fs_type_v7;
     v7_fsconfig.byteorder = fs_byteorder_pdp;
     v7_fsconfig.blocksize = 512;
     v7_fsconfig.nicfree = V7_NICFREE;
     v7_fsconfig.nicinod = V7_NICINOD;
+#endif
 
     /* set the device id for the root device. */
     v7_rootdev = v7_makedev(0, 0);
@@ -181,11 +189,20 @@ int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flpar
     if (v7fs_initialized)
         return -EBUSY;
 
+    // TODO: generalize this
+#if TEST_TRS_XENIX
+    v7_fsconfig.fstype = fs_type_msxenix2_be;
+    v7_fsconfig.byteorder = fs_byteorder_be;
+    v7_fsconfig.blocksize = 512;
+    v7_fsconfig.nicfree = V7_XENIX2_NICFREE;
+    v7_fsconfig.nicinod = V7_XENIX2_NICINOD;
+#else
     v7_fsconfig.fstype = fs_type_v7;
     v7_fsconfig.byteorder = fs_byteorder_pdp;
     v7_fsconfig.blocksize = 512;
     v7_fsconfig.nicfree = V7_NICFREE;
     v7_fsconfig.nicinod = V7_NICINOD;
+#endif
 
     uint32_t NIPB = v7_fsconfig.blocksize / sizeof(struct v7_dinode);
 
@@ -270,11 +287,11 @@ int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flpar
     rootdirblkno = bp->b_blkno;
     dp = (struct v7_direct *)bp->b_un.b_addr;
     dp->d_name[0] = '.';
-    dp->d_ino = ROOTINO;
+    dp->d_ino = v7_htofs_u16(ROOTINO);
     dp++;
     dp->d_name[0] = '.';
     dp->d_name[1] = '.';
-    dp->d_ino = ROOTINO;
+    dp->d_ino = v7_htofs_u16(ROOTINO);
     v7_bwrite(bp);
     if ((bp->b_flags & B_ERROR) != 0)
         goto exit;
@@ -287,23 +304,21 @@ int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flpar
         if (iblk == 0) {
             struct v7_dinode * ip = (struct v7_dinode *)bp->b_un.b_addr;
             /* bad block file */
-            ip->di_mode = (int16_t)(IFREG);
+            ip->di_mode = v7_htofs_u16((uint16_t)IFREG);
             ip->di_nlink = 0;
             ip->di_uid = 0;
             ip->di_gid = 0;
             ip->di_size = 0;
-            ip->di_atime = ip->di_mtime = ip->di_ctime = fs_htopdp_i32(v7_time);
+            ip->di_atime = ip->di_mtime = ip->di_ctime = v7_htofs_i32(v7_time);
             /* root directory */
             ip++;
-            ip->di_mode = (int16_t)(IFDIR|0777);
-            ip->di_nlink = 2;
-            ip->di_uid = v7_u.u_uid;
-            ip->di_gid = v7_u.u_gid;
-            ip->di_size = fs_htopdp_i32(2*sizeof(struct v7_direct)); /* size of 2 directory entries */
-            ip->di_addr[0] = (char)(rootdirblkno >> 16);
-            ip->di_addr[1] = (char)(rootdirblkno);
-            ip->di_addr[2] = (char)(rootdirblkno >> 8);
-            ip->di_atime = ip->di_mtime = ip->di_ctime = fs_htopdp_i32(v7_time);
+            ip->di_mode = v7_htofs_u16((int16_t)(IFDIR|0777));
+            ip->di_nlink = v7_htofs_i16(2);
+            ip->di_uid = v7_htofs_i16(v7_u.u_uid);
+            ip->di_gid = v7_htofs_i16(v7_u.u_gid);
+            ip->di_size = v7_htofs_i32(2*sizeof(struct v7_direct)); /* size of 2 directory entries */
+            v7_htofs_diaddr(rootdirblkno, (uint8_t *)ip->di_addr);
+            ip->di_atime = ip->di_mtime = ip->di_ctime = v7_htofs_i32(v7_time);
         }
         v7_bwrite(bp);
         if ((bp->b_flags & B_ERROR) != 0)
@@ -1143,6 +1158,8 @@ int v7fs_enumdir(const char *pathname, v7fs_enum_dir_funct enum_funct, void *con
             break;
         }
 
+        direntrybuf.direntry.d_ino = v7_htofs_u16(direntrybuf.direntry.d_ino);
+
         if (direntrybuf.direntry.d_ino == 0)
             continue;
 
@@ -1486,6 +1503,8 @@ static int v7fs_reparentdir(const char *pathname)
     }
     res = 0;
 
+    direntry.d_ino = v7_htofs_u16(direntry.d_ino);
+
     /* if the ".." entry does *not* contain the inode number of the
      * new parent directory... */
     if (direntry.d_ino != newparentip->i_number) {
@@ -1507,7 +1526,7 @@ static int v7fs_reparentdir(const char *pathname)
 
         /* rewrite the ".." directory entry to contain the inode of
          * the new parent directory. */
-        direntry.d_ino = newparentip->i_number;
+        direntry.d_ino = v7_htofs_u16(newparentip->i_number);
         res = v7fs_seek(fd, -((off_t)sizeof(struct v7_direct)), SEEK_CUR);
         if (res < 0)
             goto exit;

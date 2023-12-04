@@ -153,6 +153,7 @@ eloop:
 
 	bcopy(bp->b_un.b_addr+(u.u_offset&BMASK), (caddr_t)&u.u_dent,
 		sizeof(struct direct));
+	u.u_dent.d_ino = v7_htofs_u16(u.u_dent.d_ino);
 	u.u_offset += sizeof(struct direct);
 	if(u.u_dent.d_ino == 0) {
 		if(eo == 0)

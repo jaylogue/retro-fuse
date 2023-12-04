@@ -52,7 +52,7 @@ struct v7_superblock {
     int16_t     s_n;
     char        s_fname[6];
     char        s_fpack[6];
-};
+} __attribute__((packed));
 
 /** On-disk form of standard Unix System III superblock (as used on the PDP-11 and VAX)
  */
@@ -77,7 +77,7 @@ struct v7_superblock_sys3 {
     uint16_t    s_tinode;
     char        s_fname[6];
     char        s_fpack[6];
-};
+} __attribute__((packed));
 
 /* On-disk form of Xenix 2.x superblock
  */
@@ -105,7 +105,7 @@ struct v7_superblock_xenix2 {
     char        s_fname[6];
     char        s_fpack[6];
     char        s_clean;
-};
+} __attribute__((packed));
 
 /* On-disk form of Xenix 3.x superblock
  */
@@ -138,7 +138,7 @@ struct v7_superblock_xenix3 {
     char        s_fill[V7_XENIX3_NBSFILL];
     int32_t     s_magic;
     int32_t     s_type;
-};
+} __attribute__((packed));
 
 /* On-disk form of IBM PC Xenix 1.x/2.x superblock
  */
@@ -171,4 +171,4 @@ struct v7_superblock_ibmpcxenix {
     char        s_fill[V7_IBMPCXENIX_NBSFILL];
     int32_t     s_magic;
     int32_t     s_type;
-};
+} __attribute__((packed));

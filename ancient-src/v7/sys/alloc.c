@@ -50,8 +50,8 @@ alloc(dev_t dev)
 		bp = bread(dev, bno);
 		if ((bp->b_flags&B_ERROR) == 0) {
 			fp->s_nfree = ((FBLKP)(bp->b_un.b_addr))->df_nfree;
-			bcopy((caddr_t)((FBLKP)(bp->b_un.b_addr))->df_free,
-			    (caddr_t)fp->s_free, sizeof(fp->s_free));
+			for (int i = 0; i < v7_fsconfig.nicfree; i++)
+				fp->s_free[i] = v7_htofs_i32(((FBLKP)(bp->b_un.b_addr))->df_free[i]);
 		}
 		brelse(bp);
 		fp->s_flock = 0;
@@ -96,9 +96,8 @@ free(dev_t dev, daddr_t bno)
 		fp->s_flock++;
 		bp = getblk(dev, bno);
 		((FBLKP)(bp->b_un.b_addr))->df_nfree = fp->s_nfree;
-		bcopy((caddr_t)fp->s_free,
-			(caddr_t)((FBLKP)(bp->b_un.b_addr))->df_free,
-			sizeof(fp->s_free));
+		for (int i = 0; i < v7_fsconfig.nicfree; i++)
+			((FBLKP)(bp->b_un.b_addr))->df_free[i] = v7_htofs_i32(fp->s_free[i]);
 		fp->s_nfree = 0;
 		bwrite(bp);
 		fp->s_flock = 0;

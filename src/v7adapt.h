@@ -65,6 +65,8 @@ extern void v7_encodesuperblock(struct v7_filsys * src, v7_caddr_t destbuf);
 extern int16_t v7_htofs_i16(int16_t v);
 extern uint16_t v7_htofs_u16(uint16_t v);
 extern int32_t v7_htofs_i32(int32_t v);
+extern void v7_htofs_diaddr(v7_daddr_t v, uint8_t * b);
+extern v7_daddr_t v7_fstoh_diaddr(const uint8_t * v);
 extern void v7_refreshclock();
 
 /* Forward declarations of name-mangled v7 functions */
