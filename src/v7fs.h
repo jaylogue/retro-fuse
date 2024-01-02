@@ -29,32 +29,24 @@ struct statvfs;
 
 enum {
 
-    /** Filesystem block size
-     */
-    V7FS_BLOCK_SIZE         = 512,
-
-    /** Maximum filesystem size, in blocks.
+    /** Maximum filesystem size, in filesystem blocks.
      *  Limited to 2^24-1 due to 3-byte block numbers used in on-disk inode structure.
      */
     V7FS_MAX_FS_SIZE        = 16777215,
 
-    /** Minimum filesystem size, in blocks.
+    /** Minimum filesystem size, in filesystem blocks.
      *  (boot block + superblock + inode block + root directory block + 1 block for file data)
      */
     V7FS_MIN_FS_SIZE        = 5,
 
-    /** Number of inodes per block.
+    /** Inode size in bytes
      */
-    V7FS_INODES_PER_BLOCK   = 8,
+    V7FS_INODE_SIZE         = 64,
 
-    /** Maximum size of the inode table, in blocks.
+    /** Maximum number of inodes
      *  Limited to 8192 due to 2-byte inode number used in on-disk directory structure.
      */
-    V7FS_MAX_ITABLE_SIZE    = 65536/V7FS_INODES_PER_BLOCK,
-
-    /** Minimum size of the inode table, in blocks.
-     */
-    V7FS_MIN_ITABLE_SIZE    = 1,
+    V7FS_MAX_INODES         = 65536,
 
     /** Maximum value for uid/gid.
      */
@@ -74,9 +66,9 @@ struct v7fs_flparams
 
 typedef int (*v7fs_enum_dir_funct)(const char *entryname, const struct stat *statbuf, void *context);
 
-extern int v7fs_init(int readonly);
+extern int v7fs_init(int fstype, int readonly);
 extern int v7fs_shutdown();
-extern int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flparams);
+extern int v7fs_mkfs(int fstype, uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flparams);
 extern int v7fs_open(const char * name, int flags, mode_t mode);
 extern int v7fs_close(int fd);
 extern off_t v7fs_seek(int fd, off_t offset, int whence);
@@ -103,5 +95,6 @@ extern int v7fs_setreuid(uid_t ruid, uid_t euid);
 extern int v7fs_setregid(gid_t rgid, gid_t egid);
 extern int v7fs_adduidmap(uid_t hostuid, uint32_t fsuid);
 extern int v7fs_addgidmap(uid_t hostgid, uint32_t fsgid);
+extern off_t v7fs_fssize();
 
 #endif /* __V7FS_H__ */

@@ -109,6 +109,7 @@ V7_DEPS = $(V7_SRC:.c=.d)
 V7FS_SRC = \
 	src/fusecommon.c \
 	src/v7fuse.c \
+	src/v7fusecommon.c \
 	src/v7fs.c \
 	src/v7adapt.c \
 	src/idmap.c \

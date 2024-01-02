@@ -98,7 +98,7 @@ enum fs_type {
 
 /* Utility Functions */
 
-static inline int fs_getbyteorder(int type)
+static inline int fs_byteorder(int type)
 {
     switch (type) {
     case fs_type_msxenix2_le:
@@ -116,6 +116,16 @@ static inline int fs_getbyteorder(int type)
         return fs_byteorder_pdp;
     default:
         return fs_byteorder_unknown;
+    }
+}
+
+static inline int fs_blocksize(int type)
+{
+    switch (type) {
+    case fs_type_ibmpcxenix:
+        return 1024;
+    default:
+        return 512;
     }
 }
 

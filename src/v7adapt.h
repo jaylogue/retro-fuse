@@ -28,11 +28,11 @@
 /** Information about the type of v7-based filesystem being accessed.
  */
 struct v7_fsconfig {
-    int fstype;                     /* Filesystem type (values from fs_type enum) */
-    int byteorder;                  /* Byte ordering on disk (values from fs_byteorder enum) */
-    int16_t blocksize;              /* Filesystem block size */
-    int16_t nicfree;                /* Size of the free block list table in the superblock */
-    int16_t nicinod;                /* Size of the free i-node list table in the superblock */
+    int fstype;                     /**< Filesystem type (values from fs_type enum) */
+    int byteorder;                  /**< Byte ordering on disk (values from fs_byteorder enum) */
+    int16_t blocksize;              /**< Filesystem block size */
+    int16_t nicfree;                /**< Size of the free block list table in the superblock */
+    int16_t nicinod;                /**< Size of the free i-node list table in the superblock */
 };
 
 extern struct v7_fsconfig v7_fsconfig;

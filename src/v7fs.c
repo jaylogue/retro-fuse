@@ -80,6 +80,7 @@ static struct idmap v7fs_gidmap = {
     .defaultfsid = V7FS_MAX_UID_GID
 };
 
+static int v7fs_initfsconfig(int fstype);
 static void v7fs_initfreelist(struct v7_filsys *fp, uint16_t n, uint16_t m);
 static void v7fs_convertstat(const struct v7_stat *v7statbuf, struct stat *statbuf);
 static int v7fs_isindir(const char *pathname, int16_t dirnum);
@@ -95,7 +96,7 @@ static inline gid_t v7fs_mapv7gid(int16_t v7gid) { return (gid_t)idmap_tohostid(
  * 
  * This function is very similar to the v7 kernel main() function.
  */
-int v7fs_init(int readonly)
+int v7fs_init(int fstype, int readonly)
 {
     if (v7fs_initialized)
         return -EBUSY;
@@ -103,19 +104,12 @@ int v7fs_init(int readonly)
     /* zero kernel data structures and globals */
     v7_zerocore();
 
-#if TEST_TRS_XENIX
-    v7_fsconfig.fstype = fs_type_msxenix2_be;
-    v7_fsconfig.byteorder = fs_byteorder_be;
-    v7_fsconfig.blocksize = 512;
-    v7_fsconfig.nicfree = V7_XENIX2_NICFREE;
-    v7_fsconfig.nicinod = V7_XENIX2_NICINOD;
-#else
-    v7_fsconfig.fstype = fs_type_v7;
-    v7_fsconfig.byteorder = fs_byteorder_pdp;
-    v7_fsconfig.blocksize = 512;
-    v7_fsconfig.nicfree = V7_NICFREE;
-    v7_fsconfig.nicinod = V7_NICINOD;
-#endif
+    /* initialize the v7_fsconfig structure based on the variant of
+     * v7 filesystem specified. fail if the specified fstype isn't
+     * supported. */
+    if (v7fs_initfsconfig(fstype) != 0) {
+        return -EINVAL;
+    }
 
     /* set the device id for the root device. */
     v7_rootdev = v7_makedev(0, 0);
@@ -133,14 +127,6 @@ int v7fs_init(int readonly)
         return -v7_u.u_error;
 
     struct v7_filsys *fs = v7_getfs(v7_rootdev);
-
-    /* if the size of the underlying virtual disk is unknown, or
-       is smaller than the size declared in the filesystem superblock
-       set the virtual disk size to the size from the superblock. */
-    off_t dsksize = dsk_getsize();
-    v7_daddr_t fsize = fs->s_fsize;
-    if (dsksize == 0 || dsksize > fsize)
-        dsk_setsize((off_t)fsize);
 
     /* mark the filesystem read-only if requested. */
     if (readonly)
@@ -178,7 +164,7 @@ int v7fs_shutdown()
  * Thus function is effectively a simplified re-implementation of the
  * v7 mkfs command.
  */
-int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flparams)
+int v7fs_mkfs(int fstype, uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flparams)
 {
     struct v7_buf *bp;
     struct v7_filsys *fp;
@@ -189,20 +175,11 @@ int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flpar
     if (v7fs_initialized)
         return -EBUSY;
 
-    // TODO: generalize this
-#if TEST_TRS_XENIX
-    v7_fsconfig.fstype = fs_type_msxenix2_be;
-    v7_fsconfig.byteorder = fs_byteorder_be;
-    v7_fsconfig.blocksize = 512;
-    v7_fsconfig.nicfree = V7_XENIX2_NICFREE;
-    v7_fsconfig.nicinod = V7_XENIX2_NICINOD;
-#else
-    v7_fsconfig.fstype = fs_type_v7;
-    v7_fsconfig.byteorder = fs_byteorder_pdp;
-    v7_fsconfig.blocksize = 512;
-    v7_fsconfig.nicfree = V7_NICFREE;
-    v7_fsconfig.nicinod = V7_NICINOD;
-#endif
+    /* initialize the v7_fsconfig structure based on the variant of
+     * v7 filesystem specified. fail if the specified fstype isn't
+     * supported. */
+    if (v7fs_initfsconfig(fstype) != 0)
+        return -EINVAL;
 
     uint32_t NIPB = v7_fsconfig.blocksize / sizeof(struct v7_dinode);
 
@@ -221,10 +198,12 @@ int v7fs_mkfs(uint32_t fssize, uint32_t isize, const struct v7fs_flparams *flpar
             isize = 65500 / NIPB;
     }
 
-    /* enforce min/max inode table size.  max size is limited by the size of
+    /* enforce max inode table size.  max size is limited by the size of
      * integer used to store inode numbers (uint16_t) and the overall size
      * of the filesystem. */
-    if (isize < V7FS_MIN_ITABLE_SIZE || isize > V7FS_MAX_ITABLE_SIZE || isize > (fssize - 4))
+    uint32_t inodesperblock = fs_blocksize(fs_type_v7) / V7FS_INODE_SIZE;
+    uint32_t maxisize = (V7FS_MAX_INODES + (inodesperblock - 1)) / inodesperblock;
+    if (isize > maxisize || isize > (fssize - 4))
         return -EINVAL;
 
     /* adjust interleave values as needed (based on logic in v7 mkfs) */
@@ -1223,8 +1202,8 @@ int v7fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
 
     fp = v7_getfs(v7_rootdev);
 
-    statvfsbuf->f_bsize = 512;
-    statvfsbuf->f_frsize = 512;
+    statvfsbuf->f_bsize = v7_fsconfig.blocksize;
+    statvfsbuf->f_frsize = v7_fsconfig.blocksize;
     statvfsbuf->f_blocks = fp->s_fsize;
     statvfsbuf->f_files = (fp->s_isize - 2) * INOPB;
     statvfsbuf->f_namemax = DIRSIZ;
@@ -1345,6 +1324,68 @@ int v7fs_adduidmap(uid_t hostuid, uint32_t fsuid)
 int v7fs_addgidmap(uid_t hostgid, uint32_t fsgid)
 {
     return idmap_addidmap(&v7fs_gidmap, (uint32_t)hostgid, fsgid);
+}
+
+/* Returns the total size of the filesystem
+ */
+off_t v7fs_fssize()
+{
+    struct v7_filsys *fs = v7_getfs(v7_rootdev);
+    return fs->s_fsize;
+}
+
+/* Initializes the global v7_fsconfig structure based on the specified
+ * v7 filesystem type.
+ */
+static int v7fs_initfsconfig(int fstype)
+{
+    v7_fsconfig.fstype = fstype;
+    switch (fstype) {
+    case fs_type_v7:
+        v7_fsconfig.byteorder = fs_byteorder_pdp;
+        v7_fsconfig.blocksize = 512;
+        v7_fsconfig.nicfree = V7_NICFREE;
+        v7_fsconfig.nicinod = V7_NICINOD;
+        return 0;
+    case fs_type_sys3:
+        v7_fsconfig.byteorder = fs_byteorder_pdp;
+        v7_fsconfig.blocksize = 512;
+        v7_fsconfig.nicfree = V7_SYS3_NICFREE;
+        v7_fsconfig.nicinod = V7_SYS3_NICINOD;
+        return 0;
+    case fs_type_msxenix2_le:
+        v7_fsconfig.byteorder = fs_byteorder_le;
+        v7_fsconfig.blocksize = 512;
+        v7_fsconfig.nicfree = V7_XENIX2_NICFREE;
+        v7_fsconfig.nicinod = V7_XENIX2_NICINOD;
+        return 0;
+    case fs_type_msxenix2_be:
+        v7_fsconfig.byteorder = fs_byteorder_be;
+        v7_fsconfig.blocksize = 512;
+        v7_fsconfig.nicfree = V7_XENIX2_NICFREE;
+        v7_fsconfig.nicinod = V7_XENIX2_NICINOD;
+        return 0;
+    case fs_type_msxenix3_le:
+        v7_fsconfig.byteorder = fs_byteorder_le;
+        v7_fsconfig.blocksize = 512;
+        v7_fsconfig.nicfree = V7_XENIX3_NICFREE;
+        v7_fsconfig.nicinod = V7_XENIX3_NICINOD;
+        return 0;
+    case fs_type_msxenix3_be:
+        v7_fsconfig.byteorder = fs_byteorder_be;
+        v7_fsconfig.blocksize = 512;
+        v7_fsconfig.nicfree = V7_XENIX3_NICFREE;
+        v7_fsconfig.nicinod = V7_XENIX3_NICINOD;
+        return 0;
+    case fs_type_ibmpcxenix:
+        v7_fsconfig.byteorder = fs_byteorder_le;
+        v7_fsconfig.blocksize = 1024;
+        v7_fsconfig.nicfree = V7_IBMPCXENIX_NICFREE;
+        v7_fsconfig.nicinod = V7_IBMPCXENIX_NICINOD;
+        return 0;
+    default:
+        return -EINVAL;
+    }
 }
 
 /** Construct the initial free block list for a new filesystem.

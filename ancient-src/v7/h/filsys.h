@@ -112,7 +112,7 @@ struct v7_superblock_xenix2 {
 struct v7_superblock_xenix3 {
 
 #define V7_XENIX3_NICFREE 50
-#define V7_XENIX4_NICINOD 100
+#define V7_XENIX3_NICINOD 100
 #define V7_XENIX3_MAGIC 0x2b5544
 #define V7_XENIX3_B512 1
 #define V7_XENIX3_B1024 2
@@ -123,7 +123,7 @@ struct v7_superblock_xenix3 {
     int16_t     s_nfree;
     int32_t     s_free[V7_XENIX3_NICFREE];
     int16_t     s_ninode;
-    uint16_t    s_inode[V7_XENIX4_NICINOD];
+    uint16_t    s_inode[V7_XENIX3_NICINOD];
     char        s_flock;
     char        s_ilock;
     char        s_fmod;
