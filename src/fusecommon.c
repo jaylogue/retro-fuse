@@ -36,6 +36,7 @@
 
 #include "fusecommon.h"
 #include "dskio.h"
+#include "fstype.h"
 
 #define RETROFUSE_OPT_KEY_MKFS          100
 #define RETROFUSE_OPT_KEY_CONTAINER     101
@@ -382,8 +383,7 @@ static int retrofuse_parseopt_common(void *data, const char *arg, int key, struc
     case RETROFUSE_OPT_KEY_DSKOFFSET:
         return retrofuse_parseopt_size(arg, "dskoffset", 1, &cfg->dskcfg.offset);
     case RETROFUSE_OPT_KEY_FSSIZE:
-        // TODO: use filesystem block size???
-        return retrofuse_parseopt_size(arg, "fssize", DSK_BLKSIZE, &cfg->dskcfg.fssize);
+        return retrofuse_parseopt_size(arg, "fssize", fs_blocksize(cfg->fstype), &cfg->dskcfg.fssize);
     case RETROFUSE_OPT_KEY_FSOFFSET:
         return retrofuse_parseopt_size(arg, "fsoffset", DSK_BLKSIZE, &cfg->dskcfg.fsoffset);
     case FUSE_OPT_KEY_NONOPT:

@@ -2,8 +2,10 @@
 *.d
 v[67]fs
 bsd2*fs
+xenixfs
 *.map
 *.dsk
+*.cfg
 .vscode/
 *.code-workspace
 __pycache__

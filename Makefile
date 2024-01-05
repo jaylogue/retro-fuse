@@ -217,6 +217,30 @@ ALL_PROGS += $(BSD211FS_PROG)
 ALL_OUTPUTS += $(BSD211FS_PROG) $(BSD211FS_PROG).map $(BSD211FS_OBJS) $(BSD211_OBJS) $(BSD211FS_DEPS) $(BSD211_DEPS)
 
 
+############### XENIX ################
+
+XENIXFS_PROG = xenixfs
+
+XENIXFS_SRC = \
+	src/fusecommon.c \
+	src/xenixfuse.c \
+	src/v7fusecommon.c \
+	src/v7fs.c \
+	src/v7adapt.c \
+	src/idmap.c \
+	src/dskio.c
+XENIXFS_OBJS = $(XENIXFS_SRC:.c=.o)
+XENIXFS_DEPS = $(XENIXFS_SRC:.c=.d)
+
+-include $(XENIXFS_DEPS)
+
+$(XENIXFS_PROG) : $(XENIXFS_OBJS) $(V7_OBJS)
+	$(CC) -o $@ $(LD_MAP_FLAG) $^ $(LIBS)
+
+ALL_PROGS += $(XENIXFS_PROG)
+ALL_OUTPUTS += $(XENIXFS_PROG) $(XENIXFS_PROG).map $(XENIXFS_OBJS) $(XENIX_OBJS) $(XENIXFS_DEPS) $(XENIX_DEPS)
+
+
 ########### GENERAL TARGETS ############
 
 all : $(ALL_PROGS)

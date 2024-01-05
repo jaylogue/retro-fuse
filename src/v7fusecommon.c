@@ -96,42 +96,46 @@ const struct fuse_operations retrofuse_fuseops =
     .flag_utime_omit_ok = 1
 };
 
-int retrofuse_checkconfig(struct retrofuse_config *cfg)
+int retrofuse_checkconfig_v7(struct retrofuse_config *cfg)
 {
-    /* if the fssize option was given, verify that the value is in range. */
-    if (cfg->dskcfg.fssize != -1) {
-        if (cfg->dskcfg.fssize < V7FS_MIN_FS_SIZE) {
-            fprintf(stderr, "%s: ERROR: Specified filesystem size is too small (min size: %d blocks).\n",
-                    retrofuse_cmdname, V7FS_MIN_FS_SIZE);
+    /* if mkfs has been requested... */
+    if (cfg->mkfs) {
+
+        /* if the fssize option was given, verify that the value is in range. */
+        if (cfg->dskcfg.fssize != -1) {
+            if (cfg->dskcfg.fssize < V7FS_MIN_FS_SIZE) {
+                fprintf(stderr, "%s: ERROR: Specified filesystem size is too small (min size: %d blocks).\n",
+                        retrofuse_cmdname, V7FS_MIN_FS_SIZE);
+                return -1;
+            }
+            if (cfg->dskcfg.fssize > V7FS_MAX_FS_SIZE) {
+                fprintf(stderr, "%s: ERROR: Specified filesystem size is too big (max size: %d blocks).\n",
+                        retrofuse_cmdname, V7FS_MAX_FS_SIZE);
+                return -1;
+            }
+        }
+
+        /* check the mkfs n and m parameters */
+        if (cfg->mkfscfg.n < 1 || cfg->mkfscfg.n > V7FS_MAXFN) {
+            fprintf(stderr, "%s: ERROR: invalid mkfs option: free list parameter n must be between 1 and %d\n", 
+                    retrofuse_cmdname, V7FS_MAXFN);
             return -1;
         }
-        if (cfg->dskcfg.fssize > V7FS_MAX_FS_SIZE) {
-            fprintf(stderr, "%s: ERROR: Specified filesystem size is too big (max size: %d blocks).\n",
-                    retrofuse_cmdname, V7FS_MAX_FS_SIZE);
+        if (cfg->mkfscfg.m < 1 || cfg->mkfscfg.m > cfg->mkfscfg.n) {
+            fprintf(stderr, "%s: ERROR: invalid mkfs option: free list parameter m must be between 1 and the value given for n (%" PRIu16 ")\n", 
+                    retrofuse_cmdname, cfg->mkfscfg.n);
             return -1;
         }
-    }
 
-    /* check the mkfs n and m parameters */
-    if (cfg->mkfscfg.n < 1 || cfg->mkfscfg.n > V7FS_MAXFN) {
-        fprintf(stderr, "%s: ERROR: invalid mkfs option: free list parameter n must be between 1 and %d\n", 
-                retrofuse_cmdname, V7FS_MAXFN);
-        return -1;
-    }
-    if (cfg->mkfscfg.m < 1 || cfg->mkfscfg.m > cfg->mkfscfg.n) {
-        fprintf(stderr, "%s: ERROR: invalid mkfs option: free list parameter m must be between 1 and the value given for n (%" PRIu16 ")\n", 
-                retrofuse_cmdname, cfg->mkfscfg.n);
-        return -1;
-    }
-
-    /* check the mkfs isize parameter. */
-    if (cfg->mkfscfg.isize > 0) {
-        uint32_t inodesperblock = fs_blocksize(cfg->fstype) / V7FS_INODE_SIZE;
-        uint32_t maxisize = (V7FS_MAX_INODES + (inodesperblock - 1)) / inodesperblock;
-        if (cfg->mkfscfg.isize > maxisize) {
-            fprintf(stderr, "%s: ERROR: Specified inode table size is too big (must be <= %d blocks).\n",
-                    retrofuse_cmdname, maxisize);
-            return -1;
+        /* check the mkfs isize parameter. */
+        if (cfg->mkfscfg.isize > 0) {
+            uint32_t inodesperblock = fs_blocksize(cfg->fstype) / V7FS_INODE_SIZE;
+            uint32_t maxisize = (V7FS_MAX_INODES + (inodesperblock - 1)) / inodesperblock;
+            if (cfg->mkfscfg.isize > maxisize) {
+                fprintf(stderr, "%s: ERROR: Specified inode table size is too big (must be <= %d blocks).\n",
+                        retrofuse_cmdname, maxisize);
+                return -1;
+            }
         }
     }
 

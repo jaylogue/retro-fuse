@@ -15,7 +15,7 @@
  */
 
 /**
- * @file  FUSE filesystem implementation for Unix v7 filesystems.
+ * @file  FUSE filesystem implementation for Xenix filesystems.
  */
 
 #include <fcntl.h>
@@ -42,24 +42,27 @@ struct adddir_context {
 #define RETROFUSE_OPT_KEY_MKFS      100
 #define RETROFUSE_OPT_KEY_MAPUID    101
 #define RETROFUSE_OPT_KEY_MAPGID    102
-#define RETROFUSE_OPT_KEY_DSKLAYOUT 103
+#define RETROFUSE_OPT_KEY_FSTYPE    103
+#define RETROFUSE_OPT_KEY_DSKLAYOUT 104
 
+static int parsefstype(const char *arg, struct retrofuse_config *cfg);
 static int parsedsklayout(const char *arg, struct retrofuse_config *cfg);
 
-const char *retrofuse_cmdname = "v7fs";
+const char *retrofuse_cmdname = "xenixfs";
 
 const struct fuse_opt retrofuse_fuseopts[] = {
     FUSE_OPT_KEY("mapuid", RETROFUSE_OPT_KEY_MAPUID),
     FUSE_OPT_KEY("mapuid=", RETROFUSE_OPT_KEY_MAPUID),
     FUSE_OPT_KEY("mapgid", RETROFUSE_OPT_KEY_MAPGID),
     FUSE_OPT_KEY("mapgid=", RETROFUSE_OPT_KEY_MAPGID),
+    FUSE_OPT_KEY("fstype=", RETROFUSE_OPT_KEY_FSTYPE),
     FUSE_OPT_KEY("dsklayout=", RETROFUSE_OPT_KEY_DSKLAYOUT),
     FUSE_OPT_END
 };
 
 void retrofuse_initconfig(struct retrofuse_config *cfg)
 {
-    cfg->fstype = fs_type_v7;
+    cfg->fstype = fs_type_unknown;
 
     /* setup default values for mkfs parameters */
     cfg->mkfscfg.isize = 0; /* 0 = automatically compute isize */
@@ -76,6 +79,8 @@ int retrofuse_parseopt(void *data, const char *arg, int key, struct fuse_args *a
     case FUSE_OPT_KEY_OPT:
     case FUSE_OPT_KEY_NONOPT:
         return 1;
+    case RETROFUSE_OPT_KEY_FSTYPE:
+        return parsefstype(arg, cfg);
     case RETROFUSE_OPT_KEY_DSKLAYOUT:
         return parsedsklayout(arg, cfg);
     case RETROFUSE_OPT_KEY_MAPUID:
@@ -90,6 +95,13 @@ int retrofuse_parseopt(void *data, const char *arg, int key, struct fuse_args *a
 
 int retrofuse_checkconfig(struct retrofuse_config *cfg)
 {
+    /* verify the filesystem type was specified */
+    if (cfg->fstype == fs_type_unknown) {
+        fprintf(stderr, "%s: ERROR: Please specify the Xenix filesystem type using the -o fstype option.\n",
+                retrofuse_cmdname);
+        return -1;
+    }
+
     return retrofuse_checkconfig_v7(cfg);
 }
 
@@ -180,19 +192,53 @@ void retrofuse_showhelp()
 
 /* ========== Private Functions/Data ========== */
 
+static int parsefstype(const char *arg, struct retrofuse_config *cfg)
+{
+    static const struct {
+        const char * name;
+        int fstype;
+        int layout;
+    } fstypes[] = {
+        { "xenix2le",   fs_type_msxenix2_le, dsk_layout_notspecified },
+        { "xenix2be",   fs_type_msxenix2_be, dsk_layout_notspecified },
+        { "xenix3le",   fs_type_msxenix3_le, dsk_layout_notspecified },
+        { "xenix3be",   fs_type_msxenix3_be, dsk_layout_notspecified },
+
+        { "trsxenix1",  fs_type_msxenix2_be, dsk_layout_trsxenix     },
+        { "trsxenix3",  fs_type_msxenix3_be, dsk_layout_trsxenix     },
+
+        { "ibmxenix",   fs_type_ibmpcxenix,  dsk_layout_mbr          },
+
+        { NULL },
+    };
+
+    const char *val = strchr(arg, '=') + 1;
+
+    for (int i = 0; fstypes[i].name != NULL; i++) {
+        if (strcasecmp(val, fstypes[i].name) == 0) {
+            cfg->fstype = fstypes[i].fstype;
+            if (cfg->dskcfg.layout == dsk_layout_notspecified) {
+                cfg->dskcfg.layout = fstypes[i].layout;
+            }
+            return 0;
+        }
+    }
+
+    fprintf(stderr, "%s: ERROR: unknown filesystem type: %s\n", retrofuse_cmdname, val);
+    return -1;
+}
+
 static int parsedsklayout(const char *arg, struct retrofuse_config *cfg)
 {
     static const struct {
         const char * name;
         int id;
     } layouts[] = {
-        { "raw",        dsk_layout_rawdisk  },
-        { "rawdisk",    dsk_layout_rawdisk  },
-        { "rk05",       dsk_layout_rk05     },
-        { "rl01",       dsk_layout_rl01     },
-        { "rl02",       dsk_layout_rl02     },
-        { "rp03",       dsk_layout_rp03_v7  },
-        { "rp06",       dsk_layout_rp06_v7  },
+        { "raw",        dsk_layout_rawdisk   },
+        { "rawdisk",    dsk_layout_rawdisk   },
+        { "mbr",        dsk_layout_mbr       },
+        { "trs-xenix",  dsk_layout_trsxenix  },
+        { "trsxenix",   dsk_layout_trsxenix  },
         { NULL },
     };
 
@@ -205,9 +251,6 @@ static int parsedsklayout(const char *arg, struct retrofuse_config *cfg)
         }
     }
 
-    fprintf(stderr,
-            "%s: ERROR: unknown disk layout: %s\n"
-            "Expected one of: raw(disk), rk05, rl01, rl02, rp03, rp06\n",
-            retrofuse_cmdname, val);
+    fprintf(stderr, "%s: ERROR: unknown disk layout: %s\n", retrofuse_cmdname, val);
     return -1;
 }

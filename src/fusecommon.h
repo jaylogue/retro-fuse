@@ -68,6 +68,7 @@ extern const struct fuse_operations retrofuse_fuseops;
 
 extern void retrofuse_initconfig(struct retrofuse_config *cfg);
 extern int retrofuse_checkconfig(struct retrofuse_config *cfg);
+extern int retrofuse_checkconfig_v7(struct retrofuse_config *cfg);
 extern int retrofuse_mkfs(struct retrofuse_config *cfg);
 extern int retrofuse_mountfs(struct retrofuse_config *cfg);
 extern int retrofuse_parseopt(void *data, const char *arg, int key, struct fuse_args *args);
