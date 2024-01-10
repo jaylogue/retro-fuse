@@ -220,7 +220,7 @@ int retrofuse_mkfs(struct retrofuse_config *cfg)
     /* initialize the new filesystem with the specified parameters. */
     {
         struct v7fs_flparams flparams = { .n = cfg->mkfscfg.n, .m = cfg->mkfscfg.m };
-        res = v7fs_mkfs(fs_type_v7, fssize, cfg->mkfscfg.isize, &flparams);
+        res = v7fs_mkfs(cfg->fstype, fssize, cfg->mkfscfg.isize, &flparams);
         if (res != 0) {
             fprintf(stderr, "%s: ERROR: Failed to initialize filesystem: %s\n", retrofuse_cmdname, strerror(-res));
             return -1;

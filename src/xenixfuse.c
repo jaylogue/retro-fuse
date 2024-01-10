@@ -203,12 +203,9 @@ static int parsefstype(const char *arg, struct retrofuse_config *cfg)
         { "xenix2be",   fs_type_msxenix2_be, dsk_layout_notspecified },
         { "xenix3le",   fs_type_msxenix3_le, dsk_layout_notspecified },
         { "xenix3be",   fs_type_msxenix3_be, dsk_layout_notspecified },
-
         { "trsxenix1",  fs_type_msxenix2_be, dsk_layout_trsxenix     },
         { "trsxenix3",  fs_type_msxenix3_be, dsk_layout_trsxenix     },
-
         { "ibmxenix",   fs_type_ibmpcxenix,  dsk_layout_mbr          },
-
         { NULL },
     };
 

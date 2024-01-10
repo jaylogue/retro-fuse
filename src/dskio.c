@@ -38,6 +38,7 @@
 #endif
 
 #include "dskio.h"
+#include "fsbyteorder.h"
 
 struct dsk_geometry {
     off_t size;             /**< Size (in blocks) of disk (<0 if unknown) */
@@ -72,12 +73,12 @@ static struct dsk_state {
     int fd;                 /**< File descriptor for image file (<0 if not set) */
     int container;          /**< Disk container type (values from dsk_container) */
     int layout;             /**< Disk layout/partitioning scheme (values from dsk_layout) */
-    off_t offset;           /**< Offset (in bytes) to start of disk image within container (<0 if not set) */
+    off_t offset;           /**< Offset (in bytes) to start of disk image within container */
     struct dsk_geometry geometry; /**< Disk geometry */
-    int interleave;         /**< Sector interleave factor (1 = no interleave; -1 = not specified) */
-    int sector0num;         /**< Logical number of first sector in track (0 or 1; -1 = not specified) */
-    off_t fsoffset;         /**< Offset (in blocks) to the start of active filesystem partition (<0 if not set) */
-    off_t fssize;           /**< Size (in blocks) of active filesystem partition (<0 if not set; INT64_MAX if unlimited) */
+    int interleave;         /**< Sector interleave factor (1 = no interleave) */
+    int sector0num;         /**< Logical number of first sector in track (0 or 1) */
+    off_t fsoffset;         /**< Offset (in blocks) to the start of active filesystem partition */
+    off_t fssize;           /**< Size (in blocks) of active filesystem partition (INT64_MAX if unlimited) */
     off_t fslimit;          /**< Limit on the max block number that can be passed to read/write (INT64_MAX if unlimited) */
 } dsk_state;
 
@@ -91,10 +92,13 @@ static int dsk_createcontainer(const char *filename, const struct dsk_config *cf
 static int dsk_createcontainer_imagefile(const char *filename, const struct dsk_config *cfg);
 static int dsk_getgeometry(const struct dsk_config *cfg);
 static int dsk_getgeometry_dev();
+static int dsk_getgeometry_trsxenix(const struct dsk_config *cfg);
 static int dsk_getinterleave(const struct dsk_config *cfg);
 static int dsk_getfspart(const struct dsk_config *cfg);
 static int dsk_getparttab(const struct dsk_partinfo **outparttab);
+static int dsk_getparttab_trsxenix(const struct dsk_partinfo **outparttab);
 static int dsk_writelayout(const struct dsk_config *cfg);
+static int dsk_writelayout_trsxenix(const struct dsk_config *cfg);
 static const struct dsk_layoutinfo * dsk_getlayoutinfo(int layout);
 static off_t dsk_blktopos(off_t blkno);
 
@@ -162,22 +166,39 @@ int dsk_open(const char *filename, const struct dsk_config *cfg, bool create, bo
         return -EEXIST;
     }
 
-    /* if creating/initializing a new disk... */
+    /* if creating a new disk and the disk container is a block device,
+     * open it now */
     if (dsk_state.creating) {
-        
-        /* if the disk container is a block device, open it now. */
         if (dsk_state.container == dsk_container_dev) {
             res = dsk_opencontainer_dev(filename, cfg);
             if (res != 0) {
                 goto exit;
             }
         }
+    }
 
-        /* determine the size and geometry of the new disk */
-        res = dsk_getgeometry(cfg);
+    /* otherwise, open the existing disk container */
+    else {
+        res = dsk_opencontainer(filename, cfg);
         if (res != 0) {
             goto exit;
         }
+    }
+
+    /* determine the size and geometry of the disk */
+    res = dsk_getgeometry(cfg);
+    if (res != 0) {
+        goto exit;
+    }
+
+    /* determine the sector interleave to be used */
+    res = dsk_getinterleave(cfg);
+    if (res != 0) {
+        goto exit;
+    }
+
+    /* if creating... */
+    if (dsk_state.creating) {
 
         /* create the disk container file(s) */
         res = dsk_createcontainer(filename, cfg);
@@ -185,34 +206,12 @@ int dsk_open(const char *filename, const struct dsk_config *cfg, bool create, bo
             goto exit;
         }
 
-        /* write metadata and partition information to the new disk, as
-         * needed for the specified disk layout */
+        /* if needed for the specified layout, write disk metadata and
+         * partition information to the new disk */
         res = dsk_writelayout(cfg);
         if (res != 0) {
             goto exit;
         }
-    }
-
-    /* otherwise an existing disk is being opened... */
-    else {
-
-        /* open the disk container */
-        res = dsk_opencontainer(filename, cfg);
-        if (res != 0) {
-            goto exit;
-        }
-
-        /* fetch the size and geometry of the disk */
-        res = dsk_getgeometry(cfg);
-        if (res != 0) {
-            goto exit;
-        }
-    }
-
-    /* get the sector interleave to be used */
-    res = dsk_getinterleave(cfg);
-    if (res != 0) {
-        goto exit;
     }
 
     /* determine the size and location of the filesystem partition */
@@ -441,7 +440,9 @@ static void dsk_resetstate()
         .fd = -1,
         .container = dsk_container_notspecified,
         .layout = dsk_layout_notspecified,
-        .fslimit = INT64_MAX
+        .interleave = 1,
+        .fssize = INT64_MAX,
+        .fslimit = INT64_MAX,
     };
 }
 
@@ -640,7 +641,7 @@ static int dsk_getgeometry(const struct dsk_config *cfg)
         }
         break;
     case dsk_layout_trsxenix:
-        res = -EINVAL; // TODO: finish this
+        res = dsk_getgeometry_trsxenix(cfg);
         break;
     case dsk_layout_211bsd_disklabel:
         res = -EINVAL; // TODO: finish this
@@ -750,6 +751,101 @@ static int dsk_getgeometry_dev()
     return 0;
 }
 
+#define TRSXENIX_BOOTTRACKS 2
+#define TRSXENIX_DEFAULTALTTRACKS 24
+
+/** Represents the TRS-XENIX disk parameter table (a.k.a. ".pvh" table) */
+struct trsxenix_diskparm {
+
+#define TRSXENIX_DISKPARAM_BLOCKNUM 0
+#define TRSXENIX_DISKPARAM_TABLEMARKER ".pvh"
+#define TRSXENIX_DISKPARAM_MINCYLINDERS 31
+#define TRSXENIX_DISKPARAM_MAXCYLINDERS 2048
+#define TRSXENIX_DISKPARAM_MINHEADS 2
+#define TRSXENIX_DISKPARAM_MAXHEADS 16
+#define TRSXENIX_DISKPARAM_SECTORS 17
+#define TRSXENIX_DISKPARAM_SECTORSSIZE 512
+
+
+    char marker[4];             /**< table marker (".pvh") */
+    uint16_t length;            /**< table length; value: 16 */
+    uint16_t cylinders;         /**< number of cylinders*/
+    uint16_t heads;             /**< number of heads */
+    uint16_t sectors;           /**< number of sectors per track */
+    uint16_t sectorsize;        /**< number of bytes per sector */
+    uint16_t precomp;           /**< (presumed) write-precomp cylinder number */
+} __attribute__((packed));
+
+/** Represents the TRS-XENIX bad track table (a.k.a. ".bad" table)*/
+struct trsxenix_badtrack {
+
+#define TRSXENIX_BADTRACK_BLOCKNUM 1
+#define TRSXENIX_BADTRACK_TABLEMARKER ".bad"
+#define TRSXENIX_BADTRACK_MAXBAD 102
+
+    char marker[4];             /**< table marker (".bad") */
+    uint16_t alttracks;         /**< number of alternate tracks at end of disk */
+    uint16_t badtracks;         /**< number of bad tracks recorded in badtrack table */
+    struct {
+        uint16_t cylinder;      /**< cylinder of bad track */
+        uint16_t head;          /**< head of bad track */
+    } badtrack[TRSXENIX_BADTRACK_MAXBAD];
+} __attribute__((packed));
+
+static int dsk_getgeometry_trsxenix(const struct dsk_config *cfg)
+{
+    union {
+        struct trsxenix_diskparm dskparm;
+        uint8_t blkdata[DSK_BLKSIZE];
+    } buf;
+    int res;
+
+    /* if creating a new disk... */
+    if (dsk_state.creating) {
+
+        /* verify cylinders and heads parameters given and within limits */
+        if (cfg->cylinders < 0 || cfg->heads < 0) {
+            return -EINVAL; // TODO: Disk geometry required
+        }
+        if (cfg->cylinders < TRSXENIX_DISKPARAM_MINCYLINDERS ||
+            cfg->cylinders > TRSXENIX_DISKPARAM_MAXCYLINDERS) {
+            return -EINVAL; // TODO: Invalid number of cylinders
+        }
+        if (cfg->heads < TRSXENIX_DISKPARAM_MINHEADS ||
+            cfg->heads > TRSXENIX_DISKPARAM_MAXHEADS) {
+            return -EINVAL; // TODO: Invalid number of heads
+        }
+        dsk_state.geometry.cylinders = cfg->cylinders;
+        dsk_state.geometry.heads = cfg->heads;
+
+        /* if sectors not specified, assume default */
+        dsk_state.geometry.sectors = (cfg->sectors > 0) ? cfg->sectors : TRSXENIX_DISKPARAM_SECTORS;
+    }
+
+    /* otherwise read geometery from the disk... */
+    else {
+
+        /* attempt to read the block containing the Xenix disk parameter table */
+        res = dsk_read(TRSXENIX_DISKPARAM_BLOCKNUM, &buf, DSK_BLKSIZE);
+        if (res < 0) {
+            return res;
+        }
+
+        /* check for the table marker and verify the table length. fail if not correct. */
+        if (strncmp(buf.dskparm.marker, TRSXENIX_DISKPARAM_TABLEMARKER, sizeof(buf.dskparm.marker)) != 0 ||
+            fs_htobe_u16(buf.dskparm.length) != sizeof(struct trsxenix_diskparm)) {
+            return -EINVAL; // TODO: Error Xenix disk parameter table not found
+        }
+
+        /* read the disk geometry from the parameter table */
+        dsk_state.geometry.cylinders = fs_htobe_u16(buf.dskparm.cylinders);
+        dsk_state.geometry.heads = fs_htobe_u16(buf.dskparm.heads);
+        dsk_state.geometry.sectors = fs_htobe_u16(buf.dskparm.sectors);
+    }
+
+    return 0;
+}
+
 static int dsk_getinterleave(const struct dsk_config *cfg)
 {
     const struct dsk_layoutinfo *layoutinfo = dsk_getlayoutinfo(dsk_state.layout);
@@ -797,9 +893,6 @@ static int dsk_getfspart(const struct dsk_config *cfg)
     int res;
     const struct dsk_layoutinfo *layoutinfo = dsk_getlayoutinfo(dsk_state.layout);
     const struct dsk_partinfo *parttab = NULL, *p = NULL;
-
-    dsk_state.fsoffset = -1;
-    dsk_state.fssize = -1;
 
     /* if the disk layout supports partitioning attempt to fetch the
      * partition table; return if an error occurs. */
@@ -914,7 +1007,7 @@ static int dsk_getparttab(const struct dsk_partinfo **outparttab)
         res = -EINVAL; // TODO: implement this
         break;
     case dsk_layout_trsxenix:
-        res = -EINVAL; // TODO: implement this
+        res = dsk_getparttab_trsxenix(outparttab);
         break;
     case dsk_layout_211bsd_disklabel:
         res = -EINVAL; // TODO: implement this
@@ -934,19 +1027,124 @@ static int dsk_getparttab(const struct dsk_partinfo **outparttab)
     return res;
 }
 
+static int dsk_getparttab_trsxenix(const struct dsk_partinfo **outparttab)
+{
+    union {
+        struct trsxenix_badtrack badtrack;
+        uint8_t blkdata[DSK_BLKSIZE];
+    } buf;
+    int res;
+
+    static struct dsk_partinfo parttab[] = {
+        { .num = 1, .type = -1 },
+        { .num = -1 }
+    };
+
+    /* attempt to read the block containing the Xenix bad track table */
+    res = dsk_read(TRSXENIX_BADTRACK_BLOCKNUM, &buf, DSK_BLKSIZE);
+    if (res < 0) {
+        return res;
+    }
+
+    /* check for the table marker. fail if not found... */
+    if (strncmp(buf.badtrack.marker, TRSXENIX_BADTRACK_TABLEMARKER, sizeof(buf.badtrack.marker)) != 0) {
+        return -EINVAL; // TODO: Error Xenix bad track table not found
+    }
+
+    /* fetch the number of alternate tracks */
+    uint16_t alttracks = fs_htobe_u16(buf.badtrack.alttracks);
+
+    /* compute the number of tracks in the filesystem partition. fail if the alttracks
+     * value is bad. */
+    off_t parttracks = (dsk_state.geometry.cylinders * dsk_state.geometry.heads)
+                       - TRSXENIX_BOOTTRACKS
+                       - alttracks;
+    if (parttracks < 1) {
+        return -EINVAL; // TODO: Invalid value in Xenix bad track table
+    }
+
+    /* setup the offset and size (in blocks) of the filesystem partition */
+    parttab[0].offset = ((off_t)TRSXENIX_BOOTTRACKS) * dsk_state.geometry.sectors;
+    parttab[0].size = parttracks * dsk_state.geometry.sectors;
+
+    *outparttab = parttab;
+
+    return 0;
+}
+
 static int dsk_writelayout(const struct dsk_config *cfg)
 {
     switch (dsk_state.layout) {
     case dsk_layout_mbr:
         return -EINTR; // TODO: implement this
     case dsk_layout_trsxenix:
-        return -EINTR; // TODO: implement this
+        return dsk_writelayout_trsxenix(cfg);
     case dsk_layout_211bsd_disklabel:
         return -EINTR; // TODO: implement this
     default:
         /* nothing to do for all other layouts */
         return 0;
     }
+}
+
+static int dsk_writelayout_trsxenix(const struct dsk_config *cfg)
+{
+    union {
+        struct trsxenix_diskparm dskparm;
+        struct trsxenix_badtrack badtrack;
+        uint8_t blkdata[DSK_BLKSIZE];
+    } buf;
+    int res;
+    uint16_t alttracks;
+
+    memset(&buf, 0, sizeof(buf));
+    memcpy(buf.dskparm.marker, TRSXENIX_DISKPARAM_TABLEMARKER, sizeof(buf.dskparm.marker));
+    buf.dskparm.length = fs_htobe_u16(sizeof(struct trsxenix_diskparm));
+    buf.dskparm.cylinders = fs_htobe_u16(dsk_state.geometry.cylinders);
+    buf.dskparm.heads = fs_htobe_u16(dsk_state.geometry.heads);
+    buf.dskparm.sectors = fs_htobe_u16(dsk_state.geometry.sectors);
+    buf.dskparm.sectorsize = fs_htobe_u16(TRSXENIX_DISKPARAM_SECTORSSIZE);
+    buf.dskparm.precomp = fs_htobe_u16(dsk_state.geometry.cylinders / 2);
+    res = dsk_write(TRSXENIX_DISKPARAM_BLOCKNUM, &buf, DSK_BLKSIZE);
+    if (res < 0) {
+        return res;
+    }
+
+    /* if the filesystem partition size parameter was given... */
+    if (cfg->fssize > 0) {
+
+        /* calculate the requested fs partition size in terms of whole tracks,
+         * rounding down if necessary. fail if the specified size exceeds the
+         * available disk space */
+        off_t parttracks = cfg->fssize / TRSXENIX_DISKPARAM_SECTORS;
+        off_t maxparttracks = (cfg->cylinders * cfg->heads) - TRSXENIX_BOOTTRACKS;
+        if (parttracks > maxparttracks) {
+            return -EINVAL; // TODO: Filesystem partition size too big
+        }
+
+        /* set the number of alternate tracks equal to the remaining number of
+         * tracks beyond the requested end of the filesystem partition */
+        alttracks = (uint16_t)(maxparttracks - parttracks);
+    }
+
+    /* otherwise, automatically reserve a default set alternate tracks
+     * and use the remainder of the disk for the filesystem. */
+    else {
+        alttracks = TRSXENIX_DEFAULTALTTRACKS;
+    }
+
+    // TODO: write copyright/id string to offset 0x1a0 in badtrack block???
+
+    /* write an empty badtrack table to disk */
+    memset(&buf, 0, sizeof(buf));
+    memcpy(buf.badtrack.marker, TRSXENIX_BADTRACK_TABLEMARKER, sizeof(buf.badtrack.marker));
+    buf.badtrack.alttracks = fs_htobe_u16(alttracks);
+    res = dsk_write(TRSXENIX_BADTRACK_BLOCKNUM, &buf, DSK_BLKSIZE);
+    if (res < 0) {
+        return res;
+    }
+
+    return 0;
 }
 
 static const struct dsk_layoutinfo * dsk_getlayoutinfo(int layout)
@@ -995,6 +1193,7 @@ static off_t dsk_blktopos(off_t blkno)
         }
 
         /* convert the logical sector number to an index based on the interleave factor */
+        // TODO: is this right for even sectors-per-track???
         off_t secindex = (secno * dsk_state.interleave) % dsk_state.geometry.sectors;
 
         /* compute the file position for the block:
@@ -1014,6 +1213,13 @@ static const struct dsk_layoutinfo dsk_layouts[] = {
         .layout = dsk_layout_rawdisk,
         .partitioned = false,
         .interleave = -1,
+        .geometry = NULL,
+        .parttab = NULL,
+    },
+    {
+        .layout = dsk_layout_trsxenix,
+        .partitioned = true,
+        .interleave = 2,
         .geometry = NULL,
         .parttab = NULL,
     },
