@@ -15,7 +15,7 @@
  */
 
 /**
- * @file  Functions for accessing the underlying device/image file.
+ * @file  Disk I/O Layer: API for interacting with virtual disks
  */
 
 #ifndef __DSKIO_H__
@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 enum {
     DSK_BLKSIZE = 512

@@ -45,6 +45,20 @@ bindir ?= $(exec_prefix)/bin
 vpath %.c $(dir $(MAKEFILE_LIST))
 
 
+DSKIO_SRC = \
+	src/dskio.c \
+	src/dskio-dev.c \
+	src/dskio-imagefile.c \
+	src/dskio-layout.c \
+	src/dskio-trsxenix.c
+DSKIO_OBJS = $(DSKIO_SRC:.c=.o)
+DSKIO_DEPS = $(DSKIO_SRC:.c=.d)
+
+-include $(DSKIO_DEPS)
+
+ALL_OUTPUTS += $(DSKIO_OBJS) $(DSKIO_DEPS)
+
+
 ############### UNIX V6 ################
 
 V6FS_PROG = v6fs
@@ -69,8 +83,7 @@ V6FS_SRC = \
 	src/v6fuse.c \
 	src/v6fs.c \
 	src/v6adapt.c \
-	src/idmap.c \
-	src/dskio.c
+	src/idmap.c
 V6FS_OBJS = $(V6FS_SRC:.c=.o)
 V6FS_DEPS = $(V6FS_SRC:.c=.d)
 
@@ -79,7 +92,7 @@ $(V6_DEPS) src/v6fs.d src/v6adapt.d : CPPFLAGS += -I./ancient-src/v6
 
 -include $(V6_DEPS) $(V6FS_DEPS)
  
-$(V6FS_PROG) : $(V6FS_OBJS) $(V6_OBJS)
+$(V6FS_PROG) : $(V6FS_OBJS) $(V6_OBJS) $(DSKIO_OBJS)
 	$(CC) -o $@ $(LD_MAP_FLAG) $^ $(LIBS)
 
 ALL_PROGS += $(V6FS_PROG)
@@ -112,8 +125,7 @@ V7FS_SRC = \
 	src/v7fusecommon.c \
 	src/v7fs.c \
 	src/v7adapt.c \
-	src/idmap.c \
-	src/dskio.c
+	src/idmap.c
 V7FS_OBJS = $(V7FS_SRC:.c=.o)
 V7FS_DEPS = $(V7FS_SRC:.c=.d)
 
@@ -122,7 +134,7 @@ $(V7_DEPS) src/v7fs.d src/v7adapt.d : CPPFLAGS += -I./ancient-src/v7
 
 -include $(V7_DEPS) $(V7FS_DEPS)
 
-$(V7FS_PROG) : $(V7FS_OBJS) $(V7_OBJS)
+$(V7FS_PROG) : $(V7FS_OBJS) $(V7_OBJS) $(DSKIO_OBJS)
 	$(CC) -o $@ $(LD_MAP_FLAG) $^ $(LIBS)
 
 ALL_PROGS += $(V7FS_PROG)
@@ -227,14 +239,13 @@ XENIXFS_SRC = \
 	src/v7fusecommon.c \
 	src/v7fs.c \
 	src/v7adapt.c \
-	src/idmap.c \
-	src/dskio.c
+	src/idmap.c
 XENIXFS_OBJS = $(XENIXFS_SRC:.c=.o)
 XENIXFS_DEPS = $(XENIXFS_SRC:.c=.d)
 
 -include $(XENIXFS_DEPS)
 
-$(XENIXFS_PROG) : $(XENIXFS_OBJS) $(V7_OBJS)
+$(XENIXFS_PROG) : $(XENIXFS_OBJS) $(V7_OBJS) $(DSKIO_OBJS)
 	$(CC) -o $@ $(LD_MAP_FLAG) $^ $(LIBS)
 
 ALL_PROGS += $(XENIXFS_PROG)

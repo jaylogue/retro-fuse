@@ -15,95 +15,13 @@
  */
 
 /**
- * @file  Functions for accessing a virtual disk stored in disk device or
- *        container file.
+ * @file  Disk I/O Layer: API for interacting with virtual disks
  */
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <sys/types.h>
-#include <limits.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <errno.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
+#include "dskio-internal.h"
 
-#if defined(__linux__)
-#include <linux/fs.h>
-#endif
-#if defined(__APPLE__)
-#include <sys/disk.h>
-#endif
 
-#include "dskio.h"
-#include "fsbyteorder.h"
-
-struct dsk_geometry {
-    off_t size;             /**< Size (in blocks) of disk (<0 if unknown) */
-    int cylinders;          /**< Number of cylinders (<0 if unknown) */
-    int heads;              /**< Number of heads (<0 if unknown) */
-    int sectors;            /**< Number of sectors per track (<0 if unknown) */
-};
-
-struct dsk_partinfo {
-    int num;                /**< Partition number (<0 if end of list) */
-    int type;               /**< Partition type code (<0 if not applicable)*/
-    off_t offset;           /**< Offset (in blocks) to the start of partition */
-    off_t size;             /**< Size (in blocks) of partition */
-};
-
-struct dsk_layoutinfo {
-    int layout;             /**< Disk layout id (values from dsk_layout)*/
-    bool partitioned;       /**< Flag indicating disk layout is subject to partitioning */
-    const struct dsk_geometry *geometry;
-                            /**< Size/geometry for disk layouts with fixed size/geometry
-                             *   NULL for layouts that store geometry information on disk */
-    const struct dsk_partinfo *parttab; 
-                            /**< Partition table for disk layouts with static partition tables;
-                             *   NULL for layouts that use dynamic (on-disk) partition information */
-    int interleave;         /**< Sector interleave factor */
-};
-
-static struct dsk_state {
-    bool isopen;            /**< Flag indicating a disk device/container is currently open */
-    bool creating;          /**< Flag indicating the disk device/container is being created */
-    bool ro;                /**< Flag indicating the disk device/container is opened for read only */
-    int fd;                 /**< File descriptor for image file (<0 if not set) */
-    int container;          /**< Disk container type (values from dsk_container) */
-    int layout;             /**< Disk layout/partitioning scheme (values from dsk_layout) */
-    off_t offset;           /**< Offset (in bytes) to start of disk image within container */
-    struct dsk_geometry geometry; /**< Disk geometry */
-    int interleave;         /**< Sector interleave factor (1 = no interleave) */
-    int sector0num;         /**< Logical number of first sector in track (0 or 1) */
-    off_t fsoffset;         /**< Offset (in blocks) to the start of active filesystem partition */
-    off_t fssize;           /**< Size (in blocks) of active filesystem partition (INT64_MAX if unlimited) */
-    off_t fslimit;          /**< Limit on the max block number that can be passed to read/write (INT64_MAX if unlimited) */
-} dsk_state;
-
-static void dsk_resetstate();
-static int dsk_guesscontainer(const char *filename);
-static int dsk_guesslayout(const char *filename);
-static int dsk_opencontainer(const char *filename, const struct dsk_config *cfg);
-static int dsk_opencontainer_imagefile(const char *filename, const struct dsk_config *cfg);
-static int dsk_opencontainer_dev(const char *filename, const struct dsk_config *cfg);
-static int dsk_createcontainer(const char *filename, const struct dsk_config *cfg);
-static int dsk_createcontainer_imagefile(const char *filename, const struct dsk_config *cfg);
-static int dsk_getgeometry(const struct dsk_config *cfg);
-static int dsk_getgeometry_dev();
-static int dsk_getgeometry_trsxenix(const struct dsk_config *cfg);
-static int dsk_getinterleave(const struct dsk_config *cfg);
-static int dsk_getfspart(const struct dsk_config *cfg);
-static int dsk_getparttab(const struct dsk_partinfo **outparttab);
-static int dsk_getparttab_trsxenix(const struct dsk_partinfo **outparttab);
-static int dsk_writelayout(const struct dsk_config *cfg);
-static int dsk_writelayout_trsxenix(const struct dsk_config *cfg);
-static const struct dsk_layoutinfo * dsk_getlayoutinfo(int layout);
-static off_t dsk_blktopos(off_t blkno);
-
-static const struct dsk_layoutinfo dsk_layouts[];
-
+/* ========== Public Interface Functions ========== */
 
 /** Open/create a disk backed by a block device or disk container file.
  * 
@@ -432,9 +350,14 @@ void dsk_initconfig(struct dsk_config *cfg)
     cfg->fssize = -1;
 }
 
-/* ========== Private Functions/Data ========== */
 
-static void dsk_resetstate()
+
+
+/* ========== Private Internal Functions / Data ========== */
+
+struct dsk_state dsk_state;
+
+void dsk_resetstate()
 {
     dsk_state = (struct dsk_state) {
         .fd = -1,
@@ -446,7 +369,7 @@ static void dsk_resetstate()
     };
 }
 
-static int dsk_guesscontainer(const char *filename)
+int dsk_guesscontainer(const char *filename)
 {
     struct stat statbuf;
     const char * ext;
@@ -486,7 +409,7 @@ static int dsk_guesscontainer(const char *filename)
     return dsk_container_notspecified;
 }
 
-static int dsk_guesslayout(const char *filename)
+int dsk_guesslayout(const char *filename)
 {
     // TODO: finish this
 
@@ -501,7 +424,7 @@ static int dsk_guesslayout(const char *filename)
     return dsk_layout_notspecified;
 }
 
-static int dsk_opencontainer(const char *filename, const struct dsk_config *cfg)
+int dsk_opencontainer(const char *filename, const struct dsk_config *cfg)
 {
     /* based on the container type, open the underlying disk file */
     switch (dsk_state.container) {
@@ -514,51 +437,7 @@ static int dsk_opencontainer(const char *filename, const struct dsk_config *cfg)
     }
 }
 
-static int dsk_opencontainer_imagefile(const char *filename, const struct dsk_config *cfg)
-{
-    struct stat statbuf;
-    int oflags = dsk_state.ro ? O_RDONLY : O_RDWR;
-
-    /* only allow regular files */
-    if (stat(filename, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
-        return -EPERM;
-
-    /* open the image file. fail if an error occurs. */
-    dsk_state.fd = open(filename, oflags, 0666);
-    if (dsk_state.fd < 0) {
-        return -errno;
-    }
-
-    /* setup offset into imagefile for start of disk image. */
-    dsk_state.offset =  (cfg->offset >= 0) ? cfg->offset : 0;
-
-    return 0;
-}
-
-static int dsk_opencontainer_dev(const char *filename, const struct dsk_config *cfg)
-{
-    struct stat statbuf;
-    int oflags = dsk_state.ro ? O_RDONLY : O_RDWR;
-
-    /* fail if the file isn't a block device */
-    if (stat(filename, &statbuf) == 0 && !S_ISBLK(statbuf.st_mode)) {
-        return -ENOTBLK;
-    }
-
-    /* fail if the given disk offset is anything other than zero */
-    if (cfg->offset > 0) {
-        return -EINVAL; // TODO: ERROR: Disk offset for block device must be 0
-    }
-
-    // open the device file. fail if an error occurs.
-    dsk_state.fd = open(filename, oflags, 0666);
-    if (dsk_state.fd < 0)
-        return -errno;
-
-    return 0;
-}
-
-static int dsk_createcontainer(const char *filename, const struct dsk_config *cfg)
+int dsk_createcontainer(const char *filename, const struct dsk_config *cfg)
 {
     /* based on the container type, create the underlying disk file(s) */
     switch (dsk_state.container) {
@@ -572,30 +451,7 @@ static int dsk_createcontainer(const char *filename, const struct dsk_config *cf
     }
 }
 
-static int dsk_createcontainer_imagefile(const char *filename, const struct dsk_config *cfg)
-{
-    /* open the image file, creating or truncating it in the process */
-    dsk_state.fd = open(filename, O_CREAT|O_TRUNC|O_RDWR, 0666);
-    if (dsk_state.fd < 0)
-        return -errno;
-
-    /* if the size of the disk is known and is not "unlimited" extend the file to the
-     * size of the disk. note that on filesystems that support it, this will create a
-     * sparse file that does not actually consume any space on the host disk. */
-    if (dsk_state.geometry.size >= 0 && dsk_state.geometry.size != INT64_MAX) {
-        if (ftruncate(dsk_state.fd, dsk_state.geometry.size) != 0) {
-            int res = -errno;
-            close(dsk_state.fd);
-            dsk_state.fd = -1;
-            unlink(filename);
-            return res;
-        }
-    }
-
-    return 0;
-}
-
-static int dsk_getgeometry(const struct dsk_config *cfg)
+int dsk_getgeometry(const struct dsk_config *cfg)
 {
     const struct dsk_layoutinfo *layoutinfo;
     int res = 0;
@@ -726,127 +582,7 @@ static int dsk_getgeometry(const struct dsk_config *cfg)
     return 0;
 }
 
-static int dsk_getgeometry_dev()
-{
-    uint64_t blkdevsize;
-
-    /* fetch the size of the block device from the kernel */
-#if defined(__linux__)
-    if (ioctl(dsk_state.fd, BLKGETSIZE64, &blkdevsize) < 0) {
-        return -errno;
-    }
-    blkdevsize /= DSK_BLKSIZE;
-#elif defined(__APPLE__)
-    uint32_t blksize;
-    uint64_t blkcount;
-    if (ioctl(dsk_fd, DKIOCGETblksize, &blksize) < 0 ||
-        ioctl(dsk_fd, DKIOCGETblkcount, &blkdevsize) < 0) {
-        return -errno;
-    }
-    blkdevsize = (blkdevsize * blksize) / DSK_BLKSIZE;
-#endif
-
-    dsk_state.geometry.size = (off_t)blkdevsize;
-
-    return 0;
-}
-
-#define TRSXENIX_BOOTTRACKS 2
-#define TRSXENIX_DEFAULTALTTRACKS 24
-
-/** Represents the TRS-XENIX disk parameter table (a.k.a. ".pvh" table) */
-struct trsxenix_diskparm {
-
-#define TRSXENIX_DISKPARAM_BLOCKNUM 0
-#define TRSXENIX_DISKPARAM_TABLEMARKER ".pvh"
-#define TRSXENIX_DISKPARAM_MINCYLINDERS 31
-#define TRSXENIX_DISKPARAM_MAXCYLINDERS 2048
-#define TRSXENIX_DISKPARAM_MINHEADS 2
-#define TRSXENIX_DISKPARAM_MAXHEADS 16
-#define TRSXENIX_DISKPARAM_SECTORS 17
-#define TRSXENIX_DISKPARAM_SECTORSSIZE 512
-
-
-    char marker[4];             /**< table marker (".pvh") */
-    uint16_t length;            /**< table length; value: 16 */
-    uint16_t cylinders;         /**< number of cylinders*/
-    uint16_t heads;             /**< number of heads */
-    uint16_t sectors;           /**< number of sectors per track */
-    uint16_t sectorsize;        /**< number of bytes per sector */
-    uint16_t precomp;           /**< (presumed) write-precomp cylinder number */
-} __attribute__((packed));
-
-/** Represents the TRS-XENIX bad track table (a.k.a. ".bad" table)*/
-struct trsxenix_badtrack {
-
-#define TRSXENIX_BADTRACK_BLOCKNUM 1
-#define TRSXENIX_BADTRACK_TABLEMARKER ".bad"
-#define TRSXENIX_BADTRACK_MAXBAD 102
-
-    char marker[4];             /**< table marker (".bad") */
-    uint16_t alttracks;         /**< number of alternate tracks at end of disk */
-    uint16_t badtracks;         /**< number of bad tracks recorded in badtrack table */
-    struct {
-        uint16_t cylinder;      /**< cylinder of bad track */
-        uint16_t head;          /**< head of bad track */
-    } badtrack[TRSXENIX_BADTRACK_MAXBAD];
-} __attribute__((packed));
-
-static int dsk_getgeometry_trsxenix(const struct dsk_config *cfg)
-{
-    union {
-        struct trsxenix_diskparm dskparm;
-        uint8_t blkdata[DSK_BLKSIZE];
-    } buf;
-    int res;
-
-    /* if creating a new disk... */
-    if (dsk_state.creating) {
-
-        /* verify cylinders and heads parameters given and within limits */
-        if (cfg->cylinders < 0 || cfg->heads < 0) {
-            return -EINVAL; // TODO: Disk geometry required
-        }
-        if (cfg->cylinders < TRSXENIX_DISKPARAM_MINCYLINDERS ||
-            cfg->cylinders > TRSXENIX_DISKPARAM_MAXCYLINDERS) {
-            return -EINVAL; // TODO: Invalid number of cylinders
-        }
-        if (cfg->heads < TRSXENIX_DISKPARAM_MINHEADS ||
-            cfg->heads > TRSXENIX_DISKPARAM_MAXHEADS) {
-            return -EINVAL; // TODO: Invalid number of heads
-        }
-        dsk_state.geometry.cylinders = cfg->cylinders;
-        dsk_state.geometry.heads = cfg->heads;
-
-        /* if sectors not specified, assume default */
-        dsk_state.geometry.sectors = (cfg->sectors > 0) ? cfg->sectors : TRSXENIX_DISKPARAM_SECTORS;
-    }
-
-    /* otherwise read geometery from the disk... */
-    else {
-
-        /* attempt to read the block containing the Xenix disk parameter table */
-        res = dsk_read(TRSXENIX_DISKPARAM_BLOCKNUM, &buf, DSK_BLKSIZE);
-        if (res < 0) {
-            return res;
-        }
-
-        /* check for the table marker and verify the table length. fail if not correct. */
-        if (strncmp(buf.dskparm.marker, TRSXENIX_DISKPARAM_TABLEMARKER, sizeof(buf.dskparm.marker)) != 0 ||
-            fs_htobe_u16(buf.dskparm.length) != sizeof(struct trsxenix_diskparm)) {
-            return -EINVAL; // TODO: Error Xenix disk parameter table not found
-        }
-
-        /* read the disk geometry from the parameter table */
-        dsk_state.geometry.cylinders = fs_htobe_u16(buf.dskparm.cylinders);
-        dsk_state.geometry.heads = fs_htobe_u16(buf.dskparm.heads);
-        dsk_state.geometry.sectors = fs_htobe_u16(buf.dskparm.sectors);
-    }
-
-    return 0;
-}
-
-static int dsk_getinterleave(const struct dsk_config *cfg)
+int dsk_getinterleave(const struct dsk_config *cfg)
 {
     const struct dsk_layoutinfo *layoutinfo = dsk_getlayoutinfo(dsk_state.layout);
 
@@ -888,7 +624,7 @@ static int dsk_getinterleave(const struct dsk_config *cfg)
     return 0;
 }
 
-static int dsk_getfspart(const struct dsk_config *cfg)
+int dsk_getfspart(const struct dsk_config *cfg)
 {
     int res;
     const struct dsk_layoutinfo *layoutinfo = dsk_getlayoutinfo(dsk_state.layout);
@@ -997,7 +733,7 @@ static int dsk_getfspart(const struct dsk_config *cfg)
     return 0;
 }
 
-static int dsk_getparttab(const struct dsk_partinfo **outparttab)
+int dsk_getparttab(const struct dsk_partinfo **outparttab)
 {
     const struct dsk_layoutinfo *layoutinfo;
     int res = 0;
@@ -1027,52 +763,7 @@ static int dsk_getparttab(const struct dsk_partinfo **outparttab)
     return res;
 }
 
-static int dsk_getparttab_trsxenix(const struct dsk_partinfo **outparttab)
-{
-    union {
-        struct trsxenix_badtrack badtrack;
-        uint8_t blkdata[DSK_BLKSIZE];
-    } buf;
-    int res;
-
-    static struct dsk_partinfo parttab[] = {
-        { .num = 1, .type = -1 },
-        { .num = -1 }
-    };
-
-    /* attempt to read the block containing the Xenix bad track table */
-    res = dsk_read(TRSXENIX_BADTRACK_BLOCKNUM, &buf, DSK_BLKSIZE);
-    if (res < 0) {
-        return res;
-    }
-
-    /* check for the table marker. fail if not found... */
-    if (strncmp(buf.badtrack.marker, TRSXENIX_BADTRACK_TABLEMARKER, sizeof(buf.badtrack.marker)) != 0) {
-        return -EINVAL; // TODO: Error Xenix bad track table not found
-    }
-
-    /* fetch the number of alternate tracks */
-    uint16_t alttracks = fs_htobe_u16(buf.badtrack.alttracks);
-
-    /* compute the number of tracks in the filesystem partition. fail if the alttracks
-     * value is bad. */
-    off_t parttracks = (dsk_state.geometry.cylinders * dsk_state.geometry.heads)
-                       - TRSXENIX_BOOTTRACKS
-                       - alttracks;
-    if (parttracks < 1) {
-        return -EINVAL; // TODO: Invalid value in Xenix bad track table
-    }
-
-    /* setup the offset and size (in blocks) of the filesystem partition */
-    parttab[0].offset = ((off_t)TRSXENIX_BOOTTRACKS) * dsk_state.geometry.sectors;
-    parttab[0].size = parttracks * dsk_state.geometry.sectors;
-
-    *outparttab = parttab;
-
-    return 0;
-}
-
-static int dsk_writelayout(const struct dsk_config *cfg)
+int dsk_writelayout(const struct dsk_config *cfg)
 {
     switch (dsk_state.layout) {
     case dsk_layout_mbr:
@@ -1087,67 +778,7 @@ static int dsk_writelayout(const struct dsk_config *cfg)
     }
 }
 
-static int dsk_writelayout_trsxenix(const struct dsk_config *cfg)
-{
-    union {
-        struct trsxenix_diskparm dskparm;
-        struct trsxenix_badtrack badtrack;
-        uint8_t blkdata[DSK_BLKSIZE];
-    } buf;
-    int res;
-    uint16_t alttracks;
-
-    memset(&buf, 0, sizeof(buf));
-    memcpy(buf.dskparm.marker, TRSXENIX_DISKPARAM_TABLEMARKER, sizeof(buf.dskparm.marker));
-    buf.dskparm.length = fs_htobe_u16(sizeof(struct trsxenix_diskparm));
-    buf.dskparm.cylinders = fs_htobe_u16(dsk_state.geometry.cylinders);
-    buf.dskparm.heads = fs_htobe_u16(dsk_state.geometry.heads);
-    buf.dskparm.sectors = fs_htobe_u16(dsk_state.geometry.sectors);
-    buf.dskparm.sectorsize = fs_htobe_u16(TRSXENIX_DISKPARAM_SECTORSSIZE);
-    buf.dskparm.precomp = fs_htobe_u16(dsk_state.geometry.cylinders / 2);
-    res = dsk_write(TRSXENIX_DISKPARAM_BLOCKNUM, &buf, DSK_BLKSIZE);
-    if (res < 0) {
-        return res;
-    }
-
-    /* if the filesystem partition size parameter was given... */
-    if (cfg->fssize > 0) {
-
-        /* calculate the requested fs partition size in terms of whole tracks,
-         * rounding down if necessary. fail if the specified size exceeds the
-         * available disk space */
-        off_t parttracks = cfg->fssize / TRSXENIX_DISKPARAM_SECTORS;
-        off_t maxparttracks = (cfg->cylinders * cfg->heads) - TRSXENIX_BOOTTRACKS;
-        if (parttracks > maxparttracks) {
-            return -EINVAL; // TODO: Filesystem partition size too big
-        }
-
-        /* set the number of alternate tracks equal to the remaining number of
-         * tracks beyond the requested end of the filesystem partition */
-        alttracks = (uint16_t)(maxparttracks - parttracks);
-    }
-
-    /* otherwise, automatically reserve a default set alternate tracks
-     * and use the remainder of the disk for the filesystem. */
-    else {
-        alttracks = TRSXENIX_DEFAULTALTTRACKS;
-    }
-
-    // TODO: write copyright/id string to offset 0x1a0 in badtrack block???
-
-    /* write an empty badtrack table to disk */
-    memset(&buf, 0, sizeof(buf));
-    memcpy(buf.badtrack.marker, TRSXENIX_BADTRACK_TABLEMARKER, sizeof(buf.badtrack.marker));
-    buf.badtrack.alttracks = fs_htobe_u16(alttracks);
-    res = dsk_write(TRSXENIX_BADTRACK_BLOCKNUM, &buf, DSK_BLKSIZE);
-    if (res < 0) {
-        return res;
-    }
-
-    return 0;
-}
-
-static const struct dsk_layoutinfo * dsk_getlayoutinfo(int layout)
+const struct dsk_layoutinfo * dsk_getlayoutinfo(int layout)
 {
     const struct dsk_layoutinfo *layoutinfo;
 
@@ -1158,7 +789,7 @@ static const struct dsk_layoutinfo * dsk_getlayoutinfo(int layout)
     return (layoutinfo->layout != dsk_layout_notspecified) ? layoutinfo : NULL;
 }
 
-static off_t dsk_blktopos(off_t blkno)
+off_t dsk_blktopos(off_t blkno)
 {
     off_t blkpos;
 
@@ -1207,139 +838,3 @@ static off_t dsk_blktopos(off_t blkno)
 
     return blkpos;
 }
-
-static const struct dsk_layoutinfo dsk_layouts[] = {
-    {
-        .layout = dsk_layout_rawdisk,
-        .partitioned = false,
-        .interleave = -1,
-        .geometry = NULL,
-        .parttab = NULL,
-    },
-    {
-        .layout = dsk_layout_trsxenix,
-        .partitioned = true,
-        .interleave = 2,
-        .geometry = NULL,
-        .parttab = NULL,
-    },
-    {
-        .layout = dsk_layout_rk05,
-        .partitioned = false,
-        .interleave = 1,
-        .geometry = &(const struct dsk_geometry) {
-            .size = 4872,
-            .cylinders = 203,
-            .heads = 2,
-            .sectors = 12,
-        },
-        .parttab = NULL,
-    },
-    {
-        .layout = dsk_layout_rl01,
-        .partitioned = false,
-        .interleave = 1,
-        .geometry = &(const struct dsk_geometry) {
-            .size = 10240,
-            .cylinders = 256,
-            .heads = 2,
-            .sectors = 20,
-        },
-        .parttab = NULL
-    },
-    {
-        .layout = dsk_layout_rl02,
-        .partitioned = false,
-        .interleave = 1,
-        .geometry = &(const struct dsk_geometry) {
-            .size = 20480,
-            .cylinders = 512,
-            .heads = 2,
-            .sectors = 20,
-        },
-        .parttab = NULL
-    },
-    {
-        .layout = dsk_layout_rp03_v6,
-        .partitioned = true,
-        .interleave = 1,
-        .geometry = &(const struct dsk_geometry) {
-            .size = 81200,
-            .cylinders = 406,
-            .heads = 20,
-            .sectors = 10,
-        },
-        .parttab = (const struct dsk_partinfo[]) {
-            { .num = 0, .offset = 0,     .size = 40600 },
-            { .num = 1, .offset = 40600, .size = 40600 },
-            { .num = 2, .offset = 0,     .size = 9200  },
-            { .num = 3, .offset = 72000, .size = 9200  },
-            { .num = 4, .offset = 0,     .size = 65535 },
-            { .num = 5, .offset = 15600, .size = 65535 },
-            { .num = 6, .offset = 0,     .size = 15600 },
-            { .num = 7, .offset = 65600, .size = 15600 },
-            { .num = -1 }
-        }
-    },
-    {
-        .layout = dsk_layout_rp03_v7,
-        .partitioned = true,
-        .interleave = 1,
-        .geometry = &(const struct dsk_geometry) {
-            .size = 81200,
-            .cylinders = 406,
-            .heads = 20,
-            .sectors = 10,
-        },
-        .parttab = (const struct dsk_partinfo[]) {
-            { .num = 0, .offset = 0,     .size = 81000 },
-            { .num = 1, .offset = 0,     .size = 5000  },
-            { .num = 2, .offset = 5000,  .size = 2000  },
-            { .num = 3, .offset = 7000,  .size = 74000 },
-            { .num = -1 }
-        }
-    },
-    {
-        .layout = dsk_layout_rp06_v6,
-        .partitioned = true,
-        .interleave = 1,
-        .geometry = &(const struct dsk_geometry) {
-            .size = 340670,
-            .cylinders = 815,
-            .heads = 19,
-            .sectors = 22,
-        },
-        .parttab = (const struct dsk_partinfo[]) {
-            { .num = 0, .offset = 0,      .size = 9614  },
-            { .num = 1, .offset = 18392,  .size = 65535 },
-            { .num = 2, .offset = 48018,  .size = 65535 },
-            { .num = 3, .offset = 149644, .size = 20900 },
-            { .num = 4, .offset = 0,      .size = 40600 },
-            { .num = 5, .offset = 41800,  .size = 40600 },
-            { .num = 6, .offset = 83600,  .size = 40600 },
-            { .num = 7, .offset = 125400, .size = 40600 },
-            { .num = -1 }
-        }
-    },
-    {
-        .layout = dsk_layout_rp06_v7,
-        .partitioned = true,
-        .interleave = 1,
-        .geometry = &(const struct dsk_geometry) {
-            .size = 340670,
-            .cylinders = 815,
-            .heads = 19,
-            .sectors = 22,
-        },
-        .parttab = (const struct dsk_partinfo[]) {
-            { .num = 0, .offset = 0,      .size = 9614   },
-            { .num = 1, .offset = 9614,   .size = 8778   },
-            { .num = 4, .offset = 18392,  .size = 161348 },
-            { .num = 5, .offset = 179740, .size = 160930 },
-            { .num = 6, .offset = 18392,  .size = 153406 },
-            { .num = 7, .offset = 18392,  .size = 322278 },
-            { .num = -1 }
-        }
-    },
-    { .layout = dsk_layout_notspecified }
-};
