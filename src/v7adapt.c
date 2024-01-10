@@ -298,10 +298,10 @@ void v7_decodesuperblock(v7_caddr_t srcbuf, struct v7_filsys * dest)
         dest->s_isize = fs_htobe_u16(src->s_isize);
         dest->s_fsize = fs_htobe_i32(src->s_fsize);
         dest->s_nfree = fs_htobe_i16(src->s_nfree);
-        for (int i = 0; i < V7_NICFREE; i++)
+        for (int i = 0; i < V7_XENIX2_NICFREE; i++)
             dest->s_free[i] = fs_htobe_i32(src->s_free[i]);
         dest->s_ninode = fs_htobe_i16(src->s_ninode);
-        for (int i = 0; i < V7_NICINOD; i++)
+        for (int i = 0; i < V7_XENIX2_NICINOD; i++)
             dest->s_inode[i] = fs_htobe_u16(src->s_inode[i]);
         dest->s_flock = src->s_flock;
         dest->s_ilock = src->s_ilock;
@@ -350,15 +350,15 @@ void v7_encodesuperblock(struct v7_filsys * src, v7_caddr_t destbuf)
         memcpy(dest->s_fpack, src->s_fpack, sizeof(dest->s_fpack));
     }
     else if (v7_fsconfig.fstype == fs_type_msxenix2_be) {
-        struct v7_superblock * dest = (struct v7_superblock *)destbuf;
-        memset(dest, 0, sizeof(struct v7_superblock));
+        struct v7_superblock_xenix2 * dest = (struct v7_superblock_xenix2 *)destbuf;
+        memset(dest, 0, sizeof(struct v7_superblock_xenix2));
         dest->s_isize = fs_htobe_u16(src->s_isize);
         dest->s_fsize = fs_htobe_i32(src->s_fsize);
         dest->s_nfree = fs_htobe_i16(src->s_nfree);
-        for (int i = 0; i < V7_NICFREE; i++)
+        for (int i = 0; i < V7_XENIX2_NICFREE; i++)
             dest->s_free[i] = fs_htobe_i32(src->s_free[i]);
         dest->s_ninode = fs_htobe_i16(src->s_ninode);
-        for (int i = 0; i < V7_NICINOD; i++)
+        for (int i = 0; i < V7_XENIX2_NICINOD; i++)
             dest->s_inode[i] = fs_htobe_u16(src->s_inode[i]);
         dest->s_flock = src->s_flock;
         dest->s_ilock = src->s_ilock;
@@ -371,7 +371,7 @@ void v7_encodesuperblock(struct v7_filsys * src, v7_caddr_t destbuf)
         dest->s_n = fs_htobe_i16(src->s_n);
         memcpy(dest->s_fname, src->s_fname, sizeof(dest->s_fname));
         memcpy(dest->s_fpack, src->s_fpack, sizeof(dest->s_fpack));
-        // TODO: handle s_clean
+        dest->s_clean = V7_XENIX2_CLEAN_MARKER; // TODO: handle s_clean
     }
     else {
         /* v7_fsconfig.fstype set incorrectly */
