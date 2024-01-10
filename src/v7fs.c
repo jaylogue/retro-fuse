@@ -1267,7 +1267,7 @@ int v7fs_statfs(const char *pathname, struct statvfs *statvfsbuf)
             if (v7_u.u_error != 0)
                 return -v7_u.u_error;
             struct v7_fblk * fb = (struct v7_fblk *)bp->b_un.b_addr;
-            nfree = fb->df_nfree;
+            nfree = v7_htofs_i16(fb->df_nfree);
             nextfblk = fs_htopdp_i32(fb->df_free[0]);
             v7_brelse(bp);
         }
