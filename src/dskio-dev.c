@@ -27,13 +27,13 @@
 #include <sys/disk.h>
 #endif
 
-int dsk_opencontainer_dev(const char *filename, const struct dsk_config *cfg)
+int dsk_opencontainer_dev(const struct dsk_config *cfg)
 {
     struct stat statbuf;
     int oflags = dsk_state.ro ? O_RDONLY : O_RDWR;
 
     /* fail if the file isn't a block device */
-    if (stat(filename, &statbuf) == 0 && !S_ISBLK(statbuf.st_mode)) {
+    if (stat(dsk_state.filename, &statbuf) == 0 && !S_ISBLK(statbuf.st_mode)) {
         return -ENOTBLK;
     }
 
@@ -43,14 +43,14 @@ int dsk_opencontainer_dev(const char *filename, const struct dsk_config *cfg)
     }
 
     // open the device file. fail if an error occurs.
-    dsk_state.fd = open(filename, oflags, 0666);
+    dsk_state.fd = open(dsk_state.filename, oflags, 0666);
     if (dsk_state.fd < 0)
         return -errno;
 
     return 0;
 }
 
-int dsk_getgeometry_dev()
+int dsk_getgeometry_dev(const struct dsk_config *cfg, struct dsk_geometry *geometry)
 {
     uint64_t blkdevsize;
 
@@ -70,7 +70,10 @@ int dsk_getgeometry_dev()
     blkdevsize = (blkdevsize * blksize) / DSK_BLKSIZE;
 #endif
 
-    dsk_state.geometry.size = (off_t)blkdevsize;
+    geometry->size = (off_t)blkdevsize;
+    geometry->cylinders = -1;
+    geometry->heads = -1;
+    geometry->sectors = -1;
 
     return 0;
 }

@@ -25,6 +25,7 @@
 #include "fsbyteorder.h"
 
 // TODO: eliminate/move some of these???
+#include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 #include <limits.h>
@@ -44,6 +45,8 @@ struct dsk_geometry {
     int sectors;            /**< Number of sectors per track (<0 if unknown) */
 };
 
+#define DSK_EMPTY_GEOMETRY ((struct dsk_geometry){ .cylinders = -1, .heads = -1, .sectors = -1, .size = -1 })
+
 /** Represents disk partition information
  */
 struct dsk_partinfo {
@@ -52,6 +55,7 @@ struct dsk_partinfo {
     off_t offset;           /**< Offset (in blocks) to the start of partition */
     off_t size;             /**< Size (in blocks) of partition */
 };
+
 
 /** Describes the features associated with a particular logical disk layout
  */
@@ -71,10 +75,11 @@ struct dsk_layoutinfo {
 /** Contains the current state of the disk I/O layer
  */
 struct dsk_state {
+    char *filename;         /**< Device/container file name (malloced, NULL if not set) */
     bool isopen;            /**< Flag indicating a disk device/container is currently open */
     bool creating;          /**< Flag indicating the disk device/container is being created */
     bool ro;                /**< Flag indicating the disk device/container is opened for read only */
-    int fd;                 /**< File descriptor for image file (<0 if not set) */
+    int fd;                 /**< File descriptor for disk image file (<0 if not open) */
     int container;          /**< Disk container type (values from dsk_container) */
     int layout;             /**< Disk layout/partitioning scheme (values from dsk_layout) */
     off_t offset;           /**< Offset (in bytes) to start of disk image within container */
@@ -92,16 +97,19 @@ extern const struct dsk_layoutinfo dsk_layouts[];
 /* Internal functions used by the disk I/O layer */
 
 extern void dsk_resetstate();
-extern int dsk_guesscontainer(const char *filename);
-extern int dsk_guesslayout(const char *filename);
-extern int dsk_opencontainer(const char *filename, const struct dsk_config *cfg);
-extern int dsk_opencontainer_imagefile(const char *filename, const struct dsk_config *cfg);
-extern int dsk_opencontainer_dev(const char *filename, const struct dsk_config *cfg);
-extern int dsk_createcontainer(const char *filename, const struct dsk_config *cfg);
-extern int dsk_createcontainer_imagefile(const char *filename, const struct dsk_config *cfg);
+extern int dsk_guesscontainer();
+extern int dsk_guesslayout();
+extern int dsk_opencontainer(const struct dsk_config *cfg);
+extern int dsk_opencontainer_imagefile(const struct dsk_config *cfg);
+extern int dsk_opencontainer_dev(const struct dsk_config *cfg);
+extern int dsk_opencontainer_drem(const struct dsk_config *cfg);
+extern int dsk_createcontainer(const struct dsk_config *cfg);
+extern int dsk_createcontainer_imagefile(const struct dsk_config *cfg);
+extern int dsk_createcontainer_drem(const struct dsk_config *cfg);
 extern int dsk_getgeometry(const struct dsk_config *cfg);
-extern int dsk_getgeometry_dev();
-extern int dsk_getgeometry_trsxenix(const struct dsk_config *cfg);
+extern int dsk_getgeometry_dev(const struct dsk_config *cfg, struct dsk_geometry *geometry);
+extern int dsk_getgeometry_drem(const struct dsk_config *cfg, struct dsk_geometry *geometry);
+extern int dsk_getgeometry_trsxenix(const struct dsk_config *cfg, struct dsk_geometry *geometry);
 extern int dsk_getinterleave(const struct dsk_config *cfg);
 extern int dsk_getfspart(const struct dsk_config *cfg);
 extern int dsk_getparttab(const struct dsk_partinfo **outparttab);

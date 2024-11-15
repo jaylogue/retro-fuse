@@ -23,14 +23,17 @@
 #define TRSXENIX_BOOTTRACKS 2
 #define TRSXENIX_DEFAULTALTTRACKS 24
 
+#define TRSXENIX_CYLINDERS_MIN 31
+#define TRSXENIX_CYLINDERS_MAX 2048
+#define TRSXENIX_HEADS_MIN 2
+#define TRSXENIX_HEADS_MAX 16
+#define TRSXENIX_SECTORS_MIN 1 // TODO: verify this
+#define TRSXENIX_SECTORS_MAX 36 // TODO: verify this
+#define TRSXENIX_SECTORS_DEFAULT 17
+#define TRSXENIX_SECTORSSIZE 512
+
 #define TRSXENIX_DISKPARAM_BLKNO 0
 #define TRSXENIX_DISKPARAM_TABLEMARKER ".pvh"
-#define TRSXENIX_DISKPARAM_MINCYLINDERS 31
-#define TRSXENIX_DISKPARAM_MAXCYLINDERS 2048
-#define TRSXENIX_DISKPARAM_MINHEADS 2
-#define TRSXENIX_DISKPARAM_MAXHEADS 16
-#define TRSXENIX_DISKPARAM_SECTORS 17
-#define TRSXENIX_DISKPARAM_SECTORSSIZE 512
 
 #define TRSXENIX_BADTRACK_BLKNO 1
 #define TRSXENIX_BADTRACK_TABLEMARKER ".bad"
@@ -59,7 +62,7 @@ struct trsxenix_badtrack {
     } badtrack[TRSXENIX_BADTRACK_MAXBAD];
 } __attribute__((packed));
 
-int dsk_getgeometry_trsxenix(const struct dsk_config *cfg)
+int dsk_getgeometry_trsxenix(const struct dsk_config *cfg, struct dsk_geometry *geometry)
 {
     union {
         struct trsxenix_diskparm dskparm;
@@ -67,26 +70,37 @@ int dsk_getgeometry_trsxenix(const struct dsk_config *cfg)
     } buf;
     int res;
 
-    /* if creating a new disk... */
+    /* if creating a new disk, setup the geometry based on the given
+     * config parameters... */
     if (dsk_state.creating) {
 
-        /* verify cylinders and heads parameters given and within limits */
+        /* verify cylinders and heads parameters are specified and within limits */
         if (cfg->cylinders < 0 || cfg->heads < 0) {
             return -EINVAL; // TODO: Disk geometry required
         }
-        if (cfg->cylinders < TRSXENIX_DISKPARAM_MINCYLINDERS ||
-            cfg->cylinders > TRSXENIX_DISKPARAM_MAXCYLINDERS) {
+        if (cfg->cylinders < TRSXENIX_CYLINDERS_MIN ||
+            cfg->cylinders > TRSXENIX_CYLINDERS_MAX) {
             return -EINVAL; // TODO: Invalid number of cylinders
         }
-        if (cfg->heads < TRSXENIX_DISKPARAM_MINHEADS ||
-            cfg->heads > TRSXENIX_DISKPARAM_MAXHEADS) {
+        if (cfg->heads < TRSXENIX_HEADS_MIN ||
+            cfg->heads > TRSXENIX_HEADS_MAX) {
             return -EINVAL; // TODO: Invalid number of heads
         }
-        dsk_state.geometry.cylinders = cfg->cylinders;
-        dsk_state.geometry.heads = cfg->heads;
+        geometry->cylinders = cfg->cylinders;
+        geometry->heads = cfg->heads;
 
-        /* if sectors not specified, assume default */
-        dsk_state.geometry.sectors = (cfg->sectors > 0) ? cfg->sectors : TRSXENIX_DISKPARAM_SECTORS;
+        /* if sectors-per-track specified, verify value is within range.
+         * if not specified, use default value */
+        if (cfg->sectors < 0) {
+            geometry->sectors = TRSXENIX_SECTORS_DEFAULT;
+        }
+        else {
+            if (cfg->sectors < TRSXENIX_SECTORS_MIN ||
+                cfg->sectors > TRSXENIX_SECTORS_MAX) {
+                return -EINVAL; // TODO: Invalid number of sectors
+            }
+            geometry->sectors = cfg->sectors;
+        }
     }
 
     /* otherwise read geometery from the disk... */
@@ -104,11 +118,19 @@ int dsk_getgeometry_trsxenix(const struct dsk_config *cfg)
             return -EINVAL; // TODO: Error Xenix disk parameter table not found
         }
 
+        /* verify the sector size is compatible */
+        if (fs_htobe_u16(buf.dskparm.sectorsize) != TRSXENIX_SECTORSSIZE) {
+            return -EINVAL; // TODO: unsupported Xenix disk sector size
+        }
+
         /* read the disk geometry from the parameter table */
-        dsk_state.geometry.cylinders = fs_htobe_u16(buf.dskparm.cylinders);
-        dsk_state.geometry.heads = fs_htobe_u16(buf.dskparm.heads);
-        dsk_state.geometry.sectors = fs_htobe_u16(buf.dskparm.sectors);
+        geometry->cylinders = fs_htobe_u16(buf.dskparm.cylinders);
+        geometry->heads = fs_htobe_u16(buf.dskparm.heads);
+        geometry->sectors = fs_htobe_u16(buf.dskparm.sectors);
     }
+
+    /* compute the overall size of the disk from the C/H/S values */
+    geometry->size = geometry->cylinders * geometry->heads * geometry->sectors;
 
     return 0;
 }
@@ -174,7 +196,7 @@ int dsk_writelayout_trsxenix(const struct dsk_config *cfg)
     buf.dskparm.cylinders = fs_htobe_u16(dsk_state.geometry.cylinders);
     buf.dskparm.heads = fs_htobe_u16(dsk_state.geometry.heads);
     buf.dskparm.sectors = fs_htobe_u16(dsk_state.geometry.sectors);
-    buf.dskparm.sectorsize = fs_htobe_u16(TRSXENIX_DISKPARAM_SECTORSSIZE);
+    buf.dskparm.sectorsize = fs_htobe_u16(TRSXENIX_SECTORSSIZE);
     buf.dskparm.precomp = fs_htobe_u16(dsk_state.geometry.cylinders / 2);
     res = dsk_write(TRSXENIX_DISKPARAM_BLKNO, &buf, DSK_BLKSIZE);
     if (res < 0) {
@@ -187,7 +209,7 @@ int dsk_writelayout_trsxenix(const struct dsk_config *cfg)
         /* calculate the requested fs partition size in terms of whole tracks,
          * rounding down if necessary. fail if the specified size exceeds the
          * available disk space */
-        off_t parttracks = cfg->fssize / TRSXENIX_DISKPARAM_SECTORS;
+        off_t parttracks = cfg->fssize / dsk_state.geometry.sectors;
         off_t maxparttracks = (cfg->cylinders * cfg->heads) - TRSXENIX_BOOTTRACKS;
         if (parttracks > maxparttracks) {
             return -EINVAL; // TODO: Filesystem partition size too big

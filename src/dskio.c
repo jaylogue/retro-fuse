@@ -53,6 +53,7 @@ int dsk_open(const char *filename, const struct dsk_config *cfg, bool create, bo
     }
 
     dsk_resetstate();
+    dsk_state.filename = strdup(filename);
     dsk_state.creating = create;
     dsk_state.ro = ro && !create;
     dsk_state.isopen = true;
@@ -62,14 +63,14 @@ int dsk_open(const char *filename, const struct dsk_config *cfg, bool create, bo
     dsk_state.container = cfg->container;
     dsk_state.layout = cfg->layout;
     if (dsk_state.container == dsk_container_notspecified) {
-        dsk_state.container = dsk_guesscontainer(filename);
+        dsk_state.container = dsk_guesscontainer();
         if (dsk_state.container == dsk_container_notspecified) {
             res = -EINVAL; // TODO: ERROR: Please specify container type
             goto exit;
         }
     }
     if (dsk_state.layout == dsk_layout_notspecified) {
-        dsk_state.layout = dsk_guesslayout(filename);
+        dsk_state.layout = dsk_guesslayout();
         if (dsk_state.layout == dsk_layout_notspecified) {
             res = -EINVAL; // TODO: ERROR: Please specify disk layout
             goto exit;
@@ -79,7 +80,7 @@ int dsk_open(const char *filename, const struct dsk_config *cfg, bool create, bo
     /* if the container file exists and is NOT a block device then fail if
      * creating a new disk and the overwrite flag is not set */
     if (dsk_state.container != dsk_container_dev &&
-        access(filename, F_OK) == 0 &&
+        access(dsk_state.filename, F_OK) == 0 &&
         create && !overwrite) {
         return -EEXIST;
     }
@@ -88,7 +89,7 @@ int dsk_open(const char *filename, const struct dsk_config *cfg, bool create, bo
      * open it now */
     if (dsk_state.creating) {
         if (dsk_state.container == dsk_container_dev) {
-            res = dsk_opencontainer_dev(filename, cfg);
+            res = dsk_opencontainer_dev(cfg);
             if (res != 0) {
                 goto exit;
             }
@@ -97,7 +98,7 @@ int dsk_open(const char *filename, const struct dsk_config *cfg, bool create, bo
 
     /* otherwise, open the existing disk container */
     else {
-        res = dsk_opencontainer(filename, cfg);
+        res = dsk_opencontainer(cfg);
         if (res != 0) {
             goto exit;
         }
@@ -119,7 +120,7 @@ int dsk_open(const char *filename, const struct dsk_config *cfg, bool create, bo
     if (dsk_state.creating) {
 
         /* create the disk container file(s) */
-        res = dsk_createcontainer(filename, cfg);
+        res = dsk_createcontainer(cfg);
         if (res != 0) {
             goto exit;
         }
@@ -153,6 +154,9 @@ int dsk_close()
     if (dsk_state.isopen) {
         if (dsk_state.fd >= 0) {
             close(dsk_state.fd);
+        }
+        if (dsk_state.filename != NULL) {
+            free(dsk_state.filename);
         }
         dsk_resetstate();
     }
@@ -334,23 +338,22 @@ void dsk_setfslimit(off_t fslimit)
 
 void dsk_initconfig(struct dsk_config *cfg)
 {
-    memset(cfg, 0, sizeof(*cfg));
-    cfg->container = dsk_container_notspecified;
-    cfg->offset = -1;
-    cfg->size = -1;
-    cfg->cylinders = -1;
-    cfg->heads = -1;
-    cfg->sectors = -1;
-    cfg->interleave = -1;
-    cfg->sector0num = -1;
-    cfg->layout = dsk_layout_notspecified;
-    cfg->partnum = -1;
-    cfg->parttype = -1;
-    cfg->fsoffset = -1;
-    cfg->fssize = -1;
+    *cfg = (struct dsk_config) {
+        .container = dsk_container_notspecified,
+        .offset = -1,
+        .size = -1,
+        .cylinders = -1,
+        .heads = -1,
+        .sectors = -1,
+        .interleave = -1,
+        .sector0num = -1,
+        .layout = dsk_layout_notspecified,
+        .partnum = -1,
+        .parttype = -1,
+        .fsoffset = -1,
+        .fssize = -1,
+    };
 }
-
-
 
 
 /* ========== Private Internal Functions / Data ========== */
@@ -360,29 +363,31 @@ struct dsk_state dsk_state;
 void dsk_resetstate()
 {
     dsk_state = (struct dsk_state) {
+        .filename = NULL,
         .fd = -1,
         .container = dsk_container_notspecified,
         .layout = dsk_layout_notspecified,
+        .geometry = DSK_EMPTY_GEOMETRY,
         .interleave = 1,
         .fssize = INT64_MAX,
         .fslimit = INT64_MAX,
     };
 }
 
-int dsk_guesscontainer(const char *filename)
+int dsk_guesscontainer()
 {
     struct stat statbuf;
     const char * ext;
     bool fileexists;
 
     /* if the file exists and is a block device then container type is 'dev' */
-    fileexists = (stat(filename, &statbuf) == 0);
+    fileexists = (stat(dsk_state.filename, &statbuf) == 0);
     if (fileexists && S_ISBLK(statbuf.st_mode)) {
         return dsk_container_dev;
     }
 
     /* attempt to determine the container type from the file extension */
-    ext = strrchr(filename, '.');
+    ext = strrchr(dsk_state.filename, '.');
     if (ext != NULL) {
         if (strcasecmp(ext, ".img") == 0) { return dsk_container_imagefile; }
         if (strcasecmp(ext, ".hdv") == 0) { return dsk_container_hdv; }
@@ -394,13 +399,15 @@ int dsk_guesscontainer(const char *filename)
          * then a like-named .cfg file will also exist. */
         if (strcasecmp(ext, ".dsk") == 0) {
             if (fileexists) {
-                char * cfgname = strdup(filename);
-                strcpy(cfgname + (ext - filename), ".cfg");
+                char * cfgname = strdup(dsk_state.filename);
+                strcpy(cfgname + (ext - dsk_state.filename), ".cfg");
                 fileexists = (access(cfgname, F_OK) == 0);
-                free(cfgname);
                 if (fileexists) {
+                    free(dsk_state.filename);
+                    dsk_state.filename = cfgname;
                     return dsk_container_drem;
                 }
+                free(cfgname);
             }
             return dsk_container_imagefile;
         }
@@ -409,7 +416,7 @@ int dsk_guesscontainer(const char *filename)
     return dsk_container_notspecified;
 }
 
-int dsk_guesslayout(const char *filename)
+int dsk_guesslayout()
 {
     // TODO: finish this
 
@@ -424,28 +431,32 @@ int dsk_guesslayout(const char *filename)
     return dsk_layout_notspecified;
 }
 
-int dsk_opencontainer(const char *filename, const struct dsk_config *cfg)
+int dsk_opencontainer(const struct dsk_config *cfg)
 {
     /* based on the container type, open the underlying disk file */
     switch (dsk_state.container) {
     case dsk_container_imagefile:
-        return dsk_opencontainer_imagefile(filename, cfg);
+        return dsk_opencontainer_imagefile(cfg);
     case dsk_container_dev:
-        return dsk_opencontainer_dev(filename, cfg);
+        return dsk_opencontainer_dev(cfg);
+    case dsk_container_drem:
+        return dsk_opencontainer_drem(cfg);
     default:
         return -EINVAL; // TODO: unsupported container type
     }
 }
 
-int dsk_createcontainer(const char *filename, const struct dsk_config *cfg)
+int dsk_createcontainer(const struct dsk_config *cfg)
 {
     /* based on the container type, create the underlying disk file(s) */
     switch (dsk_state.container) {
     case dsk_container_imagefile:
-        return dsk_createcontainer_imagefile(filename, cfg);
+        return dsk_createcontainer_imagefile(cfg);
     case dsk_container_dev:
         /* nothing to do */
         return 0;
+    case dsk_container_drem:
+        return dsk_createcontainer_drem(cfg);
     default:
         return -EINVAL; // TODO: unsupported container type
     }
@@ -453,40 +464,91 @@ int dsk_createcontainer(const char *filename, const struct dsk_config *cfg)
 
 int dsk_getgeometry(const struct dsk_config *cfg)
 {
-    const struct dsk_layoutinfo *layoutinfo;
     int res = 0;
 
-    dsk_state.geometry.size = -1;
-    dsk_state.geometry.cylinders = -1;
-    dsk_state.geometry.heads = -1;
-    dsk_state.geometry.sectors = -1;
+    /* attempt to determine the disk geometry based on the specified disk
+     * layout. some layouts store geometry information as metadata on the
+     * disk (e.g. trsxenix, disklabel), some layouts imply a fixed, hard-
+     * coded geometry (e.g. DEC RL02) and some layouts provide no geometry
+     * information at all (raw image). */
+    if (dsk_state.layout == dsk_layout_trsxenix) {
+        res = dsk_getgeometry_trsxenix(cfg, &dsk_state.geometry);
+    }
+    else if (dsk_state.layout == dsk_layout_211bsd_disklabel) {
+        res = -EINVAL; // TODO: finish this
+    }
+    else {
+        /* if the disk layout implies a fixed geometry, use that. */
+        const struct dsk_layoutinfo *layoutinfo = dsk_getlayoutinfo(dsk_state.layout);
+        if (layoutinfo == NULL) {
+            return -EINVAL; // TODO: unrecognized layout type 
+        }
+        if (layoutinfo->geometry != NULL) {
+            dsk_state.geometry = *layoutinfo->geometry;
+        }
+        else {
+            /* otherwise, no geometry information available */
+            dsk_state.geometry = DSK_EMPTY_GEOMETRY;
+        }
+    }
+    if (res != 0) {
+        return res;
+    }
 
-    /* attempt to determine the geometry of the disk using information
-     * from the specified disk layout and/or the disk container. in some
-     * cases, the chosen disk layout implies a fixed geometry (e.g. the
-     * DEC RL02 layout). in other cases, geometry information is stored
-     * on the disk itself (trsxenix, disklabel) or stored in metadata
-     * associated with the container (hdv, vhd, drem). finally, in some
-     * cases (e.g. rawdisk layout stored in an imagefile container) there
-     * is no geometry information available. */
-    switch (dsk_state.layout) {
-    case dsk_layout_rawdisk:
-    case dsk_layout_mbr:
-        /* these layouts do not have fixed geometries and do not store
-         * geometry information on the disk. so attempt to determine the
-         * geometry from metadata in the container */
+    /* for each of size/cylinders/heads/sectors-per-track:
+     *   - if a value is given in the config parameters, use it if no
+     *     corresponding value could be determined from the layout;
+     *   - otherwise, ensure that the value given in the config parameters
+     *     matches the value from the layout. */
+    if (cfg->size >= 0) {
+        if (dsk_state.geometry.size >= 0 && cfg->size != dsk_state.geometry.size) {
+            return -EINVAL; // ERROR: size parameter does not match the disk layout
+        }
+        dsk_state.geometry.size = cfg->size;
+    }
+    if (cfg->cylinders >= 0) {
+        if (dsk_state.geometry.cylinders >= 0 && cfg->cylinders != dsk_state.geometry.cylinders) {
+            return -EINVAL; // ERROR: cylinders parameter does not match the disk layout
+        }
+        dsk_state.geometry.cylinders = cfg->cylinders;
+    }
+    if (cfg->heads >= 0) {
+        if (dsk_state.geometry.heads >= 0 && cfg->heads != dsk_state.geometry.heads) {
+            return -EINVAL; // ERROR: heads parameter does not match the disk layout
+        }
+        dsk_state.geometry.heads = cfg->heads;
+    }
+    if (cfg->sectors >= 0) {
+        if (dsk_state.geometry.sectors >= 0 && cfg->sectors != dsk_state.geometry.sectors) {
+            return -EINVAL; // ERROR: sectors parameter does not match the disk layout
+        }
+        dsk_state.geometry.sectors = cfg->sectors;
+    }
+
+    /* if opening an existing disk, or if creating a new disk and the
+     * container type is a host device... */
+    if (!dsk_state.creating || dsk_state.container == dsk_container_dev) {
+        struct dsk_geometry contgeometry;
+
+        /* fetch geometry information associated with the disk container.
+         * most container types store geometry information as metadata in
+         * the container. exceptions are host device containers (dev) which
+         * only supply the overall size of the disk (i.e. no cyliders/heads/
+         * sectors), and image file containers which provide no geometry
+         * information at all. */
         switch (dsk_state.container) {
         case dsk_container_dev:
-            res = dsk_getgeometry_dev();
+            res = dsk_getgeometry_dev(cfg, &contgeometry);
             break;
         case dsk_container_drem:
-            res = -EINVAL; // TODO: finish this
+            res = dsk_getgeometry_drem(cfg, &contgeometry);
             break;
         case dsk_container_hdv:
             res = -EINVAL; // TODO: finish this
             break;
         case dsk_container_imagefile:
             /* no geometry information available */
+            contgeometry = DSK_EMPTY_GEOMETRY;
             break;
         case dsk_container_imd:
             res = -EINVAL; // TODO: finish this
@@ -494,70 +556,50 @@ int dsk_getgeometry(const struct dsk_config *cfg)
         case dsk_container_vhd:
             res = -EINVAL; // TODO: finish this
             break;
+        default:
+            res = -EINVAL; // TODO: unrecognized container type 
+            break;
         }
-        break;
-    case dsk_layout_trsxenix:
-        res = dsk_getgeometry_trsxenix(cfg);
-        break;
-    case dsk_layout_211bsd_disklabel:
-        res = -EINVAL; // TODO: finish this
-        break;
-    default:
-        /* if the disk layout implies a fixed geometry, use that. */
-        layoutinfo = dsk_getlayoutinfo(dsk_state.layout);
-        if (layoutinfo->geometry != NULL) {
-            dsk_state.geometry = *layoutinfo->geometry;
+        if (res != 0) {
+            return res;
         }
-        break;
-    }
-    if (res != 0) {
-        return res;
-    }
 
-    /* for each value of disk size, cylinder count, head count and sectors-per
-     * track: if a value was given in the config paramters, use it if a
-     * corresponding value couldn't be determined from the layout/container;
-     * otherwise, ensure that the value given in the config parameters matches
-     * exactly the value derived from the layout/container. */
-    if (cfg->size >= 0) {
-        if (dsk_state.geometry.size < 0) {
-            dsk_state.geometry.size = cfg->size;
+        /* for each of size/cylinders/heads/sectors-per-track: 
+        *    - verify that the value from the container matches the value 
+        *      from the layout/config parameters, or
+        *    - use the value from the container if no value is set */
+        if (contgeometry.size >= 0) {
+            if (dsk_state.geometry.size >= 0 && contgeometry.size != dsk_state.geometry.size) {
+                return -EINVAL; // TODO: inconsistent size
+            }
+            dsk_state.geometry.size = contgeometry.size;
         }
-        else if (cfg->size != dsk_state.geometry.size) {
-            return -EINVAL; // ERROR: size parameter does not match layout/container
+        if (contgeometry.cylinders >= 0) {
+            if (dsk_state.geometry.cylinders >= 0 && contgeometry.cylinders != dsk_state.geometry.cylinders) {
+                return -EINVAL; // TODO: inconsistent cylinders
+            }
+            dsk_state.geometry.cylinders = contgeometry.cylinders;
         }
-    }
-    if (cfg->cylinders >= 0) {
-        if (dsk_state.geometry.cylinders < 0) {
-            dsk_state.geometry.cylinders = cfg->cylinders;
+        if (contgeometry.heads >= 0) {
+            if (dsk_state.geometry.heads >= 0 && contgeometry.heads != dsk_state.geometry.heads) {
+                return -EINVAL; // TODO: inconsistent heads
+            }
+            dsk_state.geometry.heads = contgeometry.heads;
         }
-        else if (cfg->cylinders != dsk_state.geometry.cylinders) {
-            return -EINVAL; // ERROR: cylinders argument does not match layout/container
-        }
-    }
-    if (cfg->heads >= 0) {
-        if (dsk_state.geometry.heads < 0) {
-            dsk_state.geometry.heads = cfg->heads;
-        }
-        else if (cfg->heads != dsk_state.geometry.heads) {
-            return -EINVAL; // ERROR: heads argument does not match layout/container
-        }
-    }
-    if (cfg->sectors >= 0) {
-        if (dsk_state.geometry.sectors < 0) {
-            dsk_state.geometry.sectors = cfg->sectors;
-        }
-        else if (cfg->sectors != dsk_state.geometry.sectors) {
-            return -EINVAL; // ERROR: sectors argument does not match layout/container
+        if (contgeometry.sectors >= 0) {
+            if (dsk_state.geometry.sectors >= 0 && contgeometry.sectors != dsk_state.geometry.sectors) {
+                return -EINVAL; // TODO: inconsistent size
+            }
+            dsk_state.geometry.sectors = contgeometry.sectors;
         }
     }
 
-    /* if the disk cylinder count, head count and sectors-per-track are all known... */
+    /* if cylinders, heads and sectors-per-track are all known... */
     if (dsk_state.geometry.cylinders >= 0 &&
         dsk_state.geometry.heads >= 0 &&
         dsk_state.geometry.sectors >= 0) {
 
-        /* compute the total size from the CHS values */
+        /* compute the total size of the disk from the C/H/S values */
         off_t chssize = dsk_state.geometry.cylinders * dsk_state.geometry.heads * dsk_state.geometry.sectors;
 
         /* if the disk size is known, make sure the two size values match */
@@ -567,7 +609,7 @@ int dsk_getgeometry(const struct dsk_config *cfg)
             }
         }
 
-        /* otherwise set the disk size to the computed CHS size */
+        /* otherwise set the disk size to the computed size */
         else {
             dsk_state.geometry.size = chssize;
         }

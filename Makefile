@@ -45,9 +45,12 @@ bindir ?= $(exec_prefix)/bin
 vpath %.c $(dir $(MAKEFILE_LIST))
 
 
+############### UTILITY CODE ################
+
 DSKIO_SRC = \
 	src/dskio.c \
 	src/dskio-dev.c \
+	src/dskio-drem.c \
 	src/dskio-imagefile.c \
 	src/dskio-layout.c \
 	src/dskio-trsxenix.c
@@ -57,6 +60,25 @@ DSKIO_DEPS = $(DSKIO_SRC:.c=.d)
 -include $(DSKIO_DEPS)
 
 ALL_OUTPUTS += $(DSKIO_OBJS) $(DSKIO_DEPS)
+
+
+INIH_SRC = \
+	external/inih/ini.c
+INIH_OBJS = $(INIH_SRC:.c=.o)
+INIH_DEPS = $(INIH_SRC:.c=.d)
+
+DEFS += \
+	-DINI_HANDLER_LINENO=1 \
+	-DINI_STOP_ON_FIRST_ERROR=1 \
+	-DINI_MAX_LINE=1000 \
+	-DINI_USE_STACK=0 \
+	-DINI_ALLOW_REALLOC=1
+
+CPPFLAGS += -Iexternal/inih
+
+-include $(INIH_DEPS)
+
+ALL_OUTPUTS += $(INIH_OBJS) $(INIH_DEPS)
 
 
 ############### UNIX V6 ################
@@ -134,7 +156,7 @@ $(V7_DEPS) src/v7fs.d src/v7adapt.d : CPPFLAGS += -I./ancient-src/v7
 
 -include $(V7_DEPS) $(V7FS_DEPS)
 
-$(V7FS_PROG) : $(V7FS_OBJS) $(V7_OBJS) $(DSKIO_OBJS)
+$(V7FS_PROG) : $(V7FS_OBJS) $(V7_OBJS) $(DSKIO_OBJS) $(INIH_OBJS)
 	$(CC) -o $@ $(LD_MAP_FLAG) $^ $(LIBS)
 
 ALL_PROGS += $(V7FS_PROG)
@@ -245,7 +267,7 @@ XENIXFS_DEPS = $(XENIXFS_SRC:.c=.d)
 
 -include $(XENIXFS_DEPS)
 
-$(XENIXFS_PROG) : $(XENIXFS_OBJS) $(V7_OBJS) $(DSKIO_OBJS)
+$(XENIXFS_PROG) : $(XENIXFS_OBJS) $(V7_OBJS) $(DSKIO_OBJS) $(INIH_OBJS)
 	$(CC) -o $@ $(LD_MAP_FLAG) $^ $(LIBS)
 
 ALL_PROGS += $(XENIXFS_PROG)

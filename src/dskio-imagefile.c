@@ -20,17 +20,17 @@
 
 #include "dskio-internal.h"
 
-int dsk_opencontainer_imagefile(const char *filename, const struct dsk_config *cfg)
+int dsk_opencontainer_imagefile(const struct dsk_config *cfg)
 {
     struct stat statbuf;
     int oflags = dsk_state.ro ? O_RDONLY : O_RDWR;
 
     /* only allow regular files */
-    if (stat(filename, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
+    if (stat(dsk_state.filename, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
         return -EPERM;
 
     /* open the image file. fail if an error occurs. */
-    dsk_state.fd = open(filename, oflags, 0666);
+    dsk_state.fd = open(dsk_state.filename, oflags, 0666);
     if (dsk_state.fd < 0) {
         return -errno;
     }
@@ -41,10 +41,10 @@ int dsk_opencontainer_imagefile(const char *filename, const struct dsk_config *c
     return 0;
 }
 
-int dsk_createcontainer_imagefile(const char *filename, const struct dsk_config *cfg)
+int dsk_createcontainer_imagefile(const struct dsk_config *cfg)
 {
     /* open the image file, creating or truncating it in the process */
-    dsk_state.fd = open(filename, O_CREAT|O_TRUNC|O_RDWR, 0666);
+    dsk_state.fd = open(dsk_state.filename, O_CREAT|O_TRUNC|O_RDWR, 0666);
     if (dsk_state.fd < 0)
         return -errno;
 
@@ -56,7 +56,7 @@ int dsk_createcontainer_imagefile(const char *filename, const struct dsk_config 
             int res = -errno;
             close(dsk_state.fd);
             dsk_state.fd = -1;
-            unlink(filename);
+            unlink(dsk_state.filename);
             return res;
         }
     }
