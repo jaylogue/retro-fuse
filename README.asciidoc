@@ -3,15 +3,15 @@
 A user-space filesystem (FUSE) for accessing ancient Unix filesystems.
 
 *retro-fuse* provides a way to mount filesystems created by ancient Unix systems
-on modern OSes.  The current version of *retro-fuse* supports mounting filesystems
-created by forth, fifth, sixth and seventh-edition research Unix, as well as 2.9BSD
-and 2.11BSD. It can also initialize such filesystems.
+on modern operating systems. The current version of *retro-fuse* supports mounting
+filesystems created by Fourth-, Fifth-, Sixth-, and Seventh-Edition Research Unix,
+as well as 2.9BSD and 2.11BSD. It can also initialize such filesystems.
 
 The design of *retro-fuse* is novel in that it incorporates original source code
-from the historic Unix kernels.  The ancient code has been "lightly modernized" to be
-palatable to current compilers and adapted to run in userspace.  This approach (made
-possible by Caldera's generous open source license for ancient Unix) allows *retro-fuse*
-to support both reading and writing of ancient filesystems, while ensuring the historical
+from historic Unix kernels. The ancient code has been "lightly modernized" to be
+palatable to current compilers and adapted to run in userspace. This approach (made
+possible by Caldera's generous open-source license for ancient Unix) allows *retro-fuse*
+to support both reading and writing ancient filesystems, while ensuring the historical
 fidelity of on-disk structures.
 
 *retro-fuse* provides support for a broad array of modern filesystem operations on
@@ -114,26 +114,25 @@ Code derived from ancient Unix source is licensed under xref:Caldera-license.pdf
 
 ## Release Notes
 
-**Version 8 / 2022/08/23** -- Support for 32-bit RPi OS, minor bug fixes.
+**Version 8 (2022/08/23)** — Support for 32-bit RPi OS, minor bug fixes.
 
-**Version 7 / 2022/01/25** -- Added support for initializing and mounting 2.11BSD
+**Version 7 (2022/01/25)** — Added support for initializing and mounting 2.11BSD
 filesystems. Fixed various bugs, big and small, in v6, v7 and 2.9BSD support.
 Improved functionality tests. Improved support for macOS.
 
-**Version 6 / 2021/12/19** -- Added support for 2.9BSD filesystems. Implemented 
+**Version 6 (2021/12/19)** — Added support for 2.9BSD filesystems. Implemented 
 functionality tests for v6, v7 and 2.9BSD filesystem drivers. Fixed various bugs
 reported by users and uncovered by functionality tests.
 
-**Version 5 / 2021/11/10** -- Various code restructuring and clean up. Fixed a
+**Version 5 (2021-11-10)** — Various code restructuring and cleanup. Fixed a
 few minor bugs. Improved Makefile.
 
-**Version 4 / 2021/11/06** -- Added support for seventh-edition Unix filesystems.
+**Version 4 (2021-11-06)** — Added support for Seventh-Edition Unix filesystems.
 
-**Version 3 / 2021/03/27** -- Added support for MacOS.
+**Version 3 (2021-03-27)** — Added support for macOS.
 
-**Version 2 / 2021/03/02** -- Fixed bug in link(), unlink(), chmod() and chown()
-that caused the files modified time to be updated (this fixes problems
-with rsync).  Minor modifications to error handling.
+**Version 2 (2021-03-02)** — Fixed a bug in link(), unlink(), chmod(), and chown()
+that caused file modification times to be updated (this fixes problems
+with rsync). Minor modifications to error handling.
 
-**Version 1 / 2021/02/23** -- Initial release.
-
+**Version 1 (2021-02-23)** — Initial release.
