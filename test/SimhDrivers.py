@@ -86,6 +86,157 @@ class SimhDriver:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
 
+class V4SimhDriver(SimhDriver):
+    '''Runs a simulated v4 Unix system using simh'''
+
+    defaultSystemDiskImage = os.path.join(sysImagesDirName, 'v4-test-system-rk05.dsk.gz')
+
+    def __init__(self, simhCmd=None, cwd=None, systemDiskImage=None, testDiskImage=None, debugStream=None, timeout=60):
+        super().__init__(simhCmd=simhCmd, cwd=cwd, debugStream=debugStream, timeout=timeout)
+        self.systemDiskImage = systemDiskImage if systemDiskImage is not None else type(self).defaultSystemDiskImage
+        self.testDiskImage = testDiskImage
+        self.tempDir = None
+
+    def start(self):
+        if self.simh is not None:
+            raise RuntimeError('Simulator already running')
+        try:
+            if self.cwd is None:
+                self.tempDir = tempfile.TemporaryDirectory()
+                self.cwd = self.tempDir.name
+            _copyImageFile(self.systemDiskImage, os.path.join(self.cwd, 'system.dsk'))
+            super().start()
+            initScript = V4SimhDriver._initScript
+            if self.testDiskImage is not None:
+                initScript += "attach rk1 %s\n" % os.path.abspath(self.testDiskImage)
+            if self.debugStream:
+                print('\nConfiguring simulator', file=self.debugStream)
+            self.sendSimhCommands(initScript)
+            if self.debugStream:
+                print('\nBooting v4 Unix', file=self.debugStream)
+            self.sendSimhCommands('boot rk0\n')
+            if self.debugStream:
+                print('', file=self.debugStream)
+            self.simh.send("k")
+            self.simh.expect_exact("\n")
+            self.simh.send("unix\n")
+            self.simh.expect_exact("login: ")
+            self.simh.sendline("root")
+            self.simh.expect_exact("# ")
+            self.simh.sendline("stty -echo")
+            self.simh.expect_exact("# ")
+        except:
+            self.stop()
+            raise
+
+    def stop(self):
+        try:
+            if self.simh is not None:
+                self.simh.sendline('')
+                self.simh.expect_exact('# ', timeout=5)
+                self.simh.sendline('sync; sync; sync')
+                self.simh.expect_exact('# ', timeout=5)
+        finally:
+            try:
+                super().stop()
+            finally:
+                try:
+                    os.remove(os.path.join(self.cwd, 'system.dsk'))
+                except:
+                    pass
+                if self.tempDir is not None:
+                    self.tempDir.cleanup()
+                    self.tempDir = None
+                    self.cwd = None
+
+    def sendShellCommands(self, script):
+        res = ''
+        self.simh.sendline('')
+        self.simh.expect_exact('# ', timeout=5)
+        for line in script.split('\n'):
+            line = line.strip()
+            if len(line) > 0:
+                self.simh.sendline(line)
+                self.simh.expect_exact('# ')
+                res += self.simh.before
+        return res
+
+    def enumFiles(self, dir):
+        fileListCmd = self._fileListCmd % dir
+        fileListStr = self.sendShellCommands(fileListCmd)
+        return FileList.parse(fileListStr, re.compile(self._fileListPattern))
+
+    def checkFS(self, dev):
+        # Invoke the V4 check program on the specified device.
+        # Parse out various stats about the filesystems, as well
+        # as any errors.
+        checkOut = self.sendShellCommands('/bin/check %s' % dev)
+        m = re.search(string=checkOut, pattern=r'^files\s+(\d+)\s*$', flags=re.M)
+        fileCount = int(m.group(1)) if m else None
+        m = re.search(string=checkOut, pattern=r'^direc\s+(\d+)\s*$', flags=re.M)
+        dirCount = int(m.group(1)) if m else None
+        m = re.search(string=checkOut, pattern=r'^spcl\s+(\d+)\s*$', flags=re.M)
+        devCount = int(m.group(1)) if m else None
+        m = re.search(string=checkOut,  pattern=r'^used\s+(\d+)\s*$', flags=re.M)
+        usedBlockCount = int(m.group(1)) if m else None
+        m = re.search(string=checkOut, pattern=r'^free\s+(\d+)\s*$', flags=re.M)
+        freeBlockCount = int(m.group(1)) if m else None
+        errs = list(filter(lambda line : 'bad' in line or 'missing' in line or 'dup' in line,
+                    checkOut.split('\n')))
+        if len(errs) == 0:
+            errs = None
+
+        # The "files" output from check includes a count of directories as well
+        # as regular files. So adjust fileCount accordingly.
+        if fileCount is not None and dirCount is not None:
+            fileCount = fileCount - dirCount
+
+        return (fileCount, dirCount, devCount, usedBlockCount, freeBlockCount, errs)
+
+    _initScript = \
+"""
+set cpu 11/45 256k
+set tti 7b
+set tto 7b
+set rk enabled
+attach rk0 system.dsk
+"""
+
+    # v4 unix command to enumerate all entries in a given directory, printing their metadata
+    # and, for files, a checksum of their contents.
+    #
+    # Note: This command depends on the following enhancements to a standard v4 system:
+    #
+    #    - POSIX-compatible cksum command installed as /usr/bin/cksum. Source code and a
+    #      prebuilt executable (compatible with both v4 and v6) is located in
+    #      test/ancient-cksum.
+    #
+    #    - v6 version of find installed as /usr/bin/find.  This is necessary because the v4
+    #      find does not support -type.
+    #
+    _fileListCmd = '/usr/bin/find %s -exec /bin/ls -ild {} \\; -a \\( -type f -a -exec /usr/bin/cksum {} \\; \\) -o \\( \\! -type f -a -exec echo - \\; \\)'
+
+    # Regex pattern to parse output from the above command.
+    _fileListPattern = r'''(?mx)
+                        ^
+                        \s* (?P<inode> \d+)
+                        \s+ (?P<type> [bcd-]) (?P<mode> [rwsStTx-]{9}t?)
+                        \s*  (?P<linkCount> \d+)
+                        \s+ (?P<user> \w+)
+                        \s+ (
+                            ( (?P<size> \d+) ) |
+                            ( (?P<major> \d+) \s* , \s* (?P<minor> \d+) )
+                        )
+                        \s+ (?P<time> [A-Za-z]{3} \s+ \d+ \s+ [0-9:]+ )
+                        \s+ (?P<name> [^\n\r]+ ) [\r\n]+
+                        \s* (
+                            ( (?P<cksum> \d+ ) \s+ \d+ \s+ [^\n\r]+ ) |
+                            -
+                        )
+                        \s*
+                        $
+                        '''
+
 class V6SimhDriver(SimhDriver):
     '''Runs a simulated v6 Unix system using simh'''
 
@@ -202,7 +353,7 @@ attach rk0 system.dsk
     # the test system image.  Source code and a prebuilt executable for this is located
     # in test/ancient-cksum.
     #
-    _fileListCmd = '/usr/bin/find %s -exec /bin/ls -ild {} \\; -o \\( -type -f -a -exec /usr/bin/cksum {} \\; \\) -o \\( \\! -type -f -a -exec echo - \\; \\)'
+    _fileListCmd = '/usr/bin/find %s -exec /bin/ls -ild {} \\; -o \\( -type f -a -exec /usr/bin/cksum {} \\; \\) -o \\( \\! -type f -a -exec echo - \\; \\)'
 
     # Regex pattern to parse output from the above command.
     _fileListPattern = r'''(?mx)
