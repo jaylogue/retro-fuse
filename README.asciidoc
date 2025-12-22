@@ -4,8 +4,8 @@ A user-space filesystem (FUSE) for accessing ancient Unix filesystems.
 
 *retro-fuse* provides a way to mount filesystems created by ancient Unix systems
 on modern OSes.  The current version of *retro-fuse* supports mounting filesystems
-created by fifth, sixth and seventh-edition research Unix, as well as 2.9BSD and
-2.11BSD. It can also initialize such filesystems.
+created by forth, fifth, sixth and seventh-edition research Unix, as well as 2.9BSD
+and 2.11BSD. It can also initialize such filesystems.
 
 The design of *retro-fuse* is novel in that it incorporates original source code
 from the historic Unix kernels.  The ancient code has been "lightly modernized" to be
@@ -68,8 +68,8 @@ $ make
 These tests perform various I/O operations on a mounted test filesystem to confirm the
 correct behavior as observed from the modern system. Additionally, the tests verify the
 fidelity of the generated filesystem images by mounting them in a simulated historic Unix
-system and checking filesystem's integrity (using legacy tools such as icheck and fsck)
-and contents.
+system and checking filesystem's integrity and contents (using legacy tools such as icheck
+and fsck).
 
 The functionality tests rely on simh and python3. Additionally, the tests use the
 https://github.com/pexpect/pexpect[Pexpect] python module, which must be installed separately.
